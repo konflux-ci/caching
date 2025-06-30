@@ -1,0 +1,33 @@
+{{- if and .Values.squidExporter.enabled .Values.prometheus.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "squid.fullname" . }}
+  namespace: {{ .Values.prometheus.serviceMonitor.namespace | default .Values.namespace.name }}
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+    {{- with .Values.prometheus.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.prometheus.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "squid.selectorLabels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.namespace.name }}
+  endpoints:
+    - port: metrics
+      path: {{ .Values.prometheus.serviceMonitor.path }}
+      interval: {{ .Values.prometheus.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.prometheus.serviceMonitor.scrapeTimeout }}
+      honorLabels: true
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: squid_.*
+          action: keep
+{{- end }} 
