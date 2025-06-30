@@ -1,0 +1,5 @@
+# Example values file to enable monitoring
+# Usage: helm install squid ./squid -f values-monitoring.yaml
+
+monitoring:
+  enabled: true 

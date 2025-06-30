@@ -48,6 +48,37 @@ spec:
             - name: squid-config
               mountPath: /etc/squid/squid.conf
               subPath: squid.conf
+        {{- if .Values.monitoring.enabled }}
+        # Optional Squid Exporter Sidecar
+        - name: squid-exporter
+          image: "{{ .Values.monitoring.squidExporter.image.repository }}:{{ .Values.monitoring.squidExporter.image.tag }}"
+          imagePullPolicy: {{ .Values.monitoring.squidExporter.image.pullPolicy }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.monitoring.squidExporter.port }}
+              protocol: TCP
+          env:
+            - name: SQUID_HOSTNAME
+              value: "localhost"
+            - name: SQUID_PORT
+              value: "3128"
+            - name: SQUID_EXPORTER_LISTEN
+              value: ":{{ .Values.monitoring.squidExporter.port }}"
+          resources:
+            {{- toYaml .Values.monitoring.squidExporter.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.monitoring.squidExporter.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.monitoring.squidExporter.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+        {{- end }}
       volumes:
         - name: squid-config
           configMap:

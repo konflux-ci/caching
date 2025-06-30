@@ -12,5 +12,11 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.monitoring.enabled }}
+    - port: {{ .Values.monitoring.squidExporter.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
   selector:
     {{- include "squid.selectorLabels" . | nindent 4 }}

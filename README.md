@@ -364,3 +364,51 @@ When modifying the chart:
 ## License
 
 This project is licensed under the terms specified in the LICENSE file.
+Once these prerequisites are met, you can open this folder in VS Code and use the "Reopen in Container" command to launch the environment.
+
+
+# Squid Prometheus Exporter
+
+Production-ready monitoring solution for Squid proxy servers with comprehensive metrics collection and Kubernetes deployment.
+
+## Overview
+
+This repository provides a complete Squid monitoring solution that combines:
+
+- **Core metrics** via `boynux/squid-exporter` - liveness, bandwidth, hit/miss rates, storage
+- **Per-site analytics** via custom log parser - site-specific hit rates and traffic analysis
+- **Production deployment** with Kubernetes manifests ready for deployment
+
+## Quick Start
+
+```bash
+cd exporter/
+kubectl apply -f deployments/
+```
+
+## What's Included
+
+- Complete Kubernetes deployment with ConfigMaps and Services
+- Custom per-site metrics collection via Python script
+- Ready-to-deploy Kubernetes manifests
+- Comprehensive documentation and troubleshooting guides
+
+## Documentation
+
+All detailed documentation is available in the [`exporter/`](./exporter/) directory:
+
+- **[Setup Guide](./exporter/README.md)** - Installation and configuration
+- **[Metrics Reference](./exporter/docs/metrics-reference.md)** - Available metrics and queries
+- **[Troubleshooting](./exporter/docs/troubleshooting.md)** - Common issues and solutions
+
+## Repository Structure
+
+```
+├── exporter/                    # Squid Prometheus Exporter
+│   ├── README.md               # Complete documentation
+│   ├── Dockerfile              # Custom metrics collector image
+│   ├── deployments/           # Kubernetes manifests
+│   ├── scripts/               # Custom metrics scripts
+│   └── docs/                  # Detailed documentation
+└── README.md                  # This file
+```

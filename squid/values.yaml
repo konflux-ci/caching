@@ -126,3 +126,23 @@ affinity: {}
 namespace:
   name: proxy
   annotations: {}
+
+# Optional monitoring configuration
+monitoring:
+  # Enable/disable squid-exporter sidecar
+  enabled: false
+  
+  # Squid exporter configuration
+  squidExporter:
+    image:
+      repository: boynux/squid-exporter
+      tag: v1.13.0
+      pullPolicy: IfNotPresent
+    port: 9301
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi

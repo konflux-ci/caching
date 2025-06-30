@@ -1,0 +1,281 @@
+---
+# Namespace for standalone squid exporter
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: squid-monitoring
+  labels:
+    name: squid-monitoring
+    app.kubernetes.io/name: squid
+    app.kubernetes.io/instance: squid-exporter
+    app.kubernetes.io/component: namespace
+
+---
+# Squid Configuration ConfigMap (aligned with Helm chart)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: squid-exporter-config
+  namespace: squid-monitoring
+  labels:
+    app.kubernetes.io/name: squid
+    app.kubernetes.io/instance: squid-exporter
+    app.kubernetes.io/component: config
+data:
+  squid.conf: |
+    # Squid configuration optimized for monitoring
+    
+    # Basic proxy settings
+    http_port 3128
+    
+    # Cache settings
+    cache_dir ufs /var/cache/squid 1000 16 256
+    cache_mem 256 MB
+    maximum_object_size_in_memory 512 KB
+    maximum_object_size 1024 MB
+    
+    # Access control
+    acl localnet src 10.0.0.0/8
+    acl localnet src 172.16.0.0/12
+    acl localnet src 192.168.0.0/16
+    acl localnet src fc00::/7
+    acl localnet src fe80::/10
+    
+    # Prometheus monitoring access
+    acl prometheus src 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 127.0.0.1/32
+    acl SSL_ports port 443
+    acl Safe_ports port 80
+    acl Safe_ports port 21
+    acl Safe_ports port 443
+    acl Safe_ports port 70
+    acl Safe_ports port 210
+    acl Safe_ports port 1025-65535
+    acl Safe_ports port 280
+    acl Safe_ports port 488
+    acl Safe_ports port 591
+    acl Safe_ports port 777
+    acl CONNECT method CONNECT
+    
+    # Access rules
+    http_access deny !Safe_ports
+    http_access deny CONNECT !SSL_ports
+    http_access allow localhost manager
+    http_access allow prometheus manager
+    http_access deny manager
+    http_access allow localnet
+    http_access allow localhost
+    http_access deny all
+    
+    # Logging for metrics collection
+    access_log /var/log/squid/access.log squid
+    cache_log /var/log/squid/cache.log
+    
+    # Performance tuning
+    refresh_pattern ^ftp:           1440    20%     10080
+    refresh_pattern ^gopher:        1440    0%      1440
+    refresh_pattern -i (/cgi-bin/|\?) 0     0%      0
+    refresh_pattern .               0       20%     4320
+    
+    # Enable cache manager for monitoring
+    cachemgr_passwd disable all
+    
+    # Fix PID file location for container
+    pid_filename /var/cache/squid/squid.pid
+
+---
+# ServiceAccount (aligned with Helm chart)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: squid-exporter
+  namespace: squid-monitoring
+  labels:
+    app.kubernetes.io/name: squid
+    app.kubernetes.io/instance: squid-exporter
+    app.kubernetes.io/component: serviceaccount
+
+---
+# Squid Exporter Service (aligned with Helm chart structure)
+apiVersion: v1
+kind: Service
+metadata:
+  name: squid-exporter
+  namespace: squid-monitoring
+  labels:
+    app.kubernetes.io/name: squid
+    app.kubernetes.io/instance: squid-exporter
+    app.kubernetes.io/component: service
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9301,9302"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: squid
+    app.kubernetes.io/instance: squid-exporter
+  ports:
+  - name: http
+    port: 3128
+    targetPort: http
+    protocol: TCP
+  - name: metrics
+    port: 9301
+    targetPort: metrics
+    protocol: TCP
+  - name: per-site-metrics
+    port: 9302
+    targetPort: site-metrics
+    protocol: TCP
+
+---
+# Main Squid + Exporters Deployment (aligned with Helm chart structure)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: squid-exporter
+  namespace: squid-monitoring
+  labels:
+    app.kubernetes.io/name: squid
+    app.kubernetes.io/instance: squid-exporter
+    app.kubernetes.io/component: proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: squid
+      app.kubernetes.io/instance: squid-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: squid
+        app.kubernetes.io/instance: squid-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9301,9302"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: squid-exporter
+      securityContext:
+        fsGroup: 0
+      containers:
+      
+      # Main Squid proxy container (aligned with Helm chart)
+      - name: squid
+        image: ubuntu/squid:5.2-22.04_beta
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          runAsGroup: 0
+        ports:
+        - name: http
+          containerPort: 3128
+          protocol: TCP
+        volumeMounts:
+        - name: squid-config
+          mountPath: /etc/squid/squid.conf
+          subPath: squid.conf
+        - name: squid-logs
+          mountPath: /var/log/squid
+        - name: squid-cache
+          mountPath: /var/cache/squid
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      
+      # Squid metrics exporter sidecar (aligned with Helm chart)
+      - name: squid-exporter
+        image: boynux/squid-exporter:v1.13.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: metrics
+          containerPort: 9301
+          protocol: TCP
+        env:
+        - name: SQUID_HOSTNAME
+          value: "localhost"
+        - name: SQUID_PORT
+          value: "3128"
+        - name: SQUID_EXPORTER_LISTEN
+          value: ":9301"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /metrics
+            port: 9301
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: 9301
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      
+      # Per-site metrics collector sidecar
+      - name: per-site-metrics
+        image: quay.io/konflux-ci/squid-per-site-metrics:v0.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: site-metrics
+          containerPort: 9302
+          protocol: TCP
+        env:
+        - name: SQUID_LOG_PATH
+          value: "/var/log/squid/access.log"
+        - name: METRICS_PORT
+          value: "9302"
+        volumeMounts:
+        - name: squid-logs
+          mountPath: /var/log/squid
+          readOnly: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 9302
+          initialDelaySeconds: 20
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 9302
+          initialDelaySeconds: 10
+          periodSeconds: 15
+      
+      volumes:
+      - name: squid-config
+        configMap:
+          name: squid-exporter-config
+      - name: squid-logs
+        emptyDir: {}
+      - name: squid-cache
+        emptyDir:
+          sizeLimit: 2Gi
