@@ -5,6 +5,12 @@ metadata:
   namespace: {{ .Values.namespace.name }}
   labels:
     {{- include "squid.labels" . | nindent 4 }}
+  {{- if .Values.squidExporter.enabled }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "{{ .Values.squidExporter.port }}"
+    prometheus.io/path: "{{ .Values.squidExporter.metricsPath }}"
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -12,5 +18,11 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.squidExporter.enabled }}
+    - port: {{ .Values.squidExporter.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
   selector:
     {{- include "squid.selectorLabels" . | nindent 4 }}

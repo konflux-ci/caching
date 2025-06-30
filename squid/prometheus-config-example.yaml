@@ -1,0 +1,39 @@
+# Example Prometheus configuration for scraping Squid metrics
+# This file shows how to configure Prometheus to scrape metrics from the Squid exporter
+# when not using Prometheus Operator
+
+# Add this job to your prometheus.yml configuration file
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  # Squid Proxy Metrics
+  - job_name: 'squid-proxy'
+    static_configs:
+      - targets: ['squid.proxy.svc.cluster.local:9301']  # Adjust namespace if different
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+    honor_labels: true
+    
+    # Optional: Add custom labels to all metrics from this job
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: squid.proxy.svc.cluster.local:9301
+      - target_label: service
+        replacement: squid-proxy
+      - target_label: component
+        replacement: proxy
+        
+    # Optional: Filter metrics to only include squid-related ones
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'squid_.*'
+        action: keep
+      - source_labels: [__name__]
+        regex: 'up|scrape_duration_seconds|scrape_samples_scraped|scrape_samples_post_metric_relabeling|scrape_series_added'
+        action: keep

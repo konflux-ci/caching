@@ -55,6 +55,39 @@ service:
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 3128
 
+# Squid Prometheus Exporter Configuration
+# This enables monitoring of Squid metrics via Prometheus
+# Note: hostname is hardcoded to "localhost" in deployment template since
+# the exporter runs as a sidecar in the same pod as squid
+# Note: squid port is referenced from service.port to avoid duplication
+squidExporter:
+  # Enable or disable the squid-exporter sidecar
+  enabled: true
+  # Squid exporter container image
+  image:
+    repository: boynux/squid-exporter
+    tag: "v1.13.0"
+    pullPolicy: IfNotPresent
+  # Port on which the exporter will serve metrics
+  port: 9301
+  # Metrics path for Prometheus scraping
+  metricsPath: "/metrics"
+  # Optional authentication (leave empty if not needed)
+  squidLogin: ""
+  squidPassword: ""
+  # Extract service times (increases metric detail)
+  extractServiceTimes: "true"
+  # Custom labels to add to metrics
+  customLabels: {}
+  # Resource limits and requests for the exporter
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
@@ -135,6 +168,26 @@ namespace:
 installCertManagerComponents: true
 
 # Cert-manager and Trust-manager configuration
+# Prometheus monitoring configuration
+prometheus:
+  # Enable ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    enabled: true
+    # Namespace where the ServiceMonitor should be created
+    # If empty, it will be created in the same namespace as the application
+    namespace: ""
+    # Additional labels for the ServiceMonitor
+    labels: {}
+    # Scrape interval
+    interval: 30s
+    # Scrape timeout
+    scrapeTimeout: 10s
+    # Metrics path (should match squidExporter.metricsPath)
+    path: "/metrics"
+    # Additional annotations for the ServiceMonitor
+    annotations: {}
+
+# Cert-manager configuration
 # Based on https://cert-manager.io/docs/installation/helm/
 cert-manager:
   enabled: true  # Set to true to enable cert-manager
