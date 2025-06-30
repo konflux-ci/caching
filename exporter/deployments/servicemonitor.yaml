@@ -1,0 +1,29 @@
+# ServiceMonitor for Prometheus Operator
+# Only apply this if you have Prometheus Operator installed in your cluster
+# kubectl apply -f servicemonitor.yaml
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: squid-exporter
+  labels:
+    app: squid-exporter
+  annotations:
+    description: "Monitors Squid proxy metrics via boynux/squid-exporter and per-site metrics"
+spec:
+  selector:
+    matchLabels:
+      app: squid-exporter
+  endpoints:
+  # Main squid exporter metrics
+  - port: exporter
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: true
+  # Per-site metrics
+  - port: per-site-metrics
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: true 
