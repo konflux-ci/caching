@@ -17,8 +17,9 @@ This repository includes a dev container configuration that provides a consisten
 
 1. **Podman**: The dev container is based on Podman. Ensure it is installed on your system.
 2. **Docker alias for Podman**: The VSCode Dev Containers extension relies on using the "docker" command, so the podman command needs to be aliased to "docker". You can either:
-   - Install the `podman-docker` package on Fedora: `sudo dnf install podman-docker`
-   - Or manually create an alias: `sudo ln -s /usr/bin/podman /usr/local/bin/docker`
+   - **Fedora Workstation**: Install the `podman-docker` package: `sudo dnf install podman-docker`
+   - **Fedora Silverblue/Kinoite**: Install via rpm-ostree: `sudo rpm-ostree install podman-docker` (requires reboot)
+   - **Manual alias** (any system): `sudo ln -s /usr/bin/podman /usr/local/bin/docker`
 3. **VS Code with Dev Containers extension**: For the best experience, use Visual Studio Code with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers).
 4. **Running Podman Socket**: The dev container connects to your local Podman socket. Make sure the user service is running before you start the container:
 
