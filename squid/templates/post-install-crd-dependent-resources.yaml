@@ -1,0 +1,166 @@
+{{- if (index .Values "selfsigned-issuer").enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "squid.fullname" . }}-create-crd-dependent-resources
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    spec:
+      serviceAccountName: {{ include "squid.fullname" . }}-crd-waiter
+      containers:
+      - name: crd-waiter
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Waiting for trust-manager to be fully ready..."
+          
+          # Wait for trust-manager deployment to be ready (ensures CRD and webhook are ready)
+          echo "Waiting for trust-manager to be ready..."
+          kubectl wait deployment/trust-manager -n cert-manager --for=condition=Available=True --timeout=180s
+
+          echo "Trust manager is ready. Creating dependent resources..."
+          
+          # Create the selfsigned issuer and certificate
+          cat <<EOF | kubectl apply -f -
+          apiVersion: cert-manager.io/v1
+          kind: Issuer
+          metadata:
+            name: {{ .Values.namespace.name }}-selfsigned-issuer
+            namespace: cert-manager
+          spec:
+            selfSigned: {}
+          ---
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            name: {{ .Values.namespace.name }}-certificate
+            namespace: cert-manager
+          spec:
+            secretName: {{ .Values.namespace.name }}-tls
+            duration: 2160h
+            renewBefore: 360h
+            commonName: {{ .Values.namespace.name }}.{{ .Values.namespace.name }}.svc
+            dnsNames:
+            - localhost
+            isCA: true
+            issuerRef:
+              name: {{ .Values.namespace.name }}-selfsigned-issuer
+              kind: Issuer
+              group: cert-manager.io
+          ---
+          apiVersion: cert-manager.io/v1
+          kind: Issuer
+          metadata:
+            name: {{ .Values.namespace.name }}-ca-issuer
+            namespace: cert-manager
+          spec:
+            ca:
+              secretName: {{ .Values.namespace.name }}-tls
+          EOF
+          
+          echo "Waiting for certificate to be ready..."
+          kubectl wait --for=condition=Ready --timeout=300s certificate/{{ .Values.namespace.name }}-certificate -n cert-manager
+          
+          echo "Creating Bundle resource..."
+          
+          # Create the Bundle resource with error handling
+          if cat <<EOF | kubectl apply -f -
+          apiVersion: trust.cert-manager.io/v1alpha1
+          kind: Bundle
+          metadata:
+            name: {{ .Values.namespace.name }}-ca-bundle
+          spec:
+            sources:
+            - secret:
+                name: "{{ .Values.namespace.name }}-tls"
+                key: "ca.crt"
+            - useDefaultCAs: true
+            target:
+              configMap:
+                key: "ca-bundle.crt"
+          EOF
+          then
+            echo "Bundle resource created successfully!"
+          else
+            echo "Failed to create Bundle resource"
+            exit 1
+          fi
+          
+          echo "All CRD-dependent resources created successfully!"
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "squid.fullname" . }}-crd-waiter
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "squid.fullname" . }}-crd-waiter
+rules:
+- apiGroups: ["apiextensions.k8s.io"]
+  resources: ["customresourcedefinitions"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["cert-manager.io"]
+  resources: ["certificates", "issuers"]
+  verbs: ["get", "create", "patch", "watch", "list"]
+- apiGroups: ["trust.cert-manager.io"]
+  resources: ["bundles"]
+  verbs: ["get", "create", "patch", "list"]
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "squid.fullname" . }}-crd-waiter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "squid.fullname" . }}-crd-waiter
+subjects:
+- kind: ServiceAccount
+  name: {{ include "squid.fullname" . }}-crd-waiter
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "squid.fullname" . }}-crd-waiter
+  namespace: cert-manager
+rules:
+- apiGroups: ["cert-manager.io"]
+  resources: ["certificates", "issuers"]
+  verbs: ["get", "create", "patch", "watch", "list"]
+- apiGroups: [""]
+  resources: ["secrets", "pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "squid.fullname" . }}-crd-waiter
+  namespace: cert-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "squid.fullname" . }}-crd-waiter
+subjects:
+- kind: ServiceAccount
+  name: {{ include "squid.fullname" . }}-crd-waiter
+  namespace: {{ .Release.Namespace }}
+{{- end }} 
