@@ -181,3 +181,17 @@ cert-manager:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+
+
+trust-manager:
+  crds:
+    enabled: true
+    keep: false
+  namespace: "cert-manager"
+
+
+
+# Issuer configuration
+# Creates a self-signed issuer and bundle in the cert-manager namespace
+selfsigned-issuer:
+  enabled: true  # Set to true to create a self-signed issuer and bundle
