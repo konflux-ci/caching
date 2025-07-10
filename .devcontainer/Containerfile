@@ -1,5 +1,5 @@
 # Start from an official Fedora 42 image
-FROM registry.fedoraproject.org/fedora:42
+FROM registry.fedoraproject.org/fedora:43
 
 # DNF tuning from official Podman Containerfile for build robustness
 RUN echo -e "\\n\\n# Added during image build" >> /etc/dnf/dnf.conf && \
