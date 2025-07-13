@@ -16,6 +16,9 @@ RUN dnf -y makecache && \
 # Install reviewdog using Go (since no Fedora package available)
 RUN GOBIN=/usr/local/bin go install github.com/reviewdog/reviewdog/cmd/reviewdog@v0.20.3
 
+# TEST: Add package without version pinning to trigger hadolint DL3008
+RUN dnf install -y wget
+
 # Install kind binary
 RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64 && \
     chmod +x ./kind && \

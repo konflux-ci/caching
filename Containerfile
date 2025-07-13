@@ -33,6 +33,9 @@ COPY LICENSE /licenses/
 
 RUN microdnf install -y "squid-${SQUID_VERSION}" && microdnf clean all
 
+# TEST: Add package without cleanup to trigger hadolint DL3009
+RUN microdnf install -y curl
+
 COPY --chmod=0755 container-entrypoint.sh /usr/sbin/container-entrypoint.sh
 
 # move location of pid file to a directory where squid user can recreate it
