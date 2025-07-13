@@ -90,6 +90,11 @@ jobs:
         podman exec devcontainer-test ls -la /workspaces/caching
         podman exec devcontainer-test cat /workspaces/caching/README.md | head -5
         
+    - name: Lint Squid Helm chart
+      run: |
+        # Run helm lint on the squid chart
+        podman exec devcontainer-test helm lint /workspaces/caching/squid
+        
     - name: Cleanup container
       if: always()
       run: |
