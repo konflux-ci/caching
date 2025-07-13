@@ -1,0 +1,182 @@
+---
+globs: **/.github/workflows/*
+description: CI optimization principles for fast, reliable builds
+---
+
+# CI Optimization Principles
+
+## Core Philosophy
+
+**Optimize for speed, reliability, and consistency over convenience.**
+
+### Speed Optimization
+
+#### ✅ Pre-install Tools in DevContainer
+```dockerfile
+# .devcontainer/Containerfile
+ARG INSTALL_RPMS="tool1 tool2 tool3"
+RUN dnf -y install $INSTALL_RPMS
+```
+
+Instead of:
+```yaml
+# ❌ Slow CI - installing during build
+- name: Install tools
+  run: |
+    curl -L ... | sh
+    wget ...
+```
+
+#### ✅ Use Tool Caching
+```yaml
+# Use pre-built container with tools
+- name: Build devcontainer
+  run: |
+    podman build -f .devcontainer/Containerfile -t devcontainer:latest
+```
+
+Instead of:
+```yaml
+# ❌ Reinstalling tools every run
+- name: Setup tools
+  run: |
+    npm install -g tool
+    pip install tool
+    go install tool
+```
+
+### Reliability Optimization
+
+#### ✅ Fail Fast Strategy
+```yaml
+# Lint early to catch issues quickly
+- name: Lint Containerfiles
+  run: |
+    podman exec container hadolint Containerfile
+    
+- name: Lint Helm charts  
+  run: |
+    podman exec container helm lint charts/
+```
+
+#### ✅ Use Official Package Sources
+```yaml
+# Fedora packages are more reliable than external downloads
+RUN dnf -y install hadolint gh helm
+```
+
+Instead of:
+```yaml
+# ❌ External downloads can fail or be inconsistent
+RUN curl -L https://external-site.com/tool.sh | sh
+```
+
+### Consistency Optimization
+
+#### ✅ Same Environment Everywhere
+```yaml
+# Use same container for all operations
+- name: Start devcontainer
+  run: |
+    podman run -d --name devcontainer-test devcontainer:latest
+    
+- name: Run all tests in container
+  run: |
+    podman exec devcontainer-test make test
+    podman exec devcontainer-test helm lint charts/
+    podman exec devcontainer-test hadolint Containerfile
+```
+
+#### ✅ Version Pinning
+```dockerfile
+# Pin specific versions for reproducible builds
+ENV SQUID_VERSION="6.10-5.el10"
+RUN microdnf install -y "squid-${SQUID_VERSION}"
+```
+
+## CI Workflow Patterns
+
+### ✅ Efficient DevContainer CI Pattern
+```yaml
+jobs:
+  build-devcontainer:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Build devcontainer  
+      run: |
+        cd .devcontainer
+        podman build -f Containerfile -t devcontainer:latest ..
+        
+    - name: Start devcontainer
+      run: |
+        podman run -d --name test-container devcontainer:latest sleep infinity
+        
+    - name: Run all validations
+      run: |
+        podman exec test-container helm lint /workspaces/project/charts
+        podman exec test-container hadolint /workspaces/project/Containerfile
+        podman exec test-container make test
+        
+    - name: Cleanup
+      if: always()
+      run: |
+        podman stop test-container || true
+        podman rm test-container || true
+```
+
+### ❌ Anti-patterns to Avoid
+
+#### Slow Tool Installation
+```yaml
+# DON'T DO THIS - slow and unreliable
+- name: Install hadolint
+  run: |
+    wget https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+    chmod +x hadolint-Linux-x86_64
+    sudo mv hadolint-Linux-x86_64 /usr/local/bin/hadolint
+```
+
+#### Environment Inconsistency  
+```yaml
+# DON'T DO THIS - different from local dev environment
+- name: Setup Node
+  uses: actions/setup-node@v3
+  with:
+    node-version: '18'
+```
+
+#### Late Failure Detection
+```yaml
+# DON'T DO THIS - expensive operations before cheap validation
+- name: Build expensive container
+  run: docker build -t app:latest .
+  
+- name: Run linting  # Should be first!
+  run: hadolint Dockerfile
+```
+
+## Performance Targets
+
+### ✅ Good CI Performance
+- **Lint step**: < 30 seconds
+- **Build step**: < 5 minutes  
+- **Total workflow**: < 10 minutes
+- **Failure detection**: < 2 minutes
+
+### Monitoring CI Performance
+```yaml
+# Add timing to understand bottlenecks
+- name: Lint with timing
+  run: |
+    time podman exec container hadolint Containerfile
+    time podman exec container helm lint charts/
+```
+
+## File References
+
+- DevContainer build: [.devcontainer/Containerfile](mdc:.devcontainer/Containerfile)
+- CI workflow: [.github/workflows/devcontainer-ci.yml](mdc:.github/workflows/devcontainer-ci.yml)
+- Tool configuration: [.hadolint.yaml](mdc:.hadolint.yaml)

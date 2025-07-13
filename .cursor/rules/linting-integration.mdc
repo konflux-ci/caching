@@ -1,0 +1,194 @@
+---
+description: Comprehensive linting integration for CI, VSCode, and PR comments
+---
+
+# Linting Integration Guide
+
+## Multi-Level Linting Strategy
+
+**Implement linting at three levels: Development, CI, and PR Review.**
+
+## Tool Installation Philosophy
+
+**ALWAYS prefer adding tools to devcontainer over CI installation.**
+
+### Priority Order for Tool Sources
+1. **Fedora official packages** (`dnf install tool-name`)
+2. **Go install** (for Go-based tools when no Fedora package)
+3. **Official releases** (GitHub releases, etc.)
+4. **External scripts** (avoid when possible)
+
+### 1. VSCode Integration (Real-time feedback)
+
+Add linting extensions to devcontainer for immediate feedback:
+
+```json
+// .devcontainer/devcontainer.json
+{
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "exiasr.hadolint"  // Dockerfile/Containerfile linting
+      ]
+    }
+  }
+}
+```
+
+### 2. DevContainer Tool Installation
+
+#### ✅ Fedora Packages (Preferred)
+```dockerfile
+# .devcontainer/Containerfile
+ARG INSTALL_RPMS="hadolint gh helm"
+RUN dnf -y install $INSTALL_RPMS
+```
+
+#### ✅ Go Install (When no Fedora package)
+```dockerfile
+# Install tools not available in Fedora repos
+RUN GOBIN=/usr/local/bin go install github.com/reviewdog/reviewdog/cmd/reviewdog@latest
+```
+
+### 3. CI Integration (Automated validation)
+
+#### ✅ Consolidated Linting Pattern
+```yaml
+# .github/workflows/devcontainer-ci.yml
+- name: Lint Containerfiles
+  run: |
+    # Lint main Containerfile (show output + save for PR comments)
+    podman exec devcontainer-test hadolint -f json /workspaces/caching/Containerfile | tee /tmp/hadolint-main.json
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; fi
+    
+    # Lint devcontainer Containerfile (show output + save for PR comments)
+    podman exec devcontainer-test hadolint -f json /workspaces/caching/.devcontainer/Containerfile | tee /tmp/hadolint-dev.json
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then exit 1; fi
+```
+
+#### ✅ PR Comments Integration
+```yaml
+- name: Post linting PR comments
+  if: github.event_name == 'pull_request'
+  run: |
+    # Use pre-generated JSON files from linting step
+    if [ -s /tmp/hadolint-main.json ]; then
+      cat /tmp/hadolint-main.json | podman exec -i devcontainer-test reviewdog -f=hadolint \
+        -name="hadolint-main" \
+        -reporter=github-pr-review \
+        -filter-mode=added \
+        -fail-on-error=false
+    fi
+  env:
+    REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### CI Optimization Benefits
+
+#### ✅ Single Tool Execution
+- **Run once**: Use `tee` to both display and save output
+- **Fail fast**: Exit immediately on linting errors
+- **Consistent data**: Same linting results for console and PR comments
+
+#### ✅ Pre-installed Tools
+- **No installation overhead**: All tools ready in devcontainer
+- **Consistent versions**: Same tool versions locally and in CI
+- **No external dependencies**: No risk of download failures
+
+## Linting Configuration
+
+### Centralized Configuration
+Create `.hadolint.yaml` for consistent rules across all environments:
+
+```yaml
+---
+# Set failure threshold (error | warning | info | style | ignore | none)
+failure-threshold: warning
+
+# Ignore specific rules if needed
+ignored: []
+
+# Override rule severity
+override:
+  warning:
+    - DL3059  # Multiple consecutive RUN instructions
+
+# Trusted registries (for FROM instructions)
+trustedRegistries:
+  - registry.access.redhat.com
+  - registry.redhat.io
+  - registry.fedoraproject.org
+  - docker.io
+  - quay.io
+```
+
+## Integration Benefits
+
+### ✅ Developer Experience
+- **Real-time feedback** in VSCode
+- **Consistent rules** across team
+- **Pre-commit validation** available locally
+
+### ✅ CI Efficiency  
+- **Fast linting** with pre-installed tools
+- **Fail-fast** on linting issues
+- **Single execution** with multiple outputs
+- **No tool installation overhead**
+
+### ✅ Code Review Quality
+- **Automated line comments** on PRs
+- **Only show issues in changed lines** (`filter-mode=added`)
+- **Non-blocking reviews** (`fail-on-error=false`)
+
+## Anti-patterns to Avoid
+
+#### ❌ Installing Tools During CI
+```yaml
+# DON'T DO THIS - slow and unreliable
+- name: Install tools
+  run: |
+    curl -sfL https://raw.githubusercontent.com/tool/install.sh | sh
+```
+
+#### ❌ Running Linting Multiple Times
+```yaml
+# DON'T DO THIS - inefficient duplicate execution
+- name: Lint for errors
+  run: tool lint file
+- name: Lint for comments  
+  run: tool lint file  # Same command, wasteful
+```
+
+#### ❌ External Downloads in CI
+```yaml
+# DON'T DO THIS - external dependency risk
+- name: Get tool
+  run: wget https://external-site.com/tool
+```
+
+## File References
+
+- Hadolint config: [.hadolint.yaml](mdc:.hadolint.yaml)
+- DevContainer config: [.devcontainer/devcontainer.json](mdc:.devcontainer/devcontainer.json)
+- DevContainer build: [.devcontainer/Containerfile](mdc:.devcontainer/Containerfile)
+- CI workflow: [.github/workflows/devcontainer-ci.yml](mdc:.github/workflows/devcontainer-ci.yml)
+
+## Troubleshooting
+
+### Common Issues
+
+#### VSCode Extension Not Working
+1. Rebuild devcontainer to install extension
+2. Check hadolint is available: `which hadolint`
+3. Verify config file: `hadolint --config .hadolint.yaml --help`
+
+#### CI Linting Failures
+1. Test locally: `hadolint Containerfile`
+2. Check configuration: `hadolint --config .hadolint.yaml Containerfile`  
+3. Verify tool installation in devcontainer: `podman exec container which hadolint`
+
+#### PR Comments Not Appearing
+1. Check `github.event_name == 'pull_request'` condition
+2. Verify `REVIEWDOG_GITHUB_API_TOKEN` is available
+3. Ensure JSON files have content: `cat /tmp/hadolint-*.json`
+4. Check reviewdog is installed: `podman exec container which reviewdog`

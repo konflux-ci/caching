@@ -1,0 +1,31 @@
+---
+# Hadolint configuration file
+# https://github.com/hadolint/hadolint#configure
+
+# Set failure threshold (error | warning | info | style | ignore | none)
+failure-threshold: warning
+
+# Ignore specific rules if needed
+ignored:
+  []
+  # - DL3008  # Pin versions in apt-get install
+  # - DL3009  # Delete the apt-get lists after installing something
+
+# Override rule severity
+override:
+  warning:
+    - DL3059 # Multiple consecutive RUN instructions
+  info:
+    []
+    # - DL3047  # wget without progress flag
+
+# Trusted registries (for FROM instructions)
+trustedRegistries:
+  - registry.access.redhat.com
+  - registry.redhat.io
+  - registry.fedoraproject.org
+  - docker.io
+  - quay.io
+
+# Specify format for output (tty | json | checkstyle | codeclimate | gitlab_codeclimate | gnu | codacy | sonarqube | sarif)
+format: tty

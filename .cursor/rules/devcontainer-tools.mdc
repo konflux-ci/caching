@@ -1,0 +1,135 @@
+
+---
+globs: .devcontainer/*,**/Containerfile,**/Dockerfile,**/.github/workflows/*
+description: DevContainer tool management and CI optimization guidelines
+---
+
+# DevContainer Tool Management
+
+## Tool Installation Preference
+
+**ALWAYS prefer adding tools to the devcontainer over installing them during CI.**
+
+### Rationale
+- Faster CI execution (no installation overhead)
+- Consistent tool versions across environments
+- Better local development experience
+- Reduced CI complexity and failure points
+
+### Implementation
+
+#### ✅ Preferred: Add to devcontainer
+```dockerfile
+# In .devcontainer/Containerfile
+ARG INSTALL_RPMS="existing-tools hadolint gh"
+RUN dnf -y install $INSTALL_RPMS
+```
+
+#### ❌ Avoid: Installing in CI
+```yaml
+# Don't do this in GitHub Actions
+- name: Install tools
+  run: |
+    curl -L ... | sh  # Avoid external downloads in CI
+    wget ... # Avoid tool installation in CI
+```
+
+## Package Source Priority
+
+**Always prefer Fedora official packages over external sources.**
+
+### Priority Order
+1. **Fedora official repos** (`dnf search package-name`)
+2. **Fedora COPR** (if official package unavailable)
+3. **Official upstream releases** (GitHub releases, etc.)
+4. **Container images** (as last resort)
+
+### Verification Commands
+```bash
+# Check if package exists in Fedora repos
+dnf search package-name
+dnf info package-name
+
+# List available packages matching pattern
+dnf search pattern | grep -i tool-name
+```
+
+## Version Locking Strategy
+
+**ALWAYS prefer version-locked tools over floating versions for reproducible builds.**
+
+### Priority for Tool Versions
+1. **Fedora package versions** (managed by dnf, automatically consistent)
+2. **Specific semantic versions** (`@v1.2.3` for Go tools, specific releases)
+3. **Date-based versions** (for frequently updated tools)
+4. **Latest/floating versions** (avoid for production environments)
+
+### Implementation Examples
+
+#### ✅ Preferred: Version-locked installations
+```dockerfile
+# Fedora packages (automatic version management)
+RUN dnf -y install hadolint-2.12.0 gh-2.74.0  # if specific versions available
+
+# Go tools with specific versions
+RUN GOBIN=/usr/local/bin go install github.com/reviewdog/reviewdog/cmd/reviewdog@v0.20.3
+
+# Binary downloads with specific versions
+RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+```
+
+#### ❌ Avoid: Floating versions
+```dockerfile
+# DON'T DO THIS - unpredictable builds
+RUN go install github.com/tool/tool@latest  # Version changes unexpectedly
+RUN curl -L .../latest/download/tool        # May break without notice
+```
+
+### Version Update Strategy
+- **Document current versions** in comments or variables
+- **Test before updating** versions in CI/dev environments
+- **Update gradually** - not all tools at once
+- **Pin to stable releases** - avoid pre-releases for production
+
+## Common Tools and Sources
+
+### ✅ Available in Fedora repos
+- `hadolint` - Dockerfile linter
+- `gh` - GitHub CLI
+- `helm` - Kubernetes package manager
+- `golang` - Go language
+- `podman` - Container management
+
+### Example Integration
+```dockerfile
+# .devcontainer/Containerfile - ADD to existing INSTALL_RPMS
+ARG INSTALL_RPMS="podman openssh-clients cpp git-core golang which procps-ng curl helm kubernetes1.33-client hadolint gh"
+```
+
+## CI Workflow Optimization
+
+When tools are pre-installed in devcontainer:
+
+```yaml
+# Simple, fast CI step
+- name: Lint with pre-installed tools
+  run: |
+    podman exec devcontainer-test hadolint /workspaces/caching/Containerfile
+    podman exec devcontainer-test helm lint /workspaces/caching/squid
+```
+
+vs avoiding:
+
+```yaml
+# Slow, complex CI step - AVOID
+- name: Install and lint
+  run: |
+    curl -L https://... | sh  # External download
+    ./tool lint files         # Tool may not work consistently
+```
+
+## File References
+
+- DevContainer configuration: [.devcontainer/Containerfile](mdc:.devcontainer/Containerfile)
+- DevContainer JSON: [.devcontainer/devcontainer.json](mdc:.devcontainer/devcontainer.json)
+- CI workflow: [.github/workflows/devcontainer-ci.yml](mdc:.github/workflows/devcontainer-ci.yml)

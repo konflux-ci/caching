@@ -104,13 +104,15 @@ When generating commit messages:
 
 ## Commit Process
 
-**IMPORTANT**: Always ask for user confirmation before executing `git commit`:
+**MANDATORY CONFIRMATION PROCESS** - Always ask for user confirmation before executing `git commit` or `git push`:
 
 1. **Generate** the commit message following the rules above
 2. **Display** the generated commit message to the user
 3. **Ask for confirmation**: "Should I commit with this message? (y/n)"
 4. **Wait for user response** before running `git commit`
 5. **Only commit** if user confirms with "yes", "y", or similar affirmative response
+
+*Note: See git-safety.mdc for comprehensive git operation safety rules.*
 
 **Example interaction:**
 ```

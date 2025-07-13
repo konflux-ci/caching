@@ -1,0 +1,49 @@
+---
+alwaysApply: true
+description: Critical safety rules for git operations
+---
+
+# Git Operations Safety Rules
+
+## 🚨 MANDATORY CONFIRMATIONS
+
+**NEVER execute these commands without explicit user confirmation:**
+
+### Git Commit Operations
+```
+BEFORE: git commit
+REQUIRED: Show commit message → Ask "Should I commit with this message? (y/n)" → Wait for approval
+```
+
+### Git Push Operations  
+```
+BEFORE: git push, git push --force, git push --force-with-lease
+REQUIRED: Ask "Should I push this to remote? (y/n)" → Wait for approval
+```
+
+### Other Destructive Operations
+```
+BEFORE: git reset --hard, git rebase, git merge
+REQUIRED: Ask for explicit confirmation before execution
+```
+
+## Required Confirmation Pattern
+
+```
+Generated commit message:
+---
+[commit message content]
+---
+
+Should I commit with this message? (y/n)
+```
+
+**Only proceed after user responds with "y", "yes", or explicit approval.**
+
+## Exception: Read-Only Operations
+
+These operations do NOT require confirmation:
+- `git status`, `git log`, `git diff`
+- `git branch --show-current`  
+- `git remote -v`
+- Any command that only reads/displays information

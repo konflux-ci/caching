@@ -6,12 +6,15 @@ RUN echo -e "\\n\\n# Added during image build" >> /etc/dnf/dnf.conf && \
     echo -e "minrate=100\\ntimeout=60\\n" >> /etc/dnf/dnf.conf
 
 # Install dependencies for the dev environment
-ARG INSTALL_RPMS="podman openssh-clients cpp git-core golang which procps-ng curl helm kubernetes1.33-client"
+ARG INSTALL_RPMS="podman openssh-clients cpp git-core golang which procps-ng curl helm kubernetes1.33-client hadolint gh"
 RUN dnf -y makecache && \
     dnf -y update && \
     dnf -y install $INSTALL_RPMS --exclude container-selinux && \
     dnf clean all && \
     rm -rf /var/cache /var/log/dnf* /var/log/yum.*
+
+# Install reviewdog using Go (since no Fedora package available)
+RUN GOBIN=/usr/local/bin go install github.com/reviewdog/reviewdog/cmd/reviewdog@v0.20.3
 
 # Install kind binary
 RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64 && \
