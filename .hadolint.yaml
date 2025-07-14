@@ -7,9 +7,8 @@ failure-threshold: warning
 
 # Ignore specific rules if needed
 ignored:
-  []
-  # - DL3008  # Pin versions in apt-get install
-  # - DL3009  # Delete the apt-get lists after installing something
+  - SC3037 # In POSIX sh, echo flags are undefined.
+  - DL3041 # Specify version with `dnf install -y <package>-<version>`.
 
 # Override rule severity
 override:

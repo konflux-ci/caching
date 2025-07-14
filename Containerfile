@@ -36,20 +36,10 @@ RUN microdnf install -y "squid-${SQUID_VERSION}" && microdnf clean all
 COPY --chmod=0755 container-entrypoint.sh /usr/sbin/container-entrypoint.sh
 
 # move location of pid file to a directory where squid user can recreate it
-RUN echo "pid_filename /run/squid/squid.pid" >> /etc/squid/squid.conf
-
-# allow squid access from the local network
-RUN sed -i "s/# http_access allow localnet/http_access allow localnet/g" /etc/squid/squid.conf
-
-RUN chown -R root:root /etc/squid/squid.conf
-RUN chown -R root:root /var/log/squid
-RUN chown -R root:root /var/spool/squid
-RUN chown -R root:root /run/squid
-
-RUN chmod g=u /etc/squid/squid.conf
-RUN chmod g=u /run/squid
-RUN chmod g=u /var/spool/squid
-RUN chmod g=u /var/log/squid
+RUN echo "pid_filename /run/squid/squid.pid" >> /etc/squid/squid.conf && \
+    sed -i "s/# http_access allow localnet/http_access allow localnet/g" /etc/squid/squid.conf && \
+    chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /run/squid && \
+    chmod g=u /etc/squid/squid.conf /run/squid /var/spool/squid /var/log/squid
 
 USER 1001
 
