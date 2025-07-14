@@ -13,9 +13,6 @@ RUN dnf -y makecache && \
     dnf clean all && \
     rm -rf /var/cache /var/log/dnf* /var/log/yum.*
 
-# Install reviewdog using Go (since no Fedora package available)
-RUN GOBIN=/usr/local/bin go install github.com/reviewdog/reviewdog/cmd/reviewdog@v0.20.3
-
 # Install kind binary
 RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64 && \
     chmod +x ./kind && \
