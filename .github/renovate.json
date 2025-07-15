@@ -1,0 +1,29 @@
+{
+  "extends": ["config:base", ":disableDependencyDashboard"],
+  "prConcurrentLimit": 3,
+  "branchConcurrentLimit": 3,
+  "automergeType": "branch",
+  "automergeStrategy": "merge-commit",
+  "platformAutomerge": true,
+  "packageRules": [
+    {
+      "description": "Auto-merge patch updates for Konflux components",
+      "matchUpdateTypes": ["patch", "digest"],
+      "matchPackagePatterns": ["^quay.io/konflux-ci/"],
+      "automerge": true
+    },
+    {
+      "description": "Group Tekton bundle updates together",
+      "groupName": "tekton-bundles",
+      "matchPackagePatterns": ["quay.io/konflux-ci/tekton-catalog/"]
+    },
+    {
+      "description": "Group container base image updates",
+      "groupName": "container-images",
+      "matchPackagePatterns": [
+        "registry.access.redhat.com/",
+        "registry.fedoraproject.org/"
+      ]
+    }
+  ]
+} 
