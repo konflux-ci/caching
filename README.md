@@ -345,6 +345,107 @@ http_access allow localhost manager
 http_access deny manager
 ```
 
+## SLO Monitoring with Prometheus Rules
+
+This section describes how to deploy Service Level Objective (SLO) monitoring for the Squid proxy using Prometheus rules.
+
+### What is the Konflux Availability SLO?
+
+The **`konflux_up`** metric provides a composite availability measurement that goes beyond simple service health checks. It combines:
+
+- **Service Health**: `squid_up == 1` (Squid process is running)
+- **Traffic Flow**: `rate(squid_client_http_requests_total[5m]) > 0` (Proxy is processing requests)
+
+This approach catches scenarios where `squid_up = 1` but the service can't actually process traffic due to:
+- Kubernetes service issues
+- Network policy blocking
+- Service mesh failures  
+- DNS problems
+- CNI networking issues
+
+### SLO Metrics and Alerts
+
+The monitoring provides:
+
+**Recording Rules:**
+- `konflux_up` - Real-time availability status (0 or 1)
+- `konflux_availability_1h` - Availability percentage over 1 hour
+
+**Alert Rules:**
+- **KonfluxProxyDown** (critical): Proxy unavailable for >1 minute
+- **KonfluxProxyAvailabilitySLOBreach** (warning): Availability <99.9% for >5 minutes
+- **KonfluxProxyNoTraffic** (info): Proxy healthy but no traffic for >15 minutes
+
+### Deployment Options
+
+Choose the approach that fits your existing infrastructure:
+
+#### **Option 1: You Have an Existing Prometheus Instance**
+
+If you already have Prometheus running without Prometheus Operator:
+
+```bash
+# 1. Deploy the SLO rules as a ConfigMap (traditional approach)
+# Copy the rules from squid-proxy-availability-rules.yaml into your Prometheus rules directory
+
+# 2. Add squid scraping to your prometheus.yml using the example config:
+# Use the configuration from squid/prometheus-config-example.yaml
+```
+
+**Configuration**: Copy the `scrape_configs` section from `squid/prometheus-config-example.yaml` into your existing `prometheus.yml`.
+
+#### **Option 2: Deploy Prometheus via Helm (Recommended)**
+
+If you want to deploy a complete monitoring stack:
+
+```bash
+# 1. Add Prometheus community Helm repository
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+
+# 2. Deploy Prometheus with Operator support
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --set prometheus.prometheusSpec.serviceMonitorSelector={} \
+  --set prometheus.prometheusSpec.ruleSelector={}
+
+# 3. Deploy your SLO rules (works automatically with Prometheus Operator)
+kubectl apply -f squid-proxy-availability-rules.yaml
+
+# 4. Verify deployment
+kubectl get prometheusrule -n proxy
+kubectl get servicemonitor -n proxy
+```
+
+### Verification Steps
+
+Once Prometheus is running, verify your SLO monitoring:
+
+```bash
+# Check if PrometheusRule is discovered
+kubectl get prometheusrule -n proxy
+
+# Verify squid metrics are being scraped
+kubectl port-forward -n proxy svc/squid 9301:9301 &
+curl http://localhost:9301/metrics | grep squid_up
+pkill -f "kubectl port-forward.*9301"
+
+# Check Prometheus web UI (if using Option 2)
+kubectl port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090
+# Visit http://localhost:9090 and query: konflux_up
+```
+
+### Requirements
+
+- **Squid Deployment**: Must be running with squid-exporter enabled (deployed by default with this Helm chart)
+- **Prometheus Instance**: Either existing (Option 1) or deployed via Helm (Option 2)
+- **For Option 2**: Prometheus Operator CRDs (included in kube-prometheus-stack)
+
+### How It Works
+
+- **Your Helm Chart**: Automatically creates ServiceMonitor for Prometheus Operator discovery
+- **PrometheusRule**: Defines `konflux_up` and alerting rules 
+- **Prometheus**: Scrapes metrics and evaluates rules to provide SLO monitoring
+
 ## Troubleshooting
 
 ### Common Issues

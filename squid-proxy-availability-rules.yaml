@@ -1,0 +1,66 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: squid-proxy-availability
+  namespace: proxy
+spec:
+  groups:
+  - name: konflux.availability
+    interval: 30s
+    rules:
+    # Composite availability metric
+    - record: konflux_up
+      expr: |
+        (
+          squid_up == 1 
+          and 
+          rate(squid_client_http_requests_total[5m]) > 0
+        )
+      labels:
+        service: "squid-proxy"
+        
+    # availability percentage over 1 hour
+    - record: konflux_availability_1h
+      expr: avg_over_time(konflux_up[1h])
+      labels:
+        service: "squid-proxy"
+        window: "1h"
+
+  - name: konflux.alerts
+    interval: 30s
+    rules:
+    # Critical: Service completely down
+    - alert: KonfluxProxyDown
+      expr: konflux_up == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: squid-proxy
+      annotations:
+        summary: "Konflux proxy is unavailable"
+        description: "Squid proxy has been unavailable for more than 1 minute. Check both service health and traffic flow."
+        
+    # Warning: Low availability SLO breach  
+    - alert: KonfluxProxyAvailabilitySLOBreach
+      expr: konflux_availability_1h < 0.999
+      for: 5m
+      labels:
+        severity: warning
+        service: squid-proxy
+      annotations:
+        summary: "Konflux proxy availability SLO breach"
+        description: "Proxy availability ({{ $value | humanizePercentage }}) is below 99.9% SLO target over the last hour"
+        
+    # Info: Proxy healthy but no traffic (potential network issue)
+    - alert: KonfluxProxyNoTraffic
+      expr: |
+        squid_up == 1 
+        and konflux_up == 0
+        and rate(squid_client_http_requests_total[10m]) == 0
+      for: 15m
+      labels:
+        severity: info
+        service: squid-proxy
+      annotations:
+        summary: "Konflux proxy has no traffic"
+        description: "Proxy is healthy but has not received requests for 15+ minutes. Check network connectivity and routing." 
