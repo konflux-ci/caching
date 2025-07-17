@@ -8,7 +8,7 @@ metadata:
 spec:
   sources:
   - secret:
-      name: "root-secret"
+      name: "{{ .Values.namespace.name }}-root-ca-secret"
       key: "ca.crt"
   - useDefaultCAs: true
   target:
