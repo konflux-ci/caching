@@ -16,11 +16,17 @@
       "automerge": true
     },
     {
-      "description": "Group container base image updates",
+      "description": "Pin Fedora to stable version 42, block pre-release versions",
+      "matchPackagePatterns": ["registry.fedoraproject.org/fedora"],
+      "allowedVersions": "/^42(\\.|$)/",
+      "automerge": false,
+      "groupName": "fedora-updates"
+    },
+    {
+      "description": "Group container base image updates (excluding Fedora)",
       "groupName": "container-images",
       "matchPackagePatterns": [
-        "registry.access.redhat.com/",
-        "registry.fedoraproject.org/"
+        "registry.access.redhat.com/"
       ],
       "matchUpdateTypes": ["patch", "digest"],
       "automerge": true
