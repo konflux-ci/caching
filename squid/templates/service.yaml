@@ -18,6 +18,12 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    {{- if .Values.perSiteExporter.enabled }}
+    - port: {{ .Values.perSiteExporter.port }}
+      targetPort: per-site-http
+      protocol: TCP
+      name: per-site-http
+    {{- end }}
     {{- if .Values.squidExporter.enabled }}
     - port: {{ .Values.squidExporter.port }}
       targetPort: metrics

@@ -74,6 +74,19 @@ service:
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 3128
 
+# Per-site exporter sidecar configuration
+perSiteExporter:
+  enabled: true
+  port: 9302
+  metricsPath: "/metrics"
+  resources:
+    requests:
+      cpu: 10m
+      memory: 16Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
 # Squid Prometheus Exporter Configuration
 # This enables monitoring of Squid metrics via Prometheus
 # Note: squid-exporter is now integrated into the main squid image
