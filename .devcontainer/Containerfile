@@ -14,7 +14,11 @@ RUN dnf -y makecache && \
     dnf clean all && \
     rm -rf /var/cache /var/log/dnf* /var/log/yum.*
 
-# Install kind, mage, ginkgo CLI, and dlv debugger 
+ENV GOPROXY="https://proxy.golang.org,direct" \
+    GOSUMDB="sum.golang.org" \
+    GONOSUMDB=""
+
+# Install kind, mage, ginkgo CLI, and dlv debugger
 RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64 && \
     chmod +x ./kind && \
     mv ./kind /usr/local/bin/kind && \

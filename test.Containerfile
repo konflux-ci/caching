@@ -1,6 +1,6 @@
 FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:5a57b4c2509df8df587e19cc7c2d9cfa45b012139f5decd77f942daeb2334228
 
-# Install required packages for Go and testing (version-locked)
+# Install required packages for Go and testing (latest available versions)
 # Note: curl-minimal is already present in ubi10-minimal
 RUN microdnf install -y \
     tar-2:1.35-7.el10 \
