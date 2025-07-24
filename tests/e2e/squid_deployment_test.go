@@ -91,9 +91,12 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should have the correct container image and configuration", func() {
-			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(2))
+			// With consolidated architecture, we expect exactly 2 containers:
+			// 1. squid (with integrated per-site exporter), 2. squid-exporter
+			containerCount := len(deployment.Spec.Template.Spec.Containers)
+			Expect(containerCount).To(Equal(2)) // Exactly 2 containers: squid (with integrated per-site exporter) + squid-exporter
 
-			// Find squid container
+			// Find squid container (always present)
 			var squidContainer *corev1.Container
 			for i := range deployment.Spec.Template.Spec.Containers {
 				if deployment.Spec.Template.Spec.Containers[i].Name == "squid" {
@@ -104,12 +107,26 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			Expect(squidContainer).NotTo(BeNil(), "squid container should exist")
 			Expect(squidContainer.Image).To(ContainSubstring("squid"))
 
-			// Check squid port configuration
-			Expect(squidContainer.Ports).To(HaveLen(1))
-			Expect(squidContainer.Ports[0].ContainerPort).To(Equal(int32(3128)))
-			Expect(squidContainer.Ports[0].Name).To(Equal("http"))
+			// Check squid port configuration (now includes per-site exporter port)
+			Expect(squidContainer.Ports).To(HaveLen(2))
 
-			// Find squid-exporter container
+			// Check that both required ports are present
+			var httpPort, perSiteHttpPort *corev1.ContainerPort
+			for i := range squidContainer.Ports {
+				if squidContainer.Ports[i].Name == "http" {
+					httpPort = &squidContainer.Ports[i]
+				} else if squidContainer.Ports[i].Name == "per-site-http" {
+					perSiteHttpPort = &squidContainer.Ports[i]
+				}
+			}
+
+			Expect(httpPort).NotTo(BeNil(), "squid container should have http port")
+			Expect(httpPort.ContainerPort).To(Equal(int32(3128)))
+
+			Expect(perSiteHttpPort).NotTo(BeNil(), "squid container should have per-site-http port")
+			Expect(perSiteHttpPort.ContainerPort).To(Equal(int32(9302)))
+
+			// Find squid-exporter container (should be enabled by default)
 			var exporterContainer *corev1.Container
 			for i := range deployment.Spec.Template.Spec.Containers {
 				if deployment.Spec.Template.Spec.Containers[i].Name == "squid-exporter" {
@@ -119,11 +136,13 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			}
 			Expect(exporterContainer).NotTo(BeNil(), "squid-exporter container should exist")
 			Expect(exporterContainer.Image).To(ContainSubstring("squid-exporter"))
-
 			// Check squid-exporter port configuration
 			Expect(exporterContainer.Ports).To(HaveLen(1))
 			Expect(exporterContainer.Ports[0].ContainerPort).To(Equal(int32(9301)))
 			Expect(exporterContainer.Ports[0].Name).To(Equal("metrics"))
+
+			// Note: per-site-exporter is now integrated into the squid container
+			// The per-site metrics port is already verified above as part of squid container ports
 		})
 	})
 
@@ -146,9 +165,12 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should have the correct port configuration", func() {
-			Expect(service.Spec.Ports).To(HaveLen(2))
+			// Per-site exporter is always enabled, so we expect exactly 3 ports:
+			// 1. http (always), 2. metrics (if squidExporter enabled), 3. per-site-metrics (always)
+			portCount := len(service.Spec.Ports)
+			Expect(portCount).To(Equal(3)) // Exactly 3 ports: http + metrics + per-site-metrics
 
-			// Find http port (squid)
+			// Find http port (squid) - always present
 			var httpPort *corev1.ServicePort
 			for i := range service.Spec.Ports {
 				if service.Spec.Ports[i].Name == "http" {
@@ -161,7 +183,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			Expect(httpPort.TargetPort.StrVal).To(Equal("http"))
 			Expect(httpPort.Protocol).To(Equal(corev1.ProtocolTCP))
 
-			// Find metrics port (squid-exporter)
+			// Find metrics port (squid-exporter) - should be enabled by default
 			var metricsPort *corev1.ServicePort
 			for i := range service.Spec.Ports {
 				if service.Spec.Ports[i].Name == "metrics" {
@@ -173,6 +195,19 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			Expect(metricsPort.Port).To(Equal(int32(9301)))
 			Expect(metricsPort.TargetPort.StrVal).To(Equal("metrics"))
 			Expect(metricsPort.Protocol).To(Equal(corev1.ProtocolTCP))
+
+			// Find per-site-metrics port (per-site-exporter) - always present
+			var perSiteMetricsPort *corev1.ServicePort
+			for i := range service.Spec.Ports {
+				if service.Spec.Ports[i].Name == "per-site-http" {
+					perSiteMetricsPort = &service.Spec.Ports[i]
+					break
+				}
+			}
+			Expect(perSiteMetricsPort).NotTo(BeNil(), "per-site-http port should always exist")
+			Expect(perSiteMetricsPort.Port).To(Equal(int32(9302)))
+			Expect(perSiteMetricsPort.TargetPort.StrVal).To(Equal("per-site-http"))
+			Expect(perSiteMetricsPort.Protocol).To(Equal(corev1.ProtocolTCP))
 		})
 
 		It("should have endpoints ready", func() {
@@ -233,9 +268,11 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 		It("should have correct resource configuration", func() {
 			for _, pod := range pods.Items {
-				Expect(pod.Spec.Containers).To(HaveLen(2))
+				// With consolidated architecture, we expect exactly 2 containers
+				containerCount := len(pod.Spec.Containers)
+				Expect(containerCount).To(Equal(2)) // Exactly 2 containers: squid (with integrated per-site exporter) + squid-exporter
 
-				// Find squid container
+				// Find squid container (always present)
 				var squidContainer *corev1.Container
 				for i := range pod.Spec.Containers {
 					if pod.Spec.Containers[i].Name == "squid" {
@@ -253,7 +290,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 					}
 				}
 
-				// Find squid-exporter container
+				// Find squid-exporter container (should be enabled by default)
 				var exporterContainer *corev1.Container
 				for i := range pod.Spec.Containers {
 					if pod.Spec.Containers[i].Name == "squid-exporter" {
@@ -262,6 +299,17 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 					}
 				}
 				Expect(exporterContainer).NotTo(BeNil(), "squid-exporter container should exist")
+
+				// Verify squid container has per-site exporter port (integrated architecture)
+				var perSitePort *corev1.ContainerPort
+				for i := range squidContainer.Ports {
+					if squidContainer.Ports[i].Name == "per-site-http" {
+						perSitePort = &squidContainer.Ports[i]
+						break
+					}
+				}
+				Expect(perSitePort).NotTo(BeNil(), "squid container should have per-site-http port")
+				Expect(perSitePort.ContainerPort).To(Equal(int32(9302)))
 			}
 		})
 

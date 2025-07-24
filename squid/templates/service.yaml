@@ -19,10 +19,14 @@ spec:
       protocol: TCP
       name: http
     {{- if .Values.squidExporter.enabled }}
-    - port: {{ .Values.squidExporter.port }}
+    - name: metrics
+      port: {{ .Values.squidExporter.port }}
       targetPort: metrics
       protocol: TCP
-      name: metrics
     {{- end }}
+    - port: {{ .Values.perSiteExporter.port }}
+      targetPort: per-site-http
+      protocol: TCP
+      name: per-site-http
   selector:
     {{- include "squid.selectorLabels" . | nindent 4 }}

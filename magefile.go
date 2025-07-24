@@ -319,7 +319,7 @@ func (Build) LoadSquidExporter() error {
 
 // SquidHelm:Up deploys the Squid Helm chart to the cluster
 func (SquidHelm) Up() error {
-	// Ensure dependencies are met (squid, squid-exporter, and test images needed)
+	// Ensure dependencies are met (squid with integrated per-site exporter, squid-exporter, and test images needed)
 	mg.Deps(Build.LoadSquid, Build.LoadSquidExporter, Build.LoadTestImage)
 
 	fmt.Println("⚓ Deploying Squid Helm chart...")
