@@ -35,11 +35,49 @@ RUN microdnf install -y "squid-${SQUID_VERSION}" && microdnf clean all
 
 COPY --chmod=0755 container-entrypoint.sh /usr/sbin/container-entrypoint.sh
 
-# move location of pid file to a directory where squid user can recreate it
+# Configure Squid defaults
 RUN echo "pid_filename /run/squid/squid.pid" >> /etc/squid/squid.conf && \
     sed -i "s/# http_access allow localnet/http_access allow localnet/g" /etc/squid/squid.conf && \
     chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /run/squid && \
     chmod g=u /etc/squid/squid.conf /run/squid /var/spool/squid /var/log/squid
+
+# ==========================================
+# Stage 2: Build per-site exporter
+# ==========================================
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:d8cba62fbd44610595a6ce7badd287ca4c9985cbe9df55cc9b6a5c311b9a46e6 AS per-site-exporter-builder
+
+# Install required packages for Go build
+RUN microdnf install -y \
+    tar \
+    gzip \
+    gcc \
+    curl \
+    ca-certificates \
+    git && \
+    microdnf clean all
+
+# Install Go (version-locked)
+ARG GO_VERSION=1.24.4
+ARG GO_SHA256=77e5da33bb72aeaef1ba4418b6fe511bc4d041873cbf82e5aa6318740df98717
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz && \
+    echo "${GO_SHA256}  go.tar.gz" | sha256sum -c - && \
+    tar -C /usr/local -xzf go.tar.gz && \
+    rm go.tar.gz
+
+# Set Go environment
+ENV PATH="/usr/local/go/bin:/root/go/bin:$PATH"
+ENV GOPATH="/root/go"
+ENV GOCACHE="/tmp/go-cache"
+
+# Set working directory for build
+WORKDIR /workspace
+
+# Use module files for caching, then copy exporter source and build
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd/squid-per-site-exporter/ ./cmd/squid-per-site-exporter/
+RUN CGO_ENABLED=0 GOOS=linux go build -o squid-per-site-exporter ./cmd/squid-per-site-exporter/
 
 # ==========================================
 # Stage 2: Build squid-exporter
@@ -90,6 +128,11 @@ RUN chmod +x /usr/local/bin/squid-exporter
 
 # Expose squid-exporter metrics port (only in final stage where the binary exists)
 EXPOSE 9301
+
+# Copy per-site exporter binary from builder stage and expose its port
+COPY --from=per-site-exporter-builder /workspace/squid-per-site-exporter /usr/local/bin/squid-per-site-exporter
+RUN chmod +x /usr/local/bin/squid-per-site-exporter
+EXPOSE 9302
 
 USER 1001
 
