@@ -36,81 +36,59 @@ spec:
             - name: http
               containerPort: 3128
               protocol: TCP
+            {{- if .Values.squidExporter.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.squidExporter.port }}
+              protocol: TCP
+            {{- end }}
+          {{- if .Values.squidExporter.enabled }}
+          command: ["/bin/sh"]
+          args:
+            - -c
+            - |
+              # Start squid-exporter in background
+              /usr/local/bin/squid-exporter \
+                -squid-hostname localhost \
+                -squid-port {{ .Values.service.port }} \
+                -listen :{{ .Values.squidExporter.port }} \
+                -metrics-path {{ .Values.squidExporter.metricsPath }} \
+                {{- if .Values.squidExporter.squidLogin }}
+                -squid-login "{{ .Values.squidExporter.squidLogin }}" \
+                {{- end }}
+                {{- if .Values.squidExporter.squidPassword }}
+                -squid-password "{{ .Values.squidExporter.squidPassword }}" \
+                {{- end }}
+                {{- range $key, $value := .Values.squidExporter.customLabels }}
+                -label "{{ $key }}={{ $value }}" \
+                {{- end }}
+                &
+              
+              # Start squid and pipe access logs to squid-exporter via stdin
+              exec /usr/sbin/container-entrypoint.sh
+          {{- end }}
           livenessProbe:
             tcpSocket:
               port: http
           readinessProbe:
             tcpSocket:
               port: http
+          {{- if .Values.squidExporter.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.squidExporter.metricsPath }}
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: squid-config
               mountPath: /etc/squid/squid.conf
               subPath: squid.conf
-        {{- if .Values.squidExporter.enabled }}
-        - name: squid-exporter
-          image: "{{ .Values.squidExporter.image.repository }}:{{ .Values.squidExporter.image.tag }}"
-          imagePullPolicy: {{ .Values.squidExporter.image.pullPolicy }}
-          ports:
-            - name: metrics
-              containerPort: {{ .Values.squidExporter.port }}
-              protocol: TCP
-          env:
-            - name: SQUID_HOSTNAME
-              value: "localhost"
-            - name: SQUID_PORT
-              value: "{{ .Values.service.port }}"
-            - name: SQUID_EXPORTER_LISTEN
-              value: ":{{ .Values.squidExporter.port }}"
-            - name: SQUID_EXPORTER_METRICS_PATH
-              value: "{{ .Values.squidExporter.metricsPath }}"
-            - name: SQUID_EXTRACTSERVICETIMES
-              value: "{{ .Values.squidExporter.extractServiceTimes }}"
-            {{- if .Values.squidExporter.squidLogin }}
-            - name: SQUID_LOGIN
-              value: "{{ .Values.squidExporter.squidLogin }}"
-            {{- end }}
-            {{- if .Values.squidExporter.squidPassword }}
-            - name: SQUID_PASSWORD
-              value: "{{ .Values.squidExporter.squidPassword }}"
-            {{- end }}
-          args:
-            - -squid-hostname
-            - "localhost"
-            - -squid-port
-            - "{{ .Values.service.port }}"
-            - -listen
-            - ":{{ .Values.squidExporter.port }}"
-            - -metrics-path
-            - "{{ .Values.squidExporter.metricsPath }}"
-            {{- if .Values.squidExporter.squidLogin }}
-            - -squid-login
-            - "{{ .Values.squidExporter.squidLogin }}"
-            {{- end }}
-            {{- if .Values.squidExporter.squidPassword }}
-            - -squid-password
-            - "{{ .Values.squidExporter.squidPassword }}"
-            {{- end }}
-            {{- range $key, $value := .Values.squidExporter.customLabels }}
-            - -label
-            - "{{ $key }}={{ $value }}"
-            {{- end }}
-          livenessProbe:
-            httpGet:
-              path: {{ .Values.squidExporter.metricsPath }}
-              port: metrics
-            initialDelaySeconds: 30
-            periodSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: {{ .Values.squidExporter.metricsPath }}
-              port: metrics
-            initialDelaySeconds: 5
-            periodSeconds: 5
-          resources:
-            {{- toYaml .Values.squidExporter.resources | nindent 12 }}
-        {{- end }}
+
       volumes:
         - name: squid-config
           configMap:

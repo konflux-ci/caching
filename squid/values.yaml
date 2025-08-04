@@ -52,17 +52,16 @@ service:
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 3128
 
-# Squid Prometheus Exporter Configuration
+# Squid Prometheus Exporter Configuration  
 # This enables monitoring of Squid metrics via Prometheus
-# Note: hostname is hardcoded to "localhost" in deployment template since
-# the exporter runs as a sidecar in the same pod as squid
+# Note: squid-exporter is now integrated into the main squid image
 # Note: squid port is referenced from service.port to avoid duplication
 squidExporter:
-  # Enable or disable the squid-exporter sidecar
+  # Enable or disable the integrated squid-exporter
   enabled: true
-  # Squid exporter container image - using konflux-ci fork instead of third-party
+  # Squid exporter image (now integrated into main squid image)
   image:
-    repository: localhost/konflux-ci/squid-exporter
+    repository: localhost/konflux-ci/squid
     tag: "latest"
     pullPolicy: IfNotPresent
   # Port on which the exporter will serve metrics
@@ -151,7 +150,7 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-# Additional volumes on the output Deployment definition.
+# Additional volumes on the output Deployment definition. 
 volumes: []
 # - name: foo
 #   secret:

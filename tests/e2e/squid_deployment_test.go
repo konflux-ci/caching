@@ -91,39 +91,32 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should have the correct container image and configuration", func() {
-			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(2))
+			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(1))
 
-			// Find squid container
-			var squidContainer *corev1.Container
-			for i := range deployment.Spec.Template.Spec.Containers {
-				if deployment.Spec.Template.Spec.Containers[i].Name == "squid" {
-					squidContainer = &deployment.Spec.Template.Spec.Containers[i]
-					break
-				}
-			}
-			Expect(squidContainer).NotTo(BeNil(), "squid container should exist")
+			// Check consolidated squid container
+			squidContainer := deployment.Spec.Template.Spec.Containers[0]
+			Expect(squidContainer.Name).To(Equal("squid"))
 			Expect(squidContainer.Image).To(ContainSubstring("squid"))
 
-			// Check squid port configuration
-			Expect(squidContainer.Ports).To(HaveLen(1))
-			Expect(squidContainer.Ports[0].ContainerPort).To(Equal(int32(3128)))
-			Expect(squidContainer.Ports[0].Name).To(Equal("http"))
+			// Check that squid container has both proxy and metrics ports
+			Expect(squidContainer.Ports).To(HaveLen(2))
 
-			// Find squid-exporter container
-			var exporterContainer *corev1.Container
-			for i := range deployment.Spec.Template.Spec.Containers {
-				if deployment.Spec.Template.Spec.Containers[i].Name == "squid-exporter" {
-					exporterContainer = &deployment.Spec.Template.Spec.Containers[i]
-					break
+			// Find http port (squid proxy)
+			var httpPort *corev1.ContainerPort
+			var metricsPort *corev1.ContainerPort
+			for i := range squidContainer.Ports {
+				if squidContainer.Ports[i].Name == "http" {
+					httpPort = &squidContainer.Ports[i]
+				} else if squidContainer.Ports[i].Name == "metrics" {
+					metricsPort = &squidContainer.Ports[i]
 				}
 			}
-			Expect(exporterContainer).NotTo(BeNil(), "squid-exporter container should exist")
-			Expect(exporterContainer.Image).To(ContainSubstring("squid-exporter"))
 
-			// Check squid-exporter port configuration
-			Expect(exporterContainer.Ports).To(HaveLen(1))
-			Expect(exporterContainer.Ports[0].ContainerPort).To(Equal(int32(9301)))
-			Expect(exporterContainer.Ports[0].Name).To(Equal("metrics"))
+			Expect(httpPort).NotTo(BeNil(), "http port should exist")
+			Expect(httpPort.ContainerPort).To(Equal(int32(3128)))
+
+			Expect(metricsPort).NotTo(BeNil(), "metrics port should exist")
+			Expect(metricsPort.ContainerPort).To(Equal(int32(9301)))
 		})
 	})
 
@@ -233,17 +226,11 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 		It("should have correct resource configuration", func() {
 			for _, pod := range pods.Items {
-				Expect(pod.Spec.Containers).To(HaveLen(2))
+				Expect(pod.Spec.Containers).To(HaveLen(1))
 
-				// Find squid container
-				var squidContainer *corev1.Container
-				for i := range pod.Spec.Containers {
-					if pod.Spec.Containers[i].Name == "squid" {
-						squidContainer = &pod.Spec.Containers[i]
-						break
-					}
-				}
-				Expect(squidContainer).NotTo(BeNil(), "squid container should exist")
+				// Check consolidated squid container
+				squidContainer := pod.Spec.Containers[0]
+				Expect(squidContainer.Name).To(Equal("squid"))
 
 				// Check squid security context (should run as non-root)
 				if squidContainer.SecurityContext != nil {
@@ -252,16 +239,6 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 						Expect(*squidContainer.SecurityContext.RunAsNonRoot).To(BeTrue())
 					}
 				}
-
-				// Find squid-exporter container
-				var exporterContainer *corev1.Container
-				for i := range pod.Spec.Containers {
-					if pod.Spec.Containers[i].Name == "squid-exporter" {
-						exporterContainer = &pod.Spec.Containers[i]
-						break
-					}
-				}
-				Expect(exporterContainer).NotTo(BeNil(), "squid-exporter container should exist")
 			}
 		})
 
