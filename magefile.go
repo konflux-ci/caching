@@ -33,10 +33,6 @@ const (
 	testImageTag = "localhost/konflux-ci/squid-test:latest"
 	// TestContainerfile is the path to the Containerfile for tests
 	testContainerfile = "test.Containerfile"
-	// SquidExporterImageTag is the tag used for the squid-exporter container image
-	squidExporterImageTag = "localhost/konflux-ci/squid-exporter:latest"
-	// SquidExporterContainerfile is the path to the Containerfile for squid-exporter
-	squidExporterContainerfile = "squid-exporter/Containerfile"
 )
 
 // Default target - shows available targets
@@ -275,52 +271,10 @@ func (Build) LoadTestImage() error {
 	return nil
 }
 
-// Build:SquidExporter builds the Squid Exporter container image
-func (Build) SquidExporter() error {
-	fmt.Println("📊 Building Squid Exporter container image...")
-
-	// Build the squid-exporter image using podman
-	fmt.Printf("📦 Building image with tag '%s'...\n", squidExporterImageTag)
-	err := sh.Run("podman", "build", "-t", squidExporterImageTag, "-f", squidExporterContainerfile, "squid-exporter")
-	if err != nil {
-		return fmt.Errorf("failed to build squid-exporter image: %w", err)
-	}
-
-	fmt.Printf("✅ Squid Exporter image built successfully\n")
-
-	// Verify the image was built
-	fmt.Printf("🔍 Verifying image exists...\n")
-	err = sh.Run("podman", "images", squidExporterImageTag)
-	if err != nil {
-		return fmt.Errorf("failed to verify squid-exporter image: %w", err)
-	}
-
-	fmt.Printf("✅ Squid Exporter image '%s' is ready!\n", squidExporterImageTag)
-	return nil
-}
-
-// Build:LoadSquidExporter loads the Squid Exporter image into the kind cluster
-func (Build) LoadSquidExporter() error {
-	// Ensure dependencies are met
-	mg.Deps(Kind.Up, Build.SquidExporter)
-
-	fmt.Println("📦 Loading Squid Exporter image into kind cluster...")
-
-	// Load image into kind cluster using process substitution
-	fmt.Printf("📤 Loading image into kind cluster '%s'...\n", clusterName)
-	err := sh.Run("bash", "-c", fmt.Sprintf("kind load image-archive --name %s <(podman save %s)", clusterName, squidExporterImageTag))
-	if err != nil {
-		return fmt.Errorf("failed to load squid-exporter image into kind cluster: %w", err)
-	}
-
-	fmt.Printf("✅ Squid Exporter image loaded successfully into kind cluster '%s'!\n", clusterName)
-	return nil
-}
-
 // SquidHelm:Up deploys the Squid Helm chart to the cluster
 func (SquidHelm) Up() error {
-	// Ensure dependencies are met (squid, squid-exporter, and test images needed)
-	mg.Deps(Build.LoadSquid, Build.LoadSquidExporter, Build.LoadTestImage)
+	// Ensure dependencies are met (squid and test images needed)
+	mg.Deps(Build.LoadSquid, Build.LoadTestImage)
 
 	fmt.Println("⚓ Deploying Squid Helm chart...")
 
@@ -507,11 +461,6 @@ func Clean() error {
 	err = sh.Run("podman", "rmi", squidImageTag)
 	if err != nil {
 		fmt.Printf("⚠️  Warning: Failed to remove squid image: %v\n", err)
-	}
-
-	err = sh.Run("podman", "rmi", squidExporterImageTag)
-	if err != nil {
-		fmt.Printf("⚠️  Warning: Failed to remove squid-exporter image: %v\n", err)
 	}
 
 	err = sh.Run("podman", "rmi", testImageTag)

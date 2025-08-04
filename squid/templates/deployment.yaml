@@ -88,8 +88,8 @@ spec:
               mountPath: /var/spool/squid
         {{- if .Values.squidExporter.enabled }}
         - name: squid-exporter
-          image: "{{ .Values.squidExporter.image.repository }}:{{ .Values.squidExporter.image.tag }}"
-          imagePullPolicy: {{ .Values.squidExporter.image.pullPolicy }}
+          image: "{{ include "squid.image" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: metrics
               containerPort: {{ .Values.squidExporter.port }}
@@ -114,6 +114,7 @@ spec:
               value: "{{ .Values.squidExporter.squidPassword }}"
             {{- end }}
           args:
+            - exporter
             - -squid-hostname
             - "localhost"
             - -squid-port

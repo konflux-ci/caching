@@ -105,10 +105,10 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			Expect(squidContainer).NotTo(BeNil(), "squid container should exist")
 			Expect(squidContainer.Image).To(ContainSubstring("squid"))
 
-			// Check squid port configuration
+			// Squid container should expose only proxy port
 			Expect(squidContainer.Ports).To(HaveLen(1))
-			Expect(squidContainer.Ports[0].ContainerPort).To(Equal(int32(3128)))
 			Expect(squidContainer.Ports[0].Name).To(Equal("http"))
+			Expect(squidContainer.Ports[0].ContainerPort).To(Equal(int32(3128)))
 
 			// Find squid-exporter container
 			var exporterContainer *corev1.Container
@@ -119,7 +119,6 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 				}
 			}
 			Expect(exporterContainer).NotTo(BeNil(), "squid-exporter container should exist")
-			Expect(exporterContainer.Image).To(ContainSubstring("squid-exporter"))
 
 			// Check squid-exporter port configuration
 			Expect(exporterContainer.Ports).To(HaveLen(1))
@@ -236,15 +235,8 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			for _, pod := range pods.Items {
 				Expect(pod.Spec.Containers).To(HaveLen(2))
 
-				// Find squid container
-				var squidContainer *corev1.Container
-				for i := range pod.Spec.Containers {
-					if pod.Spec.Containers[i].Name == "squid" {
-						squidContainer = &pod.Spec.Containers[i]
-						break
-					}
-				}
-				Expect(squidContainer).NotTo(BeNil(), "squid container should exist")
+				squidContainer := pod.Spec.Containers[0]
+				Expect(squidContainer.Name).To(Equal("squid"))
 
 				// Check squid security context (should run as non-root)
 				if squidContainer.SecurityContext != nil {
@@ -253,16 +245,6 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 						Expect(*squidContainer.SecurityContext.RunAsNonRoot).To(BeTrue())
 					}
 				}
-
-				// Find squid-exporter container
-				var exporterContainer *corev1.Container
-				for i := range pod.Spec.Containers {
-					if pod.Spec.Containers[i].Name == "squid-exporter" {
-						exporterContainer = &pod.Spec.Containers[i]
-						break
-					}
-				}
-				Expect(exporterContainer).NotTo(BeNil(), "squid-exporter container should exist")
 			}
 		})
 

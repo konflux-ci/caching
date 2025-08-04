@@ -78,7 +78,7 @@ mage all
 
 This single command will:
 - Create the 'caching' kind cluster (or connect to existing)
-- Build the squid container image
+- Build the consolidated squid container image (with integrated squid-exporter)
 - Load the image into the cluster
 - Deploy the Helm chart with all dependencies
 - Verify the deployment status
@@ -94,11 +94,9 @@ mage kind:status      # Check cluster status
 mage kind:down        # Remove cluster
 mage kind:upClean     # Force recreate cluster
 
-# Image management
-mage build:squid             # Build squid image
-mage build:squidExporter     # Build squid-exporter image
-mage build:loadSquid         # Load squid image into cluster
-mage build:loadSquidExporter # Load squid-exporter image into cluster
+# Image management  
+mage build:squid         # Build consolidated squid image (includes integrated squid-exporter)
+mage build:loadSquid     # Load squid image into cluster
 
 # Deployment management
 mage squidHelm:up     # Deploy/upgrade helm chart
@@ -288,7 +286,7 @@ When adding new tests:
 5. **Update VS Code config**: Add debug configurations for new test files
 ## Prometheus Monitoring
 
-This chart includes comprehensive Prometheus monitoring capabilities through the [squid-exporter](https://github.com/konflux-ci/squid-exporter) (forked from the original boynux implementation). The monitoring system provides detailed metrics about Squid's operational status, including:
+This chart includes comprehensive Prometheus monitoring capabilities through the integrated [squid-exporter](https://github.com/boynux/squid-exporter) (upstream). The squid-exporter is built into the main Squid container, providing a single, consolidated image. The monitoring system provides detailed metrics about Squid's operational status, including:
 
 - **Liveness**: Squid service information and connection status
 - **Bandwidth Usage**: Client HTTP and Server HTTP traffic metrics
@@ -398,7 +396,7 @@ curl http://squid.proxy.svc.cluster.local:9301/metrics
 
 #### No Metrics Appearing
 
-1. **Check if the exporter is running**:
+1. **Check if the squid container is running**:
    ```bash
    kubectl get pods -n proxy
    kubectl logs -n proxy deployment/squid -c squid-exporter
@@ -970,7 +968,6 @@ kind delete cluster --name caching
 ```bash
 # Remove the local container images
 podman rmi localhost/konflux-ci/squid:latest
-podman rmi localhost/konflux-ci/squid-exporter:latest
 podman rmi localhost/konflux-ci/squid-test:latest
 ```
 
