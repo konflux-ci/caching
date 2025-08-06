@@ -1,9 +1,9 @@
-{{- if and .Values.squidExporter.enabled .Values.prometheus.serviceMonitor.enabled }}
+{{- if and (or .Values.squidExporter.enabled true) .Values.prometheus.serviceMonitor.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ include "squid.fullname" . }}
-  namespace: {{ .Values.prometheus.serviceMonitor.namespace | default .Values.namespace.name }}
+  namespace: {{ .Values.prometheus.serviceMonitor.namespace | default .Release.Namespace }}
   labels:
     {{- include "squid.labels" . | nindent 4 }}
     {{- with .Values.prometheus.serviceMonitor.labels }}
@@ -21,13 +21,24 @@ spec:
     matchNames:
       - {{ .Values.namespace.name }}
   endpoints:
+    {{- if .Values.squidExporter.enabled }}
     - port: metrics
-      path: {{ .Values.prometheus.serviceMonitor.path }}
+      path: {{ .Values.squidExporter.metricsPath }}
       interval: {{ .Values.prometheus.serviceMonitor.interval }}
       scrapeTimeout: {{ .Values.prometheus.serviceMonitor.scrapeTimeout }}
       honorLabels: true
       metricRelabelings:
         - sourceLabels: [__name__]
           regex: squid_.*
+          action: keep
+    {{- end }}
+    - port: per-site-http
+      path: {{ .Values.perSiteExporter.metricsPath }}
+      interval: {{ .Values.prometheus.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.prometheus.serviceMonitor.scrapeTimeout }}
+      honorLabels: true
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: squid_site_.*
           action: keep
 {{- end }} 
