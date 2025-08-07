@@ -2,7 +2,7 @@
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: self-signed-cluster-issuer
+  name: {{ .Values.namespace.name }}-self-signed-cluster-issuer
   labels:
     {{- include "squid.labels" . | nindent 4 }}
 spec:
@@ -11,29 +11,29 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: selfsigned-ca
+  name: {{ .Values.namespace.name }}-self-signed-ca
   namespace: {{ (index .Values "cert-manager").namespace }}
   labels:
     {{- include "squid.labels" . | nindent 4 }}
 spec:
-  secretName: root-secret
-  commonName: selfsigned-ca
+  secretName: {{ .Values.namespace.name }}-root-ca-secret
+  commonName: {{ .Values.namespace.name }}-self-signed-ca
   isCA: true
   privateKey:
     algorithm: ECDSA
     size: 256  
   issuerRef:
-    name: self-signed-cluster-issuer
+    name: {{ .Values.namespace.name }}-self-signed-cluster-issuer
     kind: ClusterIssuer
     group: cert-manager.io
 ---
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
-  name: ca-issuer
+  name: {{ .Values.namespace.name }}-ca-issuer
   labels:
     {{- include "squid.labels" . | nindent 4 }}
 spec:
   ca:
-    secretName: root-secret
+    secretName: {{ .Values.namespace.name }}-root-ca-secret
 {{- end }}

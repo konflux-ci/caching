@@ -206,9 +206,13 @@ The Squid proxy is accessible at:
 #### Example: Testing with a curl pod
 
 ```bash
-# Create a test pod for testing the proxy
+# Create a test pod for testing the proxy (HTTP)
 kubectl run test-client --image=curlimages/curl:latest --rm -it -- \
     sh -c 'curl --proxy http://squid.proxy.svc.cluster.local:3128 http://httpbin.org/ip'
+
+# Create a test pod for testing SSL-Bump (HTTPS)
+kubectl run test-client-ssl --image=curlimages/curl:latest --rm -it -- \
+    sh -c 'curl -k --proxy http://squid.proxy.svc.cluster.local:3128 https://httpbin.org/ip'
 ```
 
 ### From Your Local Machine (for testing)
@@ -218,9 +222,10 @@ kubectl run test-client --image=curlimages/curl:latest --rm -it -- \
 export POD_NAME=$(kubectl get pods --namespace proxy -l "app.kubernetes.io/name=squid,app.kubernetes.io/instance=squid" -o jsonpath="{.items[0].metadata.name}")
 kubectl --namespace proxy port-forward $POD_NAME 3128:3128
 
-# In another terminal, test the proxy
+# In another terminal, test the proxy (HTTP)
 curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
 ```
+
 
 ## Testing
 

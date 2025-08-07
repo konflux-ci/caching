@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	certmanagerclient "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,8 +19,9 @@ import (
 )
 
 var (
-	clientset *kubernetes.Clientset
-	ctx       context.Context
+	clientset         *kubernetes.Clientset
+	certManagerClient *certmanagerclient.Clientset
+	ctx               context.Context
 )
 
 const (
@@ -69,6 +71,10 @@ var _ = BeforeSuite(func() {
 
 	clientset, err = kubernetes.NewForConfig(config)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create Kubernetes client")
+
+	// Create cert-manager client
+	certManagerClient, err = certmanagerclient.NewForConfig(config)
+	Expect(err).NotTo(HaveOccurred(), "Failed to create cert-manager client")
 
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods("proxy").List(ctx, metav1.ListOptions{Limit: 1})

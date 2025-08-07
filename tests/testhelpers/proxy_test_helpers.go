@@ -1,6 +1,8 @@
 package testhelpers
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -95,6 +97,39 @@ func NewSquidProxyClient(serviceName, namespace string) (*http.Client, error) {
 	// Create HTTP client with proxy configuration
 	transport := &http.Transport{
 		Proxy: http.ProxyURL(proxyURL),
+		// Disable keep-alive to ensure fresh connections for cache testing
+		DisableKeepAlives: true,
+	}
+
+	return &http.Client{
+		Transport: transport,
+		Timeout:   30 * time.Second,
+	}, nil
+}
+
+// NewTrustedSquidProxyClient creates an HTTP client configured to use the Squid proxy and trust the Squid CA
+func NewTrustedSquidProxyClient(serviceName, namespace string, caCertPEM []byte) (*http.Client, error) {
+	// Set up proxy URL to squid service
+	proxyURL, err := url.Parse(fmt.Sprintf("http://%s.%s.svc.cluster.local:3128", serviceName, namespace))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse proxy URL: %w", err)
+	}
+
+	// Create a certificate pool and add the Squid CA
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM(caCertPEM) {
+		return nil, fmt.Errorf("failed to append CA certificate to pool")
+	}
+
+	// Create TLS config that trusts the Squid CA
+	tlsConfig := &tls.Config{
+		RootCAs: caCertPool,
+	}
+
+	// Create HTTP client with proxy configuration and trusted TLS
+	transport := &http.Transport{
+		Proxy:           http.ProxyURL(proxyURL),
+		TLSClientConfig: tlsConfig,
 		// Disable keep-alive to ensure fresh connections for cache testing
 		DisableKeepAlives: true,
 	}
