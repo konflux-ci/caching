@@ -1,0 +1,162 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: verify-grouped-snapshot
+  annotations:
+    description: |
+      Verifies that snapshot components using the same Git repository URL
+      have consistent Git revisions across all components.
+spec:
+  params:
+    - name: SNAPSHOT
+      type: string
+      description: |
+        Snapshot spec containing components to validate. Expected format:
+        {
+          "spec": {
+            "components": [
+              {
+                "name": "component-name",
+                "containerImage": "quay.io/...",
+                "source": {
+                  "git": {
+                    "url": "https://github.com/...",
+                    "revision": "sha-or-tag"
+                  }
+                }
+              }
+            ]
+          }
+        }
+  tasks:
+    - name: validate-grouped-revisions
+      params:
+        - name: SNAPSHOT
+          value: "$(params.SNAPSHOT)"
+      taskSpec:
+        params:
+          - name: SNAPSHOT
+            type: string
+        steps:
+          - name: validate-revisions
+            image: quay.io/konflux-ci/appstudio-utils:latest
+            env:
+              - name: SNAPSHOT
+                value: "$(params.SNAPSHOT)"
+            script: |
+              #!/usr/bin/bash
+              set -euxo pipefail
+
+              echo "=== Snapshot Validation: Grouped Git Revision Consistency ==="
+              echo "Validating that components sharing the same Git URL have identical revisions..."
+
+              # Parse snapshot and extract component information
+              echo "Parsing snapshot components..."
+              COMPONENTS=$(echo "$SNAPSHOT" | jq -r '.spec.components[] | @base64')
+
+              if [ -z "$COMPONENTS" ]; then
+                echo "ERROR: No components found in snapshot"
+                exit 1
+              fi
+
+              # Create associative arrays to track URL->revision mappings
+              declare -A url_revisions
+              declare -A url_components
+              declare -A revision_conflicts
+
+              component_count=0
+
+              # Process each component
+              while IFS= read -r component_b64; do
+                if [ -z "$component_b64" ]; then
+                  continue
+                fi
+
+                component=$(echo "$component_b64" | base64 -d)
+                component_count=$((component_count + 1))
+
+                name=$(echo "$component" | jq -r '.name // "unknown"')
+                git_url=$(echo "$component" | jq -r '.source.git.url // empty')
+                git_revision=$(echo "$component" | jq -r '.source.git.revision // empty')
+
+                echo "Component $component_count: $name"
+                echo "  Git URL: $git_url"
+                echo "  Git Revision: $git_revision"
+
+                # Skip components without git source
+                if [ -z "$git_url" ] || [ "$git_url" = "null" ]; then
+                  echo "  → Skipping (no git source)"
+                  continue
+                fi
+
+                if [ -z "$git_revision" ] || [ "$git_revision" = "null" ]; then
+                  echo "  → ERROR: Component has git URL but no revision"
+                  exit 1
+                fi
+
+                # Check if we've seen this URL before
+                if [ -n "${url_revisions[$git_url]:-}" ]; then
+                  # URL already seen, check revision consistency
+                  existing_revision="${url_revisions[$git_url]}"
+                  existing_components="${url_components[$git_url]}"
+
+                  if [ "$git_revision" != "$existing_revision" ]; then
+                    echo "  → CONFLICT DETECTED!"
+                    echo "     Expected revision: $existing_revision (used by: $existing_components)"
+                    echo "     Found revision: $git_revision (used by: $name)"
+                    revision_conflicts[$git_url]=1
+                  else
+                    echo "  → OK: Revision matches existing components"
+                    url_components[$git_url]="${existing_components}, $name"
+                  fi
+                else
+                  # First time seeing this URL
+                  url_revisions[$git_url]="$git_revision"
+                  url_components[$git_url]="$name"
+                  echo "  → OK: First component for this repository"
+                fi
+
+              done <<< "$COMPONENTS"
+
+              echo ""
+              echo "=== Validation Summary ==="
+              echo "Total components processed: $component_count"
+              # Count unique repositories safely
+              repo_count=0
+              for url in "${!url_revisions[@]}"; do
+                repo_count=$((repo_count + 1))
+              done
+              echo "Unique repositories found: $repo_count"
+
+              # Check if we have any revision conflicts (safe for empty arrays)
+              conflict_count=0
+              for key in "${!revision_conflicts[@]}"; do
+                conflict_count=$((conflict_count + 1))
+                break  # We only need to know if there's at least one
+              done
+
+              if [ $conflict_count -eq 0 ]; then
+                echo ""
+                echo "✅ SUCCESS: All components using the same Git repository have consistent revisions"
+                echo ""
+                echo "Repository groupings:"
+                for url in "${!url_revisions[@]}"; do
+                  echo "  $url @ ${url_revisions[$url]}"
+                  echo "    Components: ${url_components[$url]}"
+                done
+                echo ""
+                echo "Snapshot validation passed! 🎉"
+              else
+                echo ""
+                echo "❌ FAILURE: Found revision conflicts in $conflict_count repositories"
+                echo ""
+                echo "Conflicting repositories:"
+                for url in "${!revision_conflicts[@]}"; do
+                  echo "  $url"
+                  echo "    Components: ${url_components[$url]}"
+                done
+                echo ""
+                echo "ERROR: Snapshot contains components from the same repository with different revisions."
+                echo "This indicates a grouping issue where components should be built from the same commit."
+                exit 1
+              fi

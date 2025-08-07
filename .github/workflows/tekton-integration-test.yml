@@ -1,0 +1,30 @@
+name: Tekton Integration Pipeline Tests
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+  push:
+    branches: [ main ]
+
+jobs:
+  test-tekton-pipelines:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup test environment
+      run: |
+        cd integration-tests
+        ./scripts/setup-test-environment.sh
+
+    - name: Run integration tests
+      run: |
+        cd integration-tests
+        ./scripts/run-tests.sh
+

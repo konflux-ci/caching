@@ -1,0 +1,27 @@
+{
+  "spec": {
+    "application": "test-app",
+    "components": [
+      {
+        "name": "component-1",
+        "containerImage": "quay.io/test/component1@sha256:abc123",
+        "source": {
+          "git": {
+            "url": "https://github.com/example/repo",
+            "revision": "commit-sha-1"
+          }
+        }
+      },
+      {
+        "name": "component-2",
+        "containerImage": "quay.io/test/component2@sha256:def456",
+        "source": {
+          "git": {
+            "url": "https://github.com/example/repo",
+            "revision": "commit-sha-2"
+          }
+        }
+      }
+    ]
+  }
+}
