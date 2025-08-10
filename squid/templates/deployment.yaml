@@ -26,13 +26,13 @@ spec:
       serviceAccountName: {{ include "squid.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      
+
       # --- INIT CONTAINER ---
       # This container runs as root to prepare certificates, initialize the SSL DB,
       # and set the correct file permissions before the main Squid container starts.
       initContainers:
       - name: squid-init
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        image: "{{ include "squid.image" . }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           # Must run as root to perform chown
@@ -49,19 +49,19 @@ spec:
             echo "Setting permissions on /var/spool/squid for user {{ .Values.securityContext.runAsUser }}..."
             # 2. Change ownership to the non-root user of the main container.
             chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} /var/spool/squid
-            
+
             echo "Initialization complete."
- 
+
         volumeMounts:
         # Mount the shared volume.
         - name: squid-spool-vol
-          mountPath: /var/spool/squid    
+          mountPath: /var/spool/squid
 
       containers:
         - name: squid
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ include "squid.image" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -85,7 +85,7 @@ spec:
               readOnly: true
             # Mount the entire spool directory for the main container
             - name: squid-spool-vol
-              mountPath: /var/spool/squid              
+              mountPath: /var/spool/squid
         {{- if .Values.squidExporter.enabled }}
         - name: squid-exporter
           image: "{{ .Values.squidExporter.image.repository }}:{{ .Values.squidExporter.image.tag }}"

@@ -22,7 +22,7 @@ spec:
   serviceAccountName: {{ include "squid.fullname" . }}-test
   containers:
   - name: ginkgo-test
-    image: "{{ .Values.test.image.repository }}:{{ .Values.test.image.tag }}"
+    image: "{{ include "squid.test.image" . }}"
     imagePullPolicy: {{ .Values.test.image.pullPolicy | default "IfNotPresent" }}
     command:
     - /bin/bash
@@ -32,7 +32,7 @@ spec:
       echo "=== Starting Ginkgo E2E Tests ==="
       echo "Target namespace: {{ .Values.namespace.name }}"
       echo "Squid service: {{ include "squid.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}"
-      
+
       # Run the compiled test binary
       echo "Running tests..."
       cd /app/tests
@@ -50,5 +50,4 @@ spec:
           fieldPath: status.podIP
     resources:
       {{- toYaml .Values.test.resources | nindent 6 }}
-{{- end }} 
- 
+{{- end }}

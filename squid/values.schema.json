@@ -4,31 +4,46 @@
   "title": "Squid Proxy Helm Chart Values Schema",
   "description": "JSON Schema for validating values.yaml in the Squid Helm chart",
   "type": "object",
+
   "properties": {
     "replicaCount": {
       "type": "integer",
       "minimum": 1,
       "description": "Number of replicas for the Squid deployment"
     },
+    "environment": {
+      "type": "string",
+      "enum": ["dev", "release"],
+      "description": "Environment selector for image repositories (should be set externally via --set)"
+    },
+    "envSettings": {
+      "type": "object",
+      "properties": {
+        "dev": {
+          "$ref": "#/$defs/environmentConfig",
+          "description": "Development environment settings"
+        },
+        "release": {
+          "$ref": "#/$defs/environmentConfig",
+          "description": "Release environment settings"
+        }
+      },
+      "required": ["dev", "release"],
+      "additionalProperties": false,
+      "description": "Environment-specific configuration for squid and test images"
+    },
     "image": {
       "type": "object",
       "properties": {
-        "repository": {
-          "type": "string",
-          "description": "Container image repository"
-        },
         "pullPolicy": {
           "type": "string",
           "enum": ["Always", "IfNotPresent", "Never"],
           "description": "Image pull policy"
-        },
-        "tag": {
-          "type": "string",
-          "description": "Image tag to use"
         }
       },
-      "required": ["repository", "pullPolicy", "tag"],
-      "additionalProperties": false
+      "required": ["pullPolicy"],
+      "additionalProperties": false,
+      "description": "Container image configuration (repository and tag are set dynamically by environment helpers)"
     },
     "imagePullSecrets": {
       "type": "array",
@@ -180,7 +195,7 @@
               "enum": ["Always", "IfNotPresent", "Never"]
             }
           },
-          "required": ["repository", "tag", "pullPolicy"],
+          "required": ["pullPolicy"],
           "additionalProperties": false
         },
         "port": {
@@ -456,19 +471,14 @@
         "image": {
           "type": "object",
           "properties": {
-            "repository": {
-              "type": "string"
-            },
-            "tag": {
-              "type": "string"
-            },
             "pullPolicy": {
               "type": "string",
               "enum": ["Always", "IfNotPresent", "Never"]
             }
           },
-          "required": ["repository", "tag", "pullPolicy"],
-          "additionalProperties": false
+          "required": ["pullPolicy"],
+          "additionalProperties": false,
+          "description": "Test image configuration (repository and tag are set dynamically by environment helpers)"
         },
         "resources": {
           "$ref": "#/$defs/resources"
@@ -494,19 +504,14 @@
             "image": {
               "type": "object",
               "properties": {
-                "repository": {
-                  "type": "string"
-                },
-                "tag": {
-                  "type": "string"
-                },
                 "pullPolicy": {
                   "type": "string",
                   "enum": ["Always", "IfNotPresent", "Never"]
                 }
               },
-              "required": ["repository", "tag", "pullPolicy"],
-              "additionalProperties": false
+              "required": ["pullPolicy"],
+              "additionalProperties": false,
+              "description": "Mirrord target pod image configuration (repository and tag are set dynamically by squid.test.image helper)"
             },
             "ports": {
               "type": "object",
@@ -600,6 +605,44 @@
   ],
   "additionalProperties": false,
   "$defs": {
+    "imageConfig": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "Container image repository"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Container image tag"
+        }
+      },
+      "required": ["repository", "tag"],
+      "additionalProperties": false
+    },
+    "componentImageConfig": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "$ref": "#/$defs/imageConfig"
+        }
+      },
+      "required": ["image"],
+      "additionalProperties": false
+    },
+    "environmentConfig": {
+      "type": "object",
+      "properties": {
+        "squid": {
+          "$ref": "#/$defs/componentImageConfig"
+        },
+        "test": {
+          "$ref": "#/$defs/componentImageConfig"
+        }
+      },
+      "required": ["squid", "test"],
+      "additionalProperties": false
+    },
     "resources": {
       "type": "object",
       "properties": {

@@ -48,3 +48,28 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Get current environment - defaults to "release" if not set
+*/}}
+{{- define "squid.environment" -}}
+{{- .Values.environment | default "release" -}}
+{{- end }}
+
+{{/*
+Get squid image for current environment
+*/}}
+{{- define "squid.image" -}}
+{{- $env := include "squid.environment" . -}}
+{{- $envSettings := index .Values.envSettings $env -}}
+{{- printf "%s:%s" $envSettings.squid.image.repository $envSettings.squid.image.tag -}}
+{{- end }}
+
+{{/*
+Get test image for current environment
+*/}}
+{{- define "squid.test.image" -}}
+{{- $env := include "squid.environment" . -}}
+{{- $envSettings := index .Values.envSettings $env -}}
+{{- printf "%s:%s" $envSettings.test.image.repository $envSettings.test.image.tag -}}
+{{- end }}
