@@ -16,6 +16,6 @@ spec:
   - {{ .Values.namespace.name }}.{{ .Values.namespace.name }}.svc.cluster.local
   issuerRef:
     kind: ClusterIssuer
-    name: ca-issuer
+    name: {{ .Values.namespace.name }}-ca-issuer
   secretName: {{ .Values.namespace.name }}-tls
 {{- end }}
