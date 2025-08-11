@@ -2,7 +2,7 @@ module github.com/konflux-ci/caching
 
 go 1.24.0
 
-toolchain go1.24.5
+toolchain go1.24.6
 
 require (
 	github.com/magefile/mage v1.15.0
