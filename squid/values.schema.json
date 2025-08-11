@@ -1,0 +1,738 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema#",
+  "$id": "https://github.com/konflux-ci/caching/squid/values.schema.json",
+  "title": "Squid Proxy Helm Chart Values Schema",
+  "description": "JSON Schema for validating values.yaml in the Squid Helm chart",
+  "type": "object",
+  "properties": {
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Number of replicas for the Squid deployment"
+    },
+    "image": {
+      "type": "object",
+      "properties": {
+        "repository": {
+          "type": "string",
+          "description": "Container image repository"
+        },
+        "pullPolicy": {
+          "type": "string",
+          "enum": ["Always", "IfNotPresent", "Never"],
+          "description": "Image pull policy"
+        },
+        "tag": {
+          "type": "string",
+          "description": "Image tag to use"
+        }
+      },
+      "required": ["repository", "pullPolicy", "tag"],
+      "additionalProperties": false
+    },
+    "imagePullSecrets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": ["name"],
+        "additionalProperties": false
+      },
+      "description": "Image pull secrets for private registries"
+    },
+    "serviceAccount": {
+      "type": "object",
+      "properties": {
+        "create": {
+          "type": "boolean",
+          "description": "Whether to create a service account"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Annotations for the service account"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the service account to use"
+        }
+      },
+      "required": ["create"],
+      "additionalProperties": false
+    },
+    "podAnnotations": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Annotations for the pod"
+    },
+    "podLabels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Labels for the pod"
+    },
+    "podSecurityContext": {
+      "type": "object",
+      "properties": {
+        "fsGroup": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runAsGroup": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runAsUser": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runAsNonRoot": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true,
+      "description": "Security context for the pod"
+    },
+    "securityContext": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "add": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "drop": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "readOnlyRootFilesystem": {
+          "type": "boolean"
+        },
+        "runAsNonRoot": {
+          "type": "boolean"
+        },
+        "runAsUser": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runAsGroup": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true,
+      "description": "Security context for the container"
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"],
+          "description": "Kubernetes service type"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Service port number"
+        }
+      },
+      "required": ["type", "port"],
+      "additionalProperties": false
+    },
+    "squidExporter": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable squid-exporter sidecar"
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "enum": ["Always", "IfNotPresent", "Never"]
+            }
+          },
+          "required": ["repository", "tag", "pullPolicy"],
+          "additionalProperties": false
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Port for metrics endpoint"
+        },
+        "metricsPath": {
+          "type": "string",
+          "pattern": "^/.*",
+          "description": "Path for metrics endpoint"
+        },
+        "squidLogin": {
+          "type": "string",
+          "description": "Optional squid authentication login"
+        },
+        "squidPassword": {
+          "type": "string",
+          "description": "Optional squid authentication password"
+        },
+        "extractServiceTimes": {
+          "type": "string",
+          "enum": ["true", "false"],
+          "description": "Extract service times for detailed metrics"
+        },
+        "customLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Custom labels for metrics"
+        },
+        "resources": {
+          "$ref": "#/$defs/resources"
+        },
+        "livenessProbe": {
+          "$ref": "#/$defs/httpProbe"
+        },
+        "readinessProbe": {
+          "$ref": "#/$defs/httpProbe"
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "ingress": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable ingress"
+        },
+        "className": {
+          "type": "string",
+          "description": "Ingress class name"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Ingress annotations"
+        },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "description": "Hostname"
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "pathType": {
+                      "type": "string",
+                      "enum": ["Exact", "Prefix", "ImplementationSpecific"]
+                    }
+                  },
+                  "required": ["path", "pathType"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": ["host", "paths"],
+            "additionalProperties": false
+          }
+        },
+        "tls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "secretName": {
+                "type": "string"
+              },
+              "hosts": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["secretName", "hosts"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "resources": {
+      "$ref": "#/$defs/resources"
+    },
+    "livenessProbe": {
+      "$ref": "#/$defs/tcpProbe"
+    },
+    "readinessProbe": {
+      "$ref": "#/$defs/tcpProbe"
+    },
+    "autoscaling": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable horizontal pod autoscaling"
+        },
+        "minReplicas": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum number of replicas"
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of replicas"
+        },
+        "targetCPUUtilizationPercentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Target CPU utilization percentage"
+        },
+        "targetMemoryUtilizationPercentage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Target memory utilization percentage"
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "volumes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Additional volumes for the deployment"
+    },
+    "volumeMounts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Additional volume mounts for the deployment"
+    },
+    "nodeSelector": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Node selector for pod scheduling"
+    },
+    "tolerations": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "Tolerations for pod scheduling"
+    },
+    "affinity": {
+      "type": "object",
+      "description": "Affinity rules for pod scheduling"
+    },
+    "namespace": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "description": "Namespace name"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Namespace annotations"
+        }
+      },
+      "required": ["name"],
+      "additionalProperties": false
+    },
+    "installCertManagerComponents": {
+      "type": "boolean",
+      "description": "Install cert-manager and trust-manager components"
+    },
+    "prometheus": {
+      "type": "object",
+      "properties": {
+        "serviceMonitor": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable ServiceMonitor for Prometheus"
+            },
+            "namespace": {
+              "type": "string",
+              "description": "Namespace for ServiceMonitor"
+            },
+            "labels": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Additional labels for ServiceMonitor"
+            },
+            "interval": {
+              "type": "string",
+              "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+              "description": "Scrape interval"
+            },
+            "scrapeTimeout": {
+              "type": "string",
+              "pattern": "^[0-9]+(ns|us|µs|ms|s|m|h)$",
+              "description": "Scrape timeout"
+            },
+            "path": {
+              "type": "string",
+              "pattern": "^/.*",
+              "description": "Metrics path"
+            },
+            "annotations": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "ServiceMonitor annotations"
+            }
+          },
+          "required": ["enabled"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "test": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable helm test functionality"
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "enum": ["Always", "IfNotPresent", "Never"]
+            }
+          },
+          "required": ["repository", "tag", "pullPolicy"],
+          "additionalProperties": false
+        },
+        "resources": {
+          "$ref": "#/$defs/resources"
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "mirrord": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable mirrord target pod"
+        },
+        "targetPod": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the mirrord target pod"
+            },
+            "image": {
+              "type": "object",
+              "properties": {
+                "repository": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string"
+                },
+                "pullPolicy": {
+                  "type": "string",
+                  "enum": ["Always", "IfNotPresent", "Never"]
+                }
+              },
+              "required": ["repository", "tag", "pullPolicy"],
+              "additionalProperties": false
+            },
+            "ports": {
+              "type": "object",
+              "properties": {
+                "http": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                "testServer": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              },
+              "additionalProperties": false
+            },
+            "env": {
+              "type": "object",
+              "properties": {
+                "testServerPort": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              },
+              "additionalProperties": true
+            },
+            "resources": {
+              "$ref": "#/$defs/resources"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "cert-manager": {
+      "type": "object",
+      "description": "Configuration for cert-manager dependency - allows additional properties for compatibility",
+      "additionalProperties": true
+    },
+    "trust-manager": {
+      "type": "object",
+      "description": "Configuration for trust-manager dependency - allows additional properties for compatibility",
+      "additionalProperties": true
+    },
+    "selfsigned-bundle": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Create self-signed issuer and bundle"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sslDb": {
+      "type": "object",
+      "properties": {
+        "storage": {
+          "type": "object",
+          "properties": {
+            "size": {
+              "type": "string",
+              "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$",
+              "description": "Size of the PVC for SSL database storage"
+            },
+            "storageClass": {
+              "type": "string",
+              "description": "Storage class to use for the PVC (empty for default)"
+            }
+          },
+          "required": ["size", "storageClass"],
+          "additionalProperties": false,
+          "description": "Persistent storage configuration for SSL certificates"
+        }
+      },
+      "required": ["storage"],
+      "additionalProperties": false,
+      "description": "SSL Database configuration for persistent storage of SSL certificates"
+    }
+  },
+  "required": [
+    "replicaCount",
+    "image",
+    "serviceAccount",
+    "service",
+    "namespace"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "resources": {
+      "type": "object",
+      "properties": {
+        "limits": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "pattern": "^[0-9]+m?$"
+            },
+            "memory": {
+              "type": "string",
+              "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "requests": {
+          "type": "object",
+          "properties": {
+            "cpu": {
+              "type": "string",
+              "pattern": "^[0-9]+m?$"
+            },
+            "memory": {
+              "type": "string",
+              "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "httpProbe": {
+      "type": "object",
+      "properties": {
+        "httpGet": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "pattern": "^/.*"
+            },
+            "port": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": ["path", "port"],
+          "additionalProperties": false
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "successThreshold": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "tcpProbe": {
+      "type": "object",
+      "properties": {
+        "tcpSocket": {
+          "type": "object",
+          "properties": {
+            "port": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                },
+                {
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "required": ["port"],
+          "additionalProperties": false
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "initialDelaySeconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "periodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "successThreshold": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
