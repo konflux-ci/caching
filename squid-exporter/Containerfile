@@ -1,5 +1,5 @@
 # Build stage - Use UBI10 go-toolset with digest pin
-FROM registry.access.redhat.com/ubi10/go-toolset@sha256:3f74373bfcf697ae5bf18d48efb691a932079e61d2ebb206661e81e7260e1b13 AS builder
+FROM registry.access.redhat.com/ubi10/go-toolset@sha256:34de5620cdaa734059711096687af1e1e336dd0fe22155b0ee0c5aceecf0d47a AS builder
 
 # Switch to root user for package installation
 USER 0
