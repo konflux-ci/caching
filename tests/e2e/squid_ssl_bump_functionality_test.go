@@ -136,8 +136,8 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 		})
 	})
 
-	Describe("SSL-Bump HTTPS Caching", func() {
-		It("should cache HTTPS content in RAM proving SSL-Bump decryption works", func() {
+	Describe("SSL-Bump HTTPS RAM Caching", func() {
+		It("should cache HTTPS content in RAM proving SSL-Bump decryption and caching work", func() {
 			By("Getting Squid pod name")
 			pods, err := k8sClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
 				LabelSelector: "app.kubernetes.io/name=squid",
@@ -197,7 +197,7 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 			time.Sleep(1 * time.Second)
 
 			// Get logs after second request and verify TCP_MEM_HIT
-			By("Verifying second request was TCP_MEM_HIT")
+			By("Verifying second request was TCP_MEM_HIT (RAM cache hit)")
 			secondRequestLogs, err := k8sClient.CoreV1().Pods(namespace).GetLogs(squidPod.Name, &corev1.PodLogOptions{
 				Container: "squid",
 				SinceTime: &beforeSecondRequest,
@@ -210,8 +210,8 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 			fmt.Printf("%s\n", secondLogOutput)
 			fmt.Printf("==========================================\n")
 
-			// Verify second request shows TCP_MEM_HIT
-			Expect(secondLogOutput).To(ContainSubstring("TCP_MEM_HIT"), "Second request should show TCP_MEM_HIT")
+			// should show TCP_MEM_HIT for RAM cache
+			Expect(secondLogOutput).To(ContainSubstring("TCP_MEM_HIT"), "Second request should show TCP_MEM_HIT (RAM cache hit)")
 			Expect(secondLogOutput).To(ContainSubstring("httpbin.org/cache/3600"), "Should show the specific URL in logs")
 
 			fmt.Printf("DEBUG: Final summary - Both requests successfully decrypted and cached!\n")
