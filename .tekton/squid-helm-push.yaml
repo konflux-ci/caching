@@ -199,10 +199,21 @@ spec:
                 {
                   "source": "localhost/konflux-ci/squid-test",
                   "target": "quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester:{{revision}}"
+                },
+                {
+                  "source": "quay.io/konflux-ci/caching/squid",
+                  "target": "quay.io/konflux-ci/caching/squid:{{revision}}"
+                },
+                {
+                  "source": "quay.io/konflux-ci/caching/squid-test",
+                  "target": "quay.io/konflux-ci/caching/squid-test:{{revision}}"
                 }
               ]
           - name: VERSION_SUFFIX
             value: ""
+          - name: VALUES_FILES
+            value:
+              - "values.yaml"
         runAfter:
           - prefetch-dependencies
         taskRef:
@@ -210,7 +221,7 @@ spec:
             - name: name
               value: build-helm-chart-oci-ta
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-build-helm-chart-oci-ta:0.2@sha256:88df3d5924bf2d9fd3df30ff35bbf93c674cdf8dcafe924d2a939fb00ba8d261
+              value: quay.io/konflux-ci/tekton-catalog/task-build-helm-chart-oci-ta:0.3@sha256:20a6242fe7c624d314fd09c4b8b877df49d8e7f0725e86104bc4e375ab1784f0
             - name: kind
               value: task
           resolver: bundles

@@ -347,14 +347,14 @@ func (SquidHelm) Up() error {
 	if exists {
 		// Upgrade existing release
 		fmt.Printf("⚓ Upgrading existing squid helm release and waiting for readiness...\n")
-		err = sh.Run("helm", "upgrade", "squid", "./squid", "--wait", "--timeout=120s")
+		err = sh.Run("helm", "upgrade", "squid", "./squid", "--set", "environment=dev", "--wait", "--timeout=120s")
 		if err != nil {
 			return fmt.Errorf("failed to upgrade helm chart: %w", err)
 		}
 	} else {
 		// Install new release
 		fmt.Printf("⚓ Installing squid helm chart and waiting for readiness...\n")
-		err = sh.Run("helm", "install", "squid", "./squid", "--wait", "--timeout=120s")
+		err = sh.Run("helm", "install", "squid", "./squid", "--set", "environment=dev", "--wait", "--timeout=120s")
 		if err != nil {
 			return fmt.Errorf("failed to install helm chart: %w", err)
 		}

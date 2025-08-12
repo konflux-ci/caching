@@ -18,7 +18,7 @@ spec:
   restartPolicy: Always  # Keep the target pod running for development
   containers:
     - name: testserver
-      image: "{{ .Values.mirrord.targetPod.image.repository }}:{{ .Values.mirrord.targetPod.image.tag }}"
+      image: "{{ include "squid.test.image" . }}"
       imagePullPolicy: {{ .Values.mirrord.targetPod.image.pullPolicy | default "IfNotPresent" }}
       command: ["/app/testserver"]
       ports:
@@ -55,4 +55,4 @@ spec:
         timeoutSeconds: 2
         successThreshold: 1
         failureThreshold: 3
-{{- end }} 
+{{- end }}

@@ -2,16 +2,38 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Environment selector (default to release, override with --set environment=dev for development)
+environment: release
+
+# Environment-specific settings
+envSettings:
+  dev:
+    squid:
+      image:
+        repository: localhost/konflux-ci/squid
+        tag: "latest"
+    test:
+      image:
+        repository: localhost/konflux-ci/squid-test
+        tag: "latest"
+  release:
+    squid:
+      image:
+        repository: quay.io/konflux-ci/caching/squid
+        tag: "latest"
+    test:
+      image:
+        repository: quay.io/konflux-ci/caching/squid-test
+        tag: "latest"
+
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
 
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
-  repository: localhost/konflux-ci/squid
   # This sets the pull policy for images.
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  # Note: repository and tag are set dynamically by environment helpers in _helpers.tpl
 
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
 imagePullSecrets: []
@@ -206,9 +228,8 @@ prometheus:
 test:
   enabled: true # Enable helm test functionality
   image:
-    repository: localhost/konflux-ci/squid-test # Custom test image with UBI base
-    tag: "latest"
     pullPolicy: IfNotPresent
+    # Note: repository and tag are set dynamically by environment helpers in _helpers.tpl
   resources:
     requests:
       cpu: 100m
@@ -224,9 +245,8 @@ mirrord:
   targetPod:
     name: "mirrord-test-target" # Name of the mirrord target pod
     image:
-      repository: localhost/konflux-ci/squid-test # Same image as tests
-      tag: "latest"
       pullPolicy: IfNotPresent
+      # Note: repository and tag are set dynamically by squid.test.image helper in _helpers.tpl
     ports:
       http: 8080 # Standard HTTP port
       testServer: 9090 # Test server port for connection stealing
@@ -310,4 +330,3 @@ sslDb:
   storage:
     size: 1Gi  # Size of the PVC for SSL database
     storageClass: ""  # Storage class to use (empty for default)
-

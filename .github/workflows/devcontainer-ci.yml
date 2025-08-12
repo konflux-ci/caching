@@ -13,21 +13,21 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      
+
     - name: Install podman
       run: |
         sudo apt-get update
         sudo apt-get install -y podman
-        
+
     - name: Start podman service
       run: |
         # Start user podman service for socket mounting
         systemctl --user start podman.socket
-        
+
     - name: Initialize devcontainer environment
       run: |
         # Set up git config for initialize.sh
@@ -35,7 +35,7 @@ jobs:
         git config --global user.email "actions@github.com"
         # Run initialize script to generate devcontainer.env
         bash .devcontainer/initialize.sh
-        
+
     - name: Build devcontainer
       run: |
         cd .devcontainer
@@ -45,7 +45,7 @@ jobs:
           --build-arg USER_UID=$USER_UID \
           --build-arg USER_GID=$USER_GID \
           -t devcontainer:latest ..
-        
+
     - name: Start devcontainer
       run: |
         podman run -d \
@@ -61,12 +61,12 @@ jobs:
           -e CONTAINER_HOST=unix:///var/run/podman.sock \
           devcontainer:latest \
           sleep infinity
-          
+
     - name: Wait for container to be ready
       run: |
         sleep 5
         podman exec devcontainer-test echo "Container is ready"
-        
+
     - name: Verify we're running as vscode user
       run: |
         # Check that we're running as vscode user by default
@@ -78,40 +78,40 @@ jobs:
         fi
         # Also verify user details
         podman exec devcontainer-test id vscode
-        
+
     - name: Verify workspace files and ownership
       run: |
         podman exec devcontainer-test ls -la /workspaces/caching
         podman exec devcontainer-test stat -c "%U %G" /workspaces/caching
-        
+
     - name: Verify workspace files are accessible
       run: |
         # Test that we can access files as the vscode user (default)
         podman exec devcontainer-test ls -la /workspaces/caching
         podman exec devcontainer-test cat /workspaces/caching/README.md | head -5
-        
+
     - name: Lint Squid Helm chart
       run: |
         # Run helm lint on the squid chart
         podman exec devcontainer-test helm lint /workspaces/caching/squid
-            
+
     - name: Lint main Containerfile
       run: |
         podman exec -w /workspaces/caching devcontainer-test hadolint Containerfile
-        
+
     - name: Lint test Containerfile
       run: |
         podman exec -w /workspaces/caching devcontainer-test hadolint test.Containerfile
-          
+
     - name: Lint devcontainer Containerfile
       run: |
         podman exec -w /workspaces/caching devcontainer-test hadolint .devcontainer/Containerfile
-                        
+
     - name: Deploy Kind environment
       run: |
         # Test that deploying our environment in Kind and our Helm chart works
         podman exec -w /workspaces/caching devcontainer-test mage squidHelm:up
-  
+
     - name: Run our test suite (via mirrord)
       run: |
         # Run the test suite via mirrord, so we can see detailed output
@@ -119,17 +119,17 @@ jobs:
 
     - name: Retest Kind environment
       run: |
-        # Test that out deployment is reentrant and that `helm test` works
+        # Test that our deployment is reentrant and that `helm test` works
         podman exec -w /workspaces/caching devcontainer-test mage all
 
     - name: Clean up Kind environment
       if: always()
-      run: |  
+      run: |
         podman exec -w /workspaces/caching devcontainer-test mage clean
         podman exec -w /workspaces/caching devcontainer-test kind delete cluster --name caching-ci
-  
+
     - name: Cleanup container
       if: always()
       run: |
         podman stop devcontainer-test || true
-        podman rm devcontainer-test || true 
+        podman rm devcontainer-test || true
