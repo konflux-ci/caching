@@ -414,6 +414,26 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 	})
 
+	Describe("RAM Caching Verification", func() {
+		It("should verify cache_mem configuration is set for RAM-only caching", func() {
+			configMap, err := clientset.CoreV1().ConfigMaps(namespace).Get(ctx, "squid-config", metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid-config ConfigMap")
+
+			squidConf := configMap.Data["squid.conf"]
+
+			// Verify RAM caching configuration
+			Expect(squidConf).To(ContainSubstring("cache_mem"), "Should have cache_mem configured")
+			Expect(squidConf).To(ContainSubstring("memory_cache_mode always"), "Should use memory cache mode always")
+			Expect(squidConf).To(ContainSubstring("memory_cache_shared on"), "Should have shared memory cache enabled")
+
+			// Verify no disk cache directory is configured (RAM-only)
+			Expect(squidConf).NotTo(ContainSubstring("cache_dir"), "Should not have disk cache configured for RAM-only caching")
+
+			// Verify cache replacement policy
+			Expect(squidConf).To(ContainSubstring("cache_replacement_policy heap LFUDA"), "Should use LFUDA replacement policy")
+		})
+	})
+
 	Describe("Resources verification", func() {
 		It("should have the self-signed cluster issuer created", func() {
 			clusterIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, "proxy-self-signed-cluster-issuer", metav1.GetOptions{})
