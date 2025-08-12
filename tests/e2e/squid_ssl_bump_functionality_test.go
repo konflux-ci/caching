@@ -52,10 +52,28 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 
 	Describe("SSL-Bump Certificate Inspection", func() {
 		It("should present Squid CA certificate when accessing HTTPS sites", func() {
-			By("Making HTTPS request through Squid proxy with trusted client")
-			resp, err := trustedClient.Get("https://www.google.com")
-			Expect(err).NotTo(HaveOccurred(), "HTTPS request should succeed with trusted client")
-			defer resp.Body.Close()
+			By("Making HTTPS request through Squid proxy with trusted client (with retries)")
+			var resp *http.Response
+			var body []byte
+			Eventually(func() error {
+				var err error
+				resp, err = trustedClient.Get("https://www.google.com")
+				if err != nil {
+					return fmt.Errorf("network error: %w", err)
+				}
+				defer resp.Body.Close()
+
+				body, err = io.ReadAll(resp.Body)
+				if err != nil {
+					return fmt.Errorf("read body error: %w", err)
+				}
+
+				if resp.StatusCode != 200 {
+					return fmt.Errorf("expected status 200, got %d (retrying transient errors)", resp.StatusCode)
+				}
+
+				return nil
+			}, timeout, interval).Should(Succeed(), "HTTPS request should succeed with trusted client (retries handle transient HTTP errors)")
 
 			By("Verifying the certificate issuer is Squid CA")
 			Expect(resp.TLS).NotTo(BeNil(), "TLS connection details must be available")
@@ -65,14 +83,12 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 			issuer := resp.TLS.PeerCertificates[0].Issuer
 			Expect(issuer.Organization[0]).To(ContainSubstring("konflux"), "Certificate issuer organization should be konflux")
 
-			// Read the response body to ensure the connection was fully established
-			body, err := io.ReadAll(resp.Body)
-			Expect(err).NotTo(HaveOccurred(), "Should be able to read response body")
+			// Verify response body content
 			Expect(len(body)).To(BeNumerically(">", 0), "Response should have content")
 
 			// Verify that untrusted client fails (proves SSL-Bump is working)
 			By("Verifying untrusted client fails (proves SSL-Bump is working)")
-			_, err = client.Get("https://www.google.com")
+			_, err := client.Get("https://www.google.com")
 			Expect(err).To(HaveOccurred(), "Untrusted client should fail with certificate error")
 			Expect(err.Error()).To(ContainSubstring("certificate signed by unknown authority"),
 				"Error should indicate certificate verification failure")
@@ -98,11 +114,24 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 			By("Getting logs before making HTTPS request")
 			beforeRequest := metav1.Now()
 
-			By("Making single HTTPS request to generate SSL-Bump log entries")
-			resp, err := trustedClient.Get(testURL)
-			Expect(err).NotTo(HaveOccurred(), "HTTPS request should succeed")
-			Expect(resp.StatusCode).To(Equal(200), "Request should return 200 OK")
-			resp.Body.Close()
+			By("Making HTTPS request to generate SSL-Bump log entries (with retries)")
+			Eventually(func() error {
+				resp, err := trustedClient.Get(testURL)
+				if err != nil {
+					return fmt.Errorf("network error: %w", err)
+				}
+				defer resp.Body.Close()
+
+				if resp.StatusCode != 200 {
+					return fmt.Errorf(
+						"expected status 200, got %d (retrying transient errors like 503) %s",
+						resp.StatusCode,
+						resp.Status,
+					)
+				}
+
+				return nil
+			}, timeout, interval).Should(Succeed(), "HTTPS request should succeed (retries handle transient HTTP errors)")
 
 			// Wait a moment to ensure the request is logged
 			time.Sleep(1 * time.Second)
@@ -154,67 +183,62 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 
 			fmt.Printf("DEBUG: Using unique test URL: %s\n", testURL)
 
-			By("Making first HTTPS request (should be TCP_MISS)")
-			// Get logs before first request
-			beforeFirstRequest := metav1.Now()
+			// Get logs before all requests to capture the complete sequence
+			beforeSequence := metav1.Now()
 
-			resp1, err := trustedClient.Get(testURL)
-			Expect(err).NotTo(HaveOccurred(), "First HTTPS request should succeed")
-			Expect(resp1.StatusCode).To(Equal(200), "First request should return 200 OK")
-			resp1.Body.Close()
+			By("Making first HTTPS request until successful (will be TCP_MISS)")
+			Eventually(func() error {
+				resp1, err := trustedClient.Get(testURL)
+				if err != nil {
+					return fmt.Errorf("network error: %w", err)
+				}
+				defer resp1.Body.Close()
 
-			// Wait a moment to ensure the request is logged
+				if resp1.StatusCode != 200 {
+					return fmt.Errorf("expected status 200, got %d (retrying transient errors like 503)", resp1.StatusCode)
+				}
+
+				return nil
+			}, timeout, interval).Should(Succeed(), "First HTTPS request should eventually succeed")
+
+			By("Making second HTTPS request until successful (should be TCP_MEM_HIT)")
+			Eventually(func() error {
+				resp2, err := trustedClient.Get(testURL)
+				if err != nil {
+					return fmt.Errorf("network error: %w", err)
+				}
+				defer resp2.Body.Close()
+
+				if resp2.StatusCode != 200 {
+					return fmt.Errorf("expected status 200, got %d (retrying transient errors like 503)", resp2.StatusCode)
+				}
+
+				return nil
+			}, timeout, interval).Should(Succeed(), "Second HTTPS request should eventually succeed")
+
+			// Wait a moment to ensure all requests are logged
 			time.Sleep(1 * time.Second)
 
-			// Get logs after first request and verify TCP_MISS
-			By("Verifying first request was TCP_MISS")
-			firstRequestLogs, err := k8sClient.CoreV1().Pods(namespace).GetLogs(squidPod.Name, &corev1.PodLogOptions{
+			// Verify the complete caching sequence in logs
+			By("Getting logs since before the sequence")
+			allLogs, err := k8sClient.CoreV1().Pods(namespace).GetLogs(squidPod.Name, &corev1.PodLogOptions{
 				Container: "squid",
-				SinceTime: &beforeFirstRequest,
+				SinceTime: &beforeSequence,
 			}).Do(context.Background()).Raw()
-			Expect(err).NotTo(HaveOccurred(), "Failed to get logs after first request")
+			Expect(err).NotTo(HaveOccurred(), "Failed to get logs")
 
-			firstLogOutput := string(firstRequestLogs)
-			fmt.Printf("DEBUG: Logs after first request:\n")
+			By("Verifying caching behavior: at least one TCP_MISS and at least one TCP_MEM_HIT (RAM cache hit)")
+			logOutput := string(allLogs)
+			fmt.Printf("DEBUG: Complete caching sequence logs:\n")
 			fmt.Printf("==========================================\n")
-			fmt.Printf("%s\n", firstLogOutput)
-			fmt.Printf("==========================================\n")
-
-			// Verify first request shows TCP_MISS
-			Expect(firstLogOutput).To(ContainSubstring("TCP_MISS"), "First request should show TCP_MISS")
-			Expect(firstLogOutput).To(ContainSubstring("httpbin.org/cache/3600"), "Should show the specific URL in logs")
-
-			By("Making second HTTPS request to the same URL (should be TCP_MEM_HIT)")
-			// Get logs before second request
-			beforeSecondRequest := metav1.Now()
-
-			resp2, err := trustedClient.Get(testURL)
-			Expect(err).NotTo(HaveOccurred(), "Second HTTPS request should succeed")
-			Expect(resp2.StatusCode).To(Equal(200), "Second request should return 200 OK")
-			resp2.Body.Close()
-
-			// Wait a moment to ensure the request is logged
-			time.Sleep(1 * time.Second)
-
-			// Get logs after second request and verify TCP_MEM_HIT
-			By("Verifying second request was TCP_MEM_HIT (RAM cache hit)")
-			secondRequestLogs, err := k8sClient.CoreV1().Pods(namespace).GetLogs(squidPod.Name, &corev1.PodLogOptions{
-				Container: "squid",
-				SinceTime: &beforeSecondRequest,
-			}).Do(context.Background()).Raw()
-			Expect(err).NotTo(HaveOccurred(), "Failed to get logs after second request")
-
-			secondLogOutput := string(secondRequestLogs)
-			fmt.Printf("DEBUG: Logs after second request:\n")
-			fmt.Printf("==========================================\n")
-			fmt.Printf("%s\n", secondLogOutput)
+			fmt.Printf("%s\n", logOutput)
 			fmt.Printf("==========================================\n")
 
-			// should show TCP_MEM_HIT for RAM cache
-			Expect(secondLogOutput).To(ContainSubstring("TCP_MEM_HIT"), "Second request should show TCP_MEM_HIT (RAM cache hit)")
-			Expect(secondLogOutput).To(ContainSubstring("httpbin.org/cache/3600"), "Should show the specific URL in logs")
+			Expect(logOutput).To(ContainSubstring("TCP_MISS"), "Should show at least one TCP_MISS for the test URL")
+			Expect(logOutput).To(ContainSubstring("httpbin.org/cache/3600"), "Should show the specific cache URL in logs")
+			Expect(logOutput).To(ContainSubstring("TCP_MEM_HIT"), "Should show at least one TCP_MEM_HIT (RAM cache hit) for the test URL")
 
-			fmt.Printf("DEBUG: Final summary - Both requests successfully decrypted and cached!\n")
+			fmt.Printf("DEBUG: Caching verification successful - found both TCP_MISS and TCP_MEM_HIT!\n")
 		})
 	})
 })
