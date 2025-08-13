@@ -15,7 +15,7 @@ RUN if [ ! -f go.mod ]; then go mod init squid-exporter; go mod tidy; fi && \
     CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o squid-exporter .
 
 # Runtime stage - Use UBI10 with digest pin
-FROM registry.access.redhat.com/ubi10/ubi@sha256:32da7113b045183fc3e642db309d68e783ec1c2f14b761f61f14216d78bb7df9
+FROM registry.access.redhat.com/ubi10/ubi@sha256:b51579c045599bc2f2ba407f28fcc26e13b87409e062e227b185ae69d699bf95
 
 # Create non-root user
 RUN useradd -r -u 1001 -g 0 squid-exporter
