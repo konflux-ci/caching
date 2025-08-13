@@ -512,7 +512,9 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 			// Verify DNS names
 			Expect(proxyCert.Spec.DNSNames).To(ContainElement("localhost"))
-			Expect(proxyCert.Spec.DNSNames).To(ContainElement(namespace + "." + namespace + ".svc"))
+			Expect(proxyCert.Spec.DNSNames).To(ContainElement("squid"))
+			Expect(proxyCert.Spec.DNSNames).To(ContainElement("squid." + namespace + ".svc"))
+			Expect(proxyCert.Spec.DNSNames).To(ContainElement("squid." + namespace + ".svc.cluster.local"))
 
 			// Verify the certificate status
 			Expect(proxyCert.Status.Conditions).NotTo(BeEmpty(), "Proxy certificate should have status conditions")

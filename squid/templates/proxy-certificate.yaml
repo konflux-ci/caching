@@ -11,9 +11,10 @@ spec:
       - konflux
   dnsNames:
   - localhost
-  - {{ .Values.namespace.name }}.{{ .Values.namespace.name }}.svc
-  - {{ .Values.namespace.name }}.{{ .Values.namespace.name }}.svc.cluster.local
-  - {{ .Values.namespace.name }}.{{ .Values.namespace.name }}.svc.cluster.local
+  - {{ include "squid.fullname" . }}
+  - {{ include "squid.fullname" . }}.{{ .Values.namespace.name }}.svc
+  - {{ include "squid.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local
+  
   issuerRef:
     kind: ClusterIssuer
     name: {{ .Values.namespace.name }}-ca-issuer
