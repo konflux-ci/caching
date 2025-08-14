@@ -76,17 +76,11 @@ service:
 
 # Squid Prometheus Exporter Configuration
 # This enables monitoring of Squid metrics via Prometheus
-# Note: hostname is hardcoded to "localhost" in deployment template since
-# the exporter runs as a sidecar in the same pod as squid
+# Note: squid-exporter is now integrated into the main squid image
 # Note: squid port is referenced from service.port to avoid duplication
 squidExporter:
-  # Enable or disable the squid-exporter sidecar
+  # Enable or disable the integrated squid-exporter
   enabled: true
-  # Squid exporter container image - using konflux-ci fork instead of third-party
-  image:
-    repository: localhost/konflux-ci/squid-exporter
-    tag: "latest"
-    pullPolicy: IfNotPresent
   # Port on which the exporter will serve metrics
   port: 9301
   # Metrics path for Prometheus scraping
