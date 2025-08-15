@@ -116,6 +116,21 @@ squidExporter:
     initialDelaySeconds: 5
     periodSeconds: 5
 
+# Per-Site Squid Prometheus Exporter Configuration
+# This enables monitoring of per-site hit/miss ratios by parsing squid access logs
+perSiteExporter:
+  # This sidecar container parses squid access logs and exports per-hostname metrics
+  enabled: true  # Always enabled - do not change
+  # Port on which the exporter will serve metrics
+  port: 9302
+  # Metrics path
+  metricsPath: "/metrics"
+  # TLS configuration for secure metrics endpoint
+  tls:
+    enabled: false  # Set to true to enable HTTPS
+    certFile: "/etc/ssl/certs/exporter.crt"  # Path to TLS certificate file
+    keyFile: "/etc/ssl/private/exporter.key"  # Path to TLS private key file
+
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false

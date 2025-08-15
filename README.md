@@ -2,7 +2,7 @@
 
 This repository contains a Helm chart for deploying a Squid HTTP proxy server in Kubernetes. The chart is designed to be self-contained and deploys into a dedicated `proxy` namespace.
 
-## Deveoplment Prerequisites
+## Development Prerequisites
 
 Increase the `inotify` resource limits to avoid Kind issues related to
 [too many open files in](https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files).
@@ -78,8 +78,8 @@ mage all
 
 This single command will:
 - Create the 'caching' kind cluster (or connect to existing)
-- Build the consolidated squid container image (with integrated squid-exporter)
-- Load the image into the cluster
+- Build the consolidated squid container image (includes integrated squid-exporter and per-site exporter)
+- Load all images into the cluster
 - Deploy the Helm chart with all dependencies
 - Verify the deployment status
 
@@ -142,17 +142,29 @@ podman build -t localhost/konflux-ci/squid:latest -f Containerfile .
 kind load image-archive --name caching <(podman save localhost/konflux-ci/squid:latest)
 ```
 
-#### 3. Build and Load the "Testing" Container Image
+#### 3. Build and Load the squid-exporter Container Image
 
 ```bash
-# Build the container image (or use: mage build:squid)
+# Build the standard squid-exporter image (or use: mage build:squidExporter)
+cd squid-exporter
+podman build -t localhost/konflux-ci/squid-exporter:latest -f Containerfile .
+cd ..
+
+# Load the image into kind (or use: mage build:loadSquidExporter)
+kind load image-archive --name caching <(podman save localhost/konflux-ci/squid-exporter:latest)
+```
+
+#### 4. Build and Load the Testing Container Image
+
+```bash
+# Build the test container image
 podman build -t localhost/konflux-ci/squid-test:latest -f test.Containerfile .
 
 # Load the image into kind (or use: mage build:loadSquid)
 kind load image-archive --name caching <(podman save localhost/konflux-ci/squid-test:latest)
 ```
 
-#### 4. Deploy Squid with Helm
+#### 5. Deploy Squid with Helm
 
 ```bash
 # Install the Helm chart (or use: mage squidHelm:up)
@@ -161,6 +173,10 @@ helm install squid ./squid
 # Verify deployment (or use: mage squidHelm:status)
 kubectl get pods -n proxy
 kubectl get svc -n proxy
+
+# Verify both exporters are running
+kubectl logs -n proxy deployment/squid -c squid-exporter  # Standard metrics
+kubectl logs -n proxy deployment/squid -c squid           # Squid + integrated per-site metrics
 ```
 
 By default: 
@@ -227,7 +243,7 @@ curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
 
 ## Testing
 
-This repository includes comprehensive end-to-end tests to validate the Squid proxy deployment and HTTP caching functionality. The test suite uses [Ginkgo](https://onsi.github.io/ginkgo/) for behavior-driven testing and [mirrord](https://mirrord.dev/) for local development with cluster network access.
+Comprehensive E2E tests using [Ginkgo](https://onsi.github.io/ginkgo/) and [mirrord](https://mirrord.dev/) for cluster network access.
 
 ### Quick Start - Run All Tests
 
@@ -286,14 +302,29 @@ When adding new tests:
 5. **Update VS Code config**: Add debug configurations for new test files
 ## Prometheus Monitoring
 
-This chart includes comprehensive Prometheus monitoring capabilities through the integrated [squid-exporter](https://github.com/boynux/squid-exporter) (upstream). The squid-exporter is built into the main Squid container, providing a single, consolidated image. The monitoring system provides detailed metrics about Squid's operational status, including:
+This chart includes comprehensive Prometheus monitoring capabilities through **two complementary exporters**:
+
+1. **Standard Squid Exporter** (Port 9301): Uses the [squid-exporter](https://github.com/boynux/squid-exporter) for general squid metrics - runs as separate container
+2. **Per-Site Metrics Exporter** (Port 9302): Custom exporter providing detailed per-site hit/miss ratios and performance metrics - **integrated into main squid container** using direct log piping
+
+### Container Architecture
+
+The deployment uses a **2-container pod architecture**:
+
+- **Main Container (`squid`)**: Runs squid proxy with integrated per-site exporter using direct piping: `squid | per-site-exporter`
+- **Sidecar Container (`squid-exporter`)**: Standard metrics exporter that connects to squid via HTTP API
+
+This consolidated approach eliminates the complexity of named pipes and volume mounts while maintaining clean separation of concerns.
+
+The monitoring system provides detailed metrics about Squid's operational status, including:
 
 - **Liveness**: Squid service information and connection status
 - **Bandwidth Usage**: Client HTTP and Server HTTP traffic metrics
-- **Hit/Miss Rates**: Cache performance metrics (general and detailed)
+- **Hit/Miss Rates**: Cache performance metrics (general and **per-site detailed**)
 - **Storage Utilization**: Cache information and memory usage
 - **Service Times**: Response times for different operations
 - **Connection Information**: Active connections and request details
+- **Per-Site Analytics**: Site-specific hit ratios, bandwidth usage, and performance metrics
 
 ### Enabling Monitoring
 
@@ -315,105 +346,134 @@ squidExporter:
       memory: 64Mi
 ```
 
+#### Per-Site Metrics Exporter
+
+The chart includes a custom per-site metrics exporter providing detailed hit/miss ratios broken down by hostname. It runs on port 9302 and can be disabled by setting `perSiteExporter.enabled: false`.
+
+##### Consolidated Architecture
+
+The per-site exporter is **built directly into the main squid image** for optimal performance and simplicity. The exporter runs as a subprocess of the main squid container, receiving access logs via direct piping (`squid | exporter`).
+
+##### Building and Testing
+
+If you need to build or test the exporter manually:
+
+```bash
+# The exporter source is in cmd/squid-per-site-exporter/
+# It gets built automatically during squid image build
+
+# To test the exporter locally (reads from stdin):
+cd cmd/squid-per-site-exporter
+echo "sample log line" | go run main.go -web.listen-address :9302
+# Metrics available at http://localhost:9302/metrics
+
+# To test with a log file (using shell redirection):
+cat /path/to/squid.log | go run main.go -web.listen-address :9302
+
+# To test with HTTPS:
+echo "sample log line" | go run main.go -web.listen-address :9302 \
+  -web.tls-cert-file /path/to/cert.pem \
+  -web.tls-key-file /path/to/key.pem
+# Metrics available at https://localhost:9302/metrics
+
+# Or build it standalone:
+go build -o squid-per-site-exporter ./cmd/squid-per-site-exporter/
+```
+
+##### HTTPS Configuration
+
+To enable HTTPS for the per-site metrics endpoint:
+
+```yaml
+# In values.yaml
+perSiteExporter:
+  tls:
+    enabled: true
+    certFile: "/etc/ssl/certs/exporter.crt"
+    keyFile: "/etc/ssl/private/exporter.key"
+```
+
+**Note:** You'll need to mount the certificate and key files as secrets or configmaps in your deployment.
+
 ### Prometheus Integration
 
-#### Option 1: Prometheus Operator (Recommended)
-
-If you're using Prometheus Operator, the chart automatically creates a ServiceMonitor:
-
-```yaml
-prometheus:
-  serviceMonitor:
-    enabled: true
-    interval: 30s
-    scrapeTimeout: 10s
-    namespace: ""  # Leave empty to use the same namespace as the app
-```
-
-#### Option 2: Manual Prometheus Configuration
-
-**ServiceMonitor CRD Included:**
-
-The chart includes the ServiceMonitor CRD in the `crds/` directory, so it will be automatically installed by Helm when the chart is deployed. This follows the same pattern as the cert-manager and trust-manager CRDs.
-
-If you don't want ServiceMonitor functionality, you can disable it:
-```bash
-helm install squid ./squid --set prometheus.serviceMonitor.enabled=false
-```
-
-**For non-Prometheus Operator setups**, disable ServiceMonitor and use manual Prometheus configuration:
-
-For manual Prometheus setup (if you have an existing Prometheus instance), add this scrape configuration to your external Prometheus configuration:
-
-```yaml
-scrape_configs:
-  - job_name: 'squid-proxy'
-    static_configs:
-      - targets: ['squid.proxy.svc.cluster.local:9301']
-    scrape_interval: 30s
-    metrics_path: '/metrics'
-```
-
-**Complete example**: See `docs/prometheus-config-example.yaml` in this repository for a full Prometheus configuration file.
+**Prometheus Operator**: ServiceMonitor is auto-created (enabled by default)  
+**Manual Setup**: Use `--set prometheus.serviceMonitor.enabled=false` and see `docs/prometheus-config-example.yaml`
 
 ### Available Metrics
 
-The monitoring system provides numerous metrics including:
-
-#### Standard Squid Metrics (Port 9301)
-
-- `squid_client_http_requests_total`: Total client HTTP requests
-- `squid_client_http_hits_total`: Total client HTTP hits
-- `squid_client_http_errors_total`: Total client HTTP errors
-- `squid_server_http_requests_total`: Total server HTTP requests
-- `squid_cache_memory_bytes`: Cache memory usage
+**Standard Squid Metrics (Port 9301)**: HTTP requests, cache hits/misses, memory usage, response times  
+**Per-Site Metrics (Port 9302)**: Hit ratios, bandwidth, and performance broken down by hostname
 - `squid_cache_disk_bytes`: Cache disk usage
 - `squid_service_times_seconds`: Service times for different operations
 - `squid_up`: Squid availability status
 
+#### Per-Site Metrics (Port 9302)
+
+The per-site exporter provides detailed metrics broken down by hostname:
+- Hit/Miss ratios per site
+- Traffic volume per site  
+- Response times per site
+
 ### Accessing Metrics
 
-#### Via Port Forward
-
 ```bash
-# Forward the standard squid-exporter metrics port
+# Standard squid-exporter metrics
 kubectl port-forward -n proxy svc/squid 9301:9301
-
-# View standard metrics in your browser or with curl
 curl http://localhost:9301/metrics
+
+# Per-site metrics  
+kubectl port-forward -n proxy svc/squid 9302:9302
+curl http://localhost:9302/metrics
 ```
 
-#### Via Service
-
-The metrics are exposed on the service:
-
-```bash
-# Standard squid-exporter metrics (from within the cluster)
-curl http://squid.proxy.svc.cluster.local:9301/metrics
-```
+**For detailed metrics validation and format examples, see `tests/e2e/squid_exporter_test.go`.**
 
 ### Troubleshooting Metrics
 
 #### No Metrics Appearing
 
-1. **Check if the squid container is running**:
+1. **Check if the exporters are running**:
    ```bash
    kubectl get pods -n proxy
-   kubectl logs -n proxy deployment/squid -c squid-exporter
+   kubectl logs -n proxy deployment/squid -c squid-exporter      # Standard exporter
+   kubectl logs -n proxy deployment/squid -c squid  # Squid + integrated per-site exporter
    ```
 
-2. **Verify cache manager access**:
+2. **Verify cache manager access** (for standard exporter):
    ```bash
    # Test from within the pod
    kubectl exec -n proxy deployment/squid -c squid-exporter -- \
      curl -s http://localhost:3128/squid-internal-mgr/info
    ```
 
-3. **Check ServiceMonitor (if using Prometheus Operator)**:
+3. **Verify log processing** (for per-site exporter):
+   ```bash
+   # Check if squid logs are being generated
+   kubectl exec -n proxy deployment/squid -c squid -- \
+     tail -f /proc/1/fd/1 | head -5
+   
+   # Check per-site exporter health
+   kubectl exec -n proxy deployment/squid -c squid -- \
+     curl -s http://localhost:9302/health
+   ```
+
+4. **Check ServiceMonitor (if using Prometheus Operator)**:
    ```bash
    kubectl get servicemonitor -n proxy
    kubectl describe servicemonitor -n proxy squid
    ```
+
+#### Per-Site Metrics Not Updating
+
+If per-site metrics show no data, run the E2E tests to validate the setup:
+
+   ```bash
+# Run per-site metrics tests to diagnose issues
+ginkgo tests/e2e/squid_exporter_test.go -v
+```
+
+**The E2E tests automatically validate log processing, traffic generation, and metrics format.**
 
 #### Metrics Access Denied
 
@@ -622,295 +682,43 @@ error:transaction-end-before-headers
 
 This is normal - Kubernetes is performing TCP health checks without sending complete HTTP requests.
 
-## Testing with Squid Proxy Monitoring Integration
+## Monitoring Integration Testing
 
-This section provides step-by-step testing instructions for the Squid proxy monitoring integration.
+The monitoring integration is comprehensively validated through automated E2E tests. 
 
-### Complete Monitoring Integration Tests
+### Running Integration Tests
 
-#### 1. Pre-Test Setup
-
-##### 1.1 Verify Cluster Connectivity
 ```bash
-# Test basic cluster access
-kubectl cluster-info
+# Run all monitoring integration tests
+ginkgo tests/e2e/
 
-# Show current context
-kubectl config current-context
+# Run specific test suites
+ginkgo tests/e2e/squid_deployment_test.go    # Deployment validation
+ginkgo tests/e2e/squid_exporter_test.go      # Metrics integration
 
-# Verify nodes are ready
-kubectl get nodes
+# Run unit tests for per-site exporter
+go test ./tests/unit/
+
+# Or run with Ginkgo for detailed output
+cd tests/unit && ginkgo run --randomize-all
 ```
 
-**Expected Result**: Cluster information displays correctly with no errors.
+### What the Tests Validate
 
-##### 1.2 Install Prometheus Operator (if needed)
-```bash
-# Check if ServiceMonitor CRD exists
-kubectl get crd servicemonitors.monitoring.coreos.com
+The E2E tests automatically verify all monitoring integration scenarios:
+- ✅ **Deployment Health** - All containers running correctly
+- ✅ **Service Exposure** - Metrics endpoints accessible  
+- ✅ **Proxy Functionality** - HTTP caching and traffic flow
+- ✅ **Metrics Collection** - Standard and per-site statistics 
+- ✅ **Prometheus Format** - Valid metrics format and content
+- ✅ **ServiceMonitor** - Prometheus Operator integration
+- ✅ **Integration** - All components working together
 
-# If the CRD doesn't exist, install Prometheus Operator
-if ! kubectl get crd servicemonitors.monitoring.coreos.com &> /dev/null; then
-  echo "Installing Prometheus Operator..."
-  kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/bundle.yaml
-  
-  # Wait for CRDs to be established
-  kubectl wait --for condition=established --timeout=60s crd/servicemonitors.monitoring.coreos.com
-fi
-```
+**For detailed test scenarios and assertions, see the test files in `tests/e2e/`.**
 
-**Expected Result**: ServiceMonitor CRD is available for monitoring integration.
+### Quick Manual Verification
 
-##### 1.3 Clean Previous Deployments
-```bash
-# Remove any existing deployment
-helm uninstall squid 2>/dev/null || true
-
-# Remove namespace
-kubectl delete namespace proxy 2>/dev/null || true
-
-# Wait for cleanup
-sleep 10
-```
-
-**Expected Result**: Clean environment with no conflicts.
-
-#### 2. Deployment Tests
-
-##### 2.1 Deploy Squid with Monitoring
-```bash
-# Deploy with monitoring enabled
-helm install squid ./squid \
-  --set squidExporter.enabled=true \
-  --set prometheus.serviceMonitor.enabled=true \
-  --set cert-manager.enabled=false \
-  --wait --timeout=300s
-```
-
-**Expected Result**: Deployment succeeds with `STATUS: deployed`.
-
-##### 2.2 Verify Pod Readiness
-```bash
-# Wait for pods to be ready
-kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=squid -n proxy --timeout=120s
-
-# Check pod status
-kubectl get pods -n proxy -o wide
-```
-
-**Expected Result**: Pod shows `2/2 Running` (squid + squid-exporter containers).
-
-##### 2.3 Verify Service Creation
-```bash
-# Check service
-kubectl get svc -n proxy
-
-# Check service details
-kubectl describe svc squid -n proxy
-```
-
-**Expected Result**: Service exposes ports 3128 (proxy) and 9301 (metrics).
-
-##### 2.4 Verify ServiceMonitor (if Prometheus Operator available)
-```bash
-# Check ServiceMonitor
-kubectl get servicemonitor -n proxy
-
-# Check ServiceMonitor details
-kubectl describe servicemonitor squid -n proxy
-```
-
-**Expected Result**: ServiceMonitor created with correct selector and endpoints.
-
-#### 3. Container Health Tests
-
-##### 3.1 Verify Container Configuration
-```bash
-# Get pod name
-POD_NAME=$(kubectl get pods -n proxy -l app.kubernetes.io/name=squid -o jsonpath="{.items[0].metadata.name}")
-echo "Testing pod: $POD_NAME"
-
-# Check container names
-kubectl get pod $POD_NAME -n proxy -o jsonpath='{.spec.containers[*].name}'
-```
-
-**Expected Result**: Shows both `squid` and `squid-exporter` containers.
-
-##### 3.2 Check Container Logs
-```bash
-# Check squid container logs
-kubectl logs -n proxy $POD_NAME -c squid --tail=10
-
-# Check squid-exporter container logs
-kubectl logs -n proxy $POD_NAME -c squid-exporter --tail=10
-```
-
-**Expected Result**: 
-- Squid logs show successful startup with no permission errors
-- Squid-exporter logs show successful connection to cache manager
-
-#### 4. Metrics Endpoint Tests
-
-##### 4.1 Test Direct Metrics Access
-```bash
-# Port forward to metrics endpoint
-kubectl port-forward -n proxy $POD_NAME 9301:9301 &
-PF_PID=$!
-sleep 3
-
-# Test metrics endpoint
-curl -s http://localhost:9301/metrics | head -20
-
-# Cleanup
-kill $PF_PID 2>/dev/null || true
-```
-
-**Expected Result**: Prometheus metrics displayed starting with `# HELP` and `# TYPE` comments.
-
-##### 4.2 Test Service-Based Metrics Access
-```bash
-# Port forward via service
-kubectl port-forward -n proxy svc/squid 9301:9301 &
-PF_PID=$!
-sleep 3
-
-# Test metrics via service
-curl -s http://localhost:9301/metrics | grep -c "^squid_"
-
-# Cleanup
-kill $PF_PID 2>/dev/null || true
-```
-
-**Expected Result**: Number of squid metrics found (typically 20+ metrics).
-
-##### 4.3 Verify Specific Metrics
-```bash
-# Port forward for detailed metrics check
-kubectl port-forward -n proxy svc/squid 9301:9301 &
-PF_PID=$!
-sleep 3
-
-# Check for key metrics
-curl -s http://localhost:9301/metrics | grep -E "squid_up|squid_client_http|squid_cache_"
-
-# Cleanup
-kill $PF_PID 2>/dev/null || true
-```
-
-**Expected Result**: Shows key metrics like:
-- `squid_up 1` (service health)
-- `squid_client_http_requests_total` (request counters)
-- `squid_cache_memory_bytes` (cache stats)
-
-#### 5. Cache Manager Tests
-
-##### 5.1 Test Cache Manager Access
-```bash
-# Port forward to proxy port
-kubectl port-forward -n proxy $POD_NAME 3128:3128 &
-PF_PID=$!
-sleep 3
-
-# Test cache manager info
-curl -s http://localhost:3128/squid-internal-mgr/info | head -10
-
-# Cleanup
-kill $PF_PID 2>/dev/null || true
-```
-
-**Expected Result**: Cache manager information displayed (version, uptime, etc.).
-
-##### 5.2 Test Cache Manager Counters
-```bash
-# Port forward to proxy port
-kubectl port-forward -n proxy $POD_NAME 3128:3128 &
-PF_PID=$!
-sleep 3
-
-# Test cache manager counters
-curl -s http://localhost:3128/squid-internal-mgr/counters | head -10
-
-# Cleanup
-kill $PF_PID 2>/dev/null || true
-```
-
-**Expected Result**: Statistics counters displayed (requests, hits, misses, etc.).
-
-#### 6. Proxy Functionality Tests
-
-##### 6.1 Test Basic Proxy Functionality
-```bash
-# Port forward to proxy port
-kubectl port-forward -n proxy $POD_NAME 3128:3128 &
-PF_PID=$!
-sleep 3
-
-# Test proxy with external request
-curl -s --proxy http://localhost:3128 http://httpbin.org/ip
-
-# Cleanup
-kill $PF_PID 2>/dev/null || true
-```
-
-**Expected Result**: JSON response showing IP address, indicating request went through proxy.
-
-##### 6.2 Test Proxy from Within Cluster
-```bash
-# Create test pod and test proxy
-kubectl run test-client --image=curlimages/curl:latest --rm -it -- \
-  curl --proxy http://squid.proxy.svc.cluster.local:3128 --connect-timeout 10 http://httpbin.org/ip
-```
-
-**Expected Result**: JSON response showing external IP, confirming proxy works from within cluster.
-
-#### 7. Integration Tests
-
-##### 7.1 Test Metrics Generation After Proxy Usage
-```bash
-# Generate some proxy traffic
-kubectl port-forward -n proxy $POD_NAME 3128:3128 &
-PF_PROXY_PID=$!
-sleep 3
-
-# Make a few requests
-curl -s --proxy http://localhost:3128 http://httpbin.org/ip > /dev/null
-curl -s --proxy http://localhost:3128 http://httpbin.org/headers > /dev/null
-
-# Kill proxy port forward
-kill $PF_PROXY_PID 2>/dev/null || true
-sleep 2
-
-# Check if metrics reflect the traffic
-kubectl port-forward -n proxy $POD_NAME 9301:9301 &
-PF_METRICS_PID=$!
-sleep 3
-
-# Check request counters
-curl -s http://localhost:9301/metrics | grep "squid_client_http_requests_total"
-
-# Cleanup
-kill $PF_METRICS_PID 2>/dev/null || true
-```
-
-**Expected Result**: Request counters show non-zero values, indicating metrics are being updated.
-
-### Test Summary Checklist
-
-After completing all tests, verify:
-
-- [ ] **Deployment**: Chart installs successfully
-- [ ] **Containers**: Both squid and squid-exporter containers running
-- [ ] **Service**: Ports 3128 and 9301 accessible
-- [ ] **ServiceMonitor**: Created (if Prometheus Operator available)
-- [ ] **Metrics**: squid-exporter provides Prometheus metrics
-- [ ] **Cache Manager**: Accessible via localhost manager interface
-- [ ] **Proxy**: Functions correctly for external requests
-- [ ] **Integration**: Metrics update after proxy usage
-- [ ] **Cleanup**: All resources removed cleanly
-
-### Quick Test Commands
-
-For rapid testing during development:
+For rapid manual verification during development:
 
 ```bash
 # Quick deployment test
@@ -923,7 +731,7 @@ pkill -f "kubectl port-forward.*3128"
 
 # Quick metrics test
 kubectl port-forward -n proxy svc/squid 9301:9301 &
-curl -s http://localhost:9301/metrics | grep squid_up
+curl -s http://localhost:9301/metrics | head -10
 pkill -f "kubectl port-forward.*9301"
 
 # Quick cleanup

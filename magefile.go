@@ -418,7 +418,7 @@ func All() error {
 	fmt.Println()
 
 	// SquidHelm.Up will automatically handle all dependencies:
-	// SquidHelm.Up -> Build.LoadSquid + Build.LoadSquidExporter + Build.LoadTestImage -> Kind.Up + Build.Squid + Build.TestImage
+	// SquidHelm.Up -> Build.LoadSquid + Build.LoadTestImage -> Kind.Up + Build.Squid + Build.TestImage
 	err := (SquidHelm{}).Up()
 	if err != nil {
 		return err

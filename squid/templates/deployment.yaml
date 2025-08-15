@@ -67,12 +67,32 @@ spec:
             - name: http
               containerPort: 3128
               protocol: TCP
+            - name: per-site-http
+              containerPort: 9302
+              protocol: TCP
+          env:
+            - name: ENABLE_PER_SITE_EXPORTER
+              value: "{{ .Values.perSiteExporter.enabled }}"
+            - name: WEB_LISTEN_ADDRESS
+              value: ":{{ .Values.perSiteExporter.port }}"
+            {{- if .Values.perSiteExporter.tls.enabled }}
+            - name: WEB_TLS_CERT_FILE
+              value: "{{ .Values.perSiteExporter.tls.certFile }}"
+            - name: WEB_TLS_KEY_FILE
+              value: "{{ .Values.perSiteExporter.tls.keyFile }}"
+            {{- end }}
           livenessProbe:
             tcpSocket:
               port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
           readinessProbe:
             tcpSocket:
               port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          # Additional probe for per-site metrics endpoint (use readiness instead of startup to avoid long waits)
+          # Keep liveness/readiness on main http port for faster readiness
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
@@ -158,6 +178,7 @@ spec:
         - name: squid-certs-secret
           secret:
             secretName: {{ .Values.namespace.name }}-tls
+            optional: true
         # A single volume for all of Squid's spool data, including the ssl_db
         # Use emptyDir instead of PVC
         - name: squid-spool-vol

@@ -242,6 +242,25 @@
       "required": ["enabled"],
       "additionalProperties": false
     },
+    "perSiteExporter": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "metricsPath": { "type": "string", "pattern": "^/.*" },
+        "tls": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "certFile": { "type": "string" },
+            "keyFile": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": ["enabled", "port", "metricsPath"],
+      "additionalProperties": false
+    },
     "ingress": {
       "type": "object",
       "properties": {
