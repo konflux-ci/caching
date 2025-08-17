@@ -86,6 +86,12 @@ spec:
             # Mount the entire spool directory for the main container
             - name: squid-spool-vol
               mountPath: /var/spool/squid
+            {{- if .Values.test.enabled }}
+            # Mount the test-server's CA bundle for upstream trust
+            - name: test-server-ca-bundle-vol
+              mountPath: /etc/squid/trust/test-server
+              readOnly: true
+            {{- end }}
         {{- if .Values.squidExporter.enabled }}
         - name: squid-exporter
           image: "{{ include "squid.image" . }}"
@@ -162,7 +168,15 @@ spec:
         # Use emptyDir instead of PVC
         - name: squid-spool-vol
           emptyDir: {}
-
+        {{- if .Values.test.enabled }}
+        # This volume makes the ConfigMap created by the test-server-bundle available
+        - name: test-server-ca-bundle-vol
+          configMap:
+            name: test-server-bundle # This is the ConfigMap created by the Bundle in Step 5
+            items:
+            - key: ca.crt
+              path: ca.crt          
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

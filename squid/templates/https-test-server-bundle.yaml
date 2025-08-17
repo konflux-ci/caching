@@ -1,0 +1,15 @@
+{{- if .Values.test.enabled }}
+apiVersion: trust.cert-manager.io/v1alpha1
+kind: Bundle
+metadata:
+  name: test-server-bundle
+  namespace: proxy
+spec:
+  sources:
+  - secret:
+      name: "test-server-ca-secret"
+      key: "tls.crt"
+  target:
+    configMap:
+      key: "ca.crt"
+{{- end }}

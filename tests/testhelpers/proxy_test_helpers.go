@@ -1,6 +1,7 @@
 package testhelpers
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
@@ -10,10 +11,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"sync/atomic"
+
 	"time"
 
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 // TestServerResponse represents the standard JSON response from test servers
@@ -107,21 +113,32 @@ func NewSquidProxyClient(serviceName, namespace string) (*http.Client, error) {
 	}, nil
 }
 
-// NewTrustedSquidProxyClient creates an HTTP client configured to use the Squid proxy and trust the Squid CA
-func NewTrustedSquidProxyClient(serviceName, namespace string, caCertPEM []byte) (*http.Client, error) {
+// NewTrustedSquidProxyClient creates an HTTP client configured to use the Squid proxy and trust both the Squid CA and test-server CA
+func NewTrustedSquidProxyClient(serviceName, namespace string, squidCACertPEM []byte, testServerCACertPEM []byte) (*http.Client, error) {
 	// Set up proxy URL to squid service
 	proxyURL, err := url.Parse(fmt.Sprintf("http://%s.%s.svc.cluster.local:3128", serviceName, namespace))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse proxy URL: %w", err)
 	}
 
-	// Create a certificate pool and add the Squid CA
+	// Create a combined certificate pool with both CAs
 	caCertPool := x509.NewCertPool()
-	if !caCertPool.AppendCertsFromPEM(caCertPEM) {
-		return nil, fmt.Errorf("failed to append CA certificate to pool")
+
+	// Add the Squid CA certificate
+	if len(squidCACertPEM) > 0 {
+		if !caCertPool.AppendCertsFromPEM(squidCACertPEM) {
+			return nil, fmt.Errorf("failed to append Squid CA certificate to pool")
+		}
 	}
 
-	// Create TLS config that trusts the Squid CA
+	// Add the test-server CA certificate
+	if len(testServerCACertPEM) > 0 {
+		if !caCertPool.AppendCertsFromPEM(testServerCACertPEM) {
+			return nil, fmt.Errorf("failed to append test-server CA certificate to pool")
+		}
+	}
+
+	// Create TLS config that trusts both CAs
 	tlsConfig := &tls.Config{
 		RootCAs: caCertPool,
 	}
@@ -195,4 +212,268 @@ func ValidateServerHit(response *TestServerResponse, expectedRequestID float64, 
 		"Request should have expected request ID")
 	Expect(server.GetRequestCount()).To(Equal(int32(expectedRequestID)),
 		"Server should have received expected number of requests")
+}
+
+// SquidConfigManager handles squid configuration management for tests
+type SquidConfigManager struct {
+	k8sClient          kubernetes.Interface
+	namespace          string
+	configMapName      string
+	deploymentName     string
+	originalConfigData map[string]string
+	configModified     bool
+	requiredTLSLine    string
+	anchorLine         string
+}
+
+// NewSquidConfigManager creates a new squid configuration manager
+func NewSquidConfigManager(k8sClient kubernetes.Interface, namespace, configMapName, deploymentName string) *SquidConfigManager {
+	return &SquidConfigManager{
+		k8sClient:       k8sClient,
+		namespace:       namespace,
+		configMapName:   configMapName,
+		deploymentName:  deploymentName,
+		requiredTLSLine: "tls_outgoing_options cafile=/etc/squid/trust/test-server/ca.crt",
+		anchorLine:      "ssl_bump bump all",
+		configModified:  false,
+	}
+}
+
+// GetSquidConfigMap retrieves the current squid ConfigMap
+func (scm *SquidConfigManager) GetSquidConfigMap(ctx context.Context) (*corev1.ConfigMap, error) {
+	fmt.Printf("DEBUG: Getting squid ConfigMap: %s/%s\n", scm.namespace, scm.configMapName)
+	configMap, err := scm.k8sClient.CoreV1().ConfigMaps(scm.namespace).Get(ctx, scm.configMapName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get squid ConfigMap %s/%s: %w", scm.namespace, scm.configMapName, err)
+	}
+	fmt.Printf("DEBUG: Successfully retrieved squid ConfigMap\n")
+	return configMap, nil
+}
+
+// HasRequiredTLSConfig checks if the required TLS configuration line exists in squid.conf
+func (scm *SquidConfigManager) HasRequiredTLSConfig(ctx context.Context) (bool, error) {
+	configMap, err := scm.GetSquidConfigMap(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	squidConf, exists := configMap.Data["squid.conf"]
+	if !exists {
+		return false, fmt.Errorf("squid.conf not found in ConfigMap %s", scm.configMapName)
+	}
+
+	hasConfig := strings.Contains(squidConf, scm.requiredTLSLine)
+	fmt.Printf("DEBUG: Required TLS config present: %t\n", hasConfig)
+	return hasConfig, nil
+}
+
+// EnsureRequiredTLSConfig ensures the required TLS configuration is present, adding it if necessary
+func (scm *SquidConfigManager) EnsureRequiredTLSConfig(ctx context.Context) error {
+	// Always store original config first for reliable cleanup, regardless of whether we modify it
+	if scm.originalConfigData == nil {
+		configMap, err := scm.GetSquidConfigMap(ctx)
+		if err != nil {
+			return err
+		}
+		scm.originalConfigData = make(map[string]string)
+		for k, v := range configMap.Data {
+			scm.originalConfigData[k] = v
+		}
+		fmt.Printf("DEBUG: Stored original ConfigMap data for potential restoration\n")
+	}
+
+	hasConfig, err := scm.HasRequiredTLSConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	if hasConfig {
+		fmt.Printf("DEBUG: Required TLS configuration already present, no changes needed\n")
+		return nil
+	}
+
+	fmt.Printf("DEBUG: Required TLS configuration missing, adding it\n")
+	return scm.addTLSConfigToSquidConf(ctx)
+}
+
+// addTLSConfigToSquidConf adds the required TLS configuration line after the anchor line
+func (scm *SquidConfigManager) addTLSConfigToSquidConf(ctx context.Context) error {
+	configMap, err := scm.GetSquidConfigMap(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Original config should already be stored by EnsureRequiredTLSConfig
+
+	squidConf, exists := configMap.Data["squid.conf"]
+	if !exists {
+		return fmt.Errorf("squid.conf not found in ConfigMap %s", scm.configMapName)
+	}
+
+	// Print original configmap content
+	fmt.Printf("DEBUG: Original squid.conf content BEFORE modification:\n")
+	fmt.Printf("==========================================\n")
+	fmt.Printf("%s\n", squidConf)
+	fmt.Printf("==========================================\n")
+
+	// Find the anchor line and add the TLS config after it
+	lines := strings.Split(squidConf, "\n")
+	var newLines []string
+	anchorFound := false
+
+	for _, line := range lines {
+		newLines = append(newLines, line)
+		if strings.TrimSpace(line) == scm.anchorLine {
+			anchorFound = true
+			newLines = append(newLines, scm.requiredTLSLine)
+			fmt.Printf("DEBUG: Added TLS config line after anchor: %s\n", scm.anchorLine)
+		}
+	}
+
+	if !anchorFound {
+		return fmt.Errorf("anchor line '%s' not found in squid.conf", scm.anchorLine)
+	}
+
+	// Update the ConfigMap with modified content
+	modifiedSquidConf := strings.Join(newLines, "\n")
+	configMap.Data["squid.conf"] = modifiedSquidConf
+
+	// Print modified configmap content
+	fmt.Printf("DEBUG: Modified squid.conf content AFTER modification:\n")
+	fmt.Printf("==========================================\n")
+	fmt.Printf("%s\n", modifiedSquidConf)
+	fmt.Printf("==========================================\n")
+
+	_, err = scm.k8sClient.CoreV1().ConfigMaps(scm.namespace).Update(ctx, configMap, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to update squid ConfigMap: %w", err)
+	}
+
+	scm.configModified = true
+	fmt.Printf("DEBUG: Successfully updated squid ConfigMap with TLS configuration\n")
+	return nil
+}
+
+// RestartSquidDeployment restarts the squid deployment to pick up configuration changes
+func (scm *SquidConfigManager) RestartSquidDeployment(ctx context.Context) error {
+	fmt.Printf("DEBUG: Restarting squid deployment: %s/%s\n", scm.namespace, scm.deploymentName)
+
+	// Get current deployment
+	deployment, err := scm.k8sClient.AppsV1().Deployments(scm.namespace).Get(ctx, scm.deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get deployment %s/%s: %w", scm.namespace, scm.deploymentName, err)
+	}
+
+	// Store original replica count
+	originalReplicas := *deployment.Spec.Replicas
+	fmt.Printf("DEBUG: Step 1/4 - Original replica count: %d\n", originalReplicas)
+
+	// Step 1: Scale down to 0
+	deployment.Spec.Replicas = &[]int32{0}[0]
+	_, err = scm.k8sClient.AppsV1().Deployments(scm.namespace).Update(ctx, deployment, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to scale down deployment: %w", err)
+	}
+	fmt.Printf("DEBUG: Step 1/4 - Scaled deployment down to 0 replicas\n")
+
+	// Step 2: Wait for all squid pods to be deleted
+	fmt.Printf("DEBUG: Step 2/4 - Waiting for all squid pods to be deleted...\n")
+	Eventually(func() error {
+		pods, err := scm.k8sClient.CoreV1().Pods(scm.namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component!=test",
+		})
+		if err != nil {
+			return fmt.Errorf("failed to list squid pods: %w", err)
+		}
+
+		if len(pods.Items) > 0 {
+			fmt.Printf("DEBUG: Still have %d squid pods, waiting for deletion...\n", len(pods.Items))
+			for i, pod := range pods.Items {
+				fmt.Printf("DEBUG:   Pod %d: %s (Status: %s)\n", i+1, pod.Name, pod.Status.Phase)
+			}
+			return fmt.Errorf("still have %d squid pods", len(pods.Items))
+		}
+		return nil
+	}, 120*time.Second, 3*time.Second).Should(Succeed())
+	fmt.Printf("DEBUG: Step 2/4 - All squid pods have been deleted\n")
+
+	// Step 3: Scale back up to original count
+	deployment, err = scm.k8sClient.AppsV1().Deployments(scm.namespace).Get(ctx, scm.deploymentName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to get deployment for scale up: %w", err)
+	}
+	deployment.Spec.Replicas = &originalReplicas
+	_, err = scm.k8sClient.AppsV1().Deployments(scm.namespace).Update(ctx, deployment, metav1.UpdateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to scale up deployment: %w", err)
+	}
+	fmt.Printf("DEBUG: Step 3/4 - Scaled deployment back up to %d replicas\n", originalReplicas)
+
+	// Step 4: Wait for deployment status to be available
+	fmt.Printf("DEBUG: Step 4/4 - Waiting for deployment to be ready...\n")
+	Eventually(func() error {
+		deployment, err = scm.k8sClient.AppsV1().Deployments(scm.namespace).Get(ctx, scm.deploymentName, metav1.GetOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to get deployment: %w", err)
+		}
+
+		if deployment.Status.ReadyReplicas != *deployment.Spec.Replicas {
+			return fmt.Errorf("deployment not ready: %d/%d replicas ready",
+				deployment.Status.ReadyReplicas, *deployment.Spec.Replicas)
+		}
+		return nil
+	}, 180*time.Second, 5*time.Second).Should(Succeed())
+	fmt.Printf("DEBUG: Step 4/4 - Deployment is ready\n")
+	fmt.Printf("DEBUG: Deployment restart complete!\n")
+	return nil
+}
+
+// WasConfigModified returns true if the configuration was modified
+func (scm *SquidConfigManager) WasConfigModified() bool {
+	return scm.configModified
+}
+
+// RestoreOriginalConfig restores the original squid configuration if we have a backup
+// Returns (wasRestored, error) where wasRestored indicates if ConfigMap was actually updated
+func (scm *SquidConfigManager) RestoreOriginalConfig(ctx context.Context) (bool, error) {
+	if scm.originalConfigData == nil {
+		fmt.Printf("DEBUG: No original configuration backup available\n")
+		return false, nil
+	}
+
+	fmt.Printf("DEBUG: Restoring original squid configuration (configModified=%t)\n", scm.configModified)
+
+	configMap, err := scm.GetSquidConfigMap(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	// Print current configmap content before restoration
+	currentSquidConf, exists := configMap.Data["squid.conf"]
+	if exists {
+		fmt.Printf("DEBUG: Current squid.conf content BEFORE restoration:\n")
+		fmt.Printf("==========================================\n")
+		fmt.Printf("%s\n", currentSquidConf)
+		fmt.Printf("==========================================\n")
+	}
+
+	// Print original configmap content that will be restored
+	originalSquidConf, exists := scm.originalConfigData["squid.conf"]
+	if exists {
+		fmt.Printf("DEBUG: Original squid.conf content TO BE restored:\n")
+		fmt.Printf("==========================================\n")
+		fmt.Printf("%s\n", originalSquidConf)
+		fmt.Printf("==========================================\n")
+	}
+
+	// Restore original data
+	configMap.Data = scm.originalConfigData
+
+	_, err = scm.k8sClient.CoreV1().ConfigMaps(scm.namespace).Update(ctx, configMap, metav1.UpdateOptions{})
+	if err != nil {
+		return false, fmt.Errorf("failed to restore original ConfigMap: %w", err)
+	}
+
+	fmt.Printf("DEBUG: Successfully restored original squid configuration\n")
+	return true, nil
 }
