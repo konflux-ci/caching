@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -295,31 +294,8 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		)
 
 		BeforeEach(func() {
-			// Get the pod's IP address for cross-pod communication
-			podIP, err := getPodIP()
-			Expect(err).NotTo(HaveOccurred(), "Failed to get pod IP")
-
-			// Get test server port from environment, fallback to 0 (random port)
-			testPort := 0
-			if testPortStr := os.Getenv("TEST_SERVER_PORT"); testPortStr != "" {
-				if port, parseErr := strconv.Atoi(testPortStr); parseErr == nil {
-					testPort = port
-				}
-			}
-
-			// Create test server using helpers
-			testServer, err = testhelpers.NewProxyTestServer("Hello from test server", podIP, testPort)
-			Expect(err).NotTo(HaveOccurred(), "Failed to create test server")
-
-			// Create HTTP client configured for Squid proxy using helpers
-			client, err = testhelpers.NewSquidProxyClient(serviceName, namespace)
-			Expect(err).NotTo(HaveOccurred(), "Failed to create proxy client")
-		})
-
-		AfterEach(func() {
-			if testServer != nil {
-				testServer.Close()
-			}
+			testServer = setupHTTPTestServer("HTTP caching test server")
+			client = setupHTTPTestClient()
 		})
 
 		It("should cache HTTP responses and serve subsequent requests from cache", func() {

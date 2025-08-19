@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -158,21 +157,8 @@ var _ = Describe("Squid Proxy Metrics Integration", func() {
 
 		BeforeEach(func() {
 			By("Setting up test infrastructure")
-
-			// Get pod IP for test server
-			podIP := os.Getenv("POD_IP")
-			if podIP == "" {
-				Fail("POD_IP environment variable not set (requires downward API)")
-			}
-
-			// Create test server for generating traffic
-			var err error
-			testServer, err = testhelpers.NewProxyTestServer("Metrics Test", podIP, 0)
-			Expect(err).NotTo(HaveOccurred(), "Should create test server")
-
-			// Create proxy client
-			client, err = testhelpers.NewSquidProxyClient(serviceName, namespace)
-			Expect(err).NotTo(HaveOccurred(), "Should create proxy client")
+			testServer = setupHTTPTestServer("Metrics Test")
+			client = setupHTTPTestClient()
 
 			// Create client for metrics endpoint
 			metricsClient = &http.Client{

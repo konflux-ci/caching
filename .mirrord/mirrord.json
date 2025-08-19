@@ -20,5 +20,8 @@
                 "GOCACHE"
             ]
         }
+    },
+    "experimental": {
+        "vfork_emulation": true
     }
 }

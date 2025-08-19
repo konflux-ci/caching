@@ -594,6 +594,29 @@
       "required": ["storage"],
       "additionalProperties": false,
       "description": "SSL Database configuration for persistent storage of SSL certificates"
+    },
+    "cache": {
+      "type": "object",
+      "properties": {
+        "allowList": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of URL regex patterns to cache"
+        }
+      },
+      "additionalProperties": false
+    },
+    "tlsOutgoingOptions": {
+      "type": "object",
+      "properties": {
+        "caFile": {
+          "type": "string",
+          "description": "CA file for outgoing TLS connections"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": [

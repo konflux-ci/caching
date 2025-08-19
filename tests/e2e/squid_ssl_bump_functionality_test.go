@@ -29,6 +29,18 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 
 	const testServerURL = "https://test-server.proxy.svc.cluster.local:443"
 
+	BeforeAll(func() {
+		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
+			OutgoingTLSCAFile: "/etc/squid/trust/test-server/ca.crt",
+		})
+		Expect(err).NotTo(HaveOccurred(), "Failed to configure squid for SSL bump tests")
+
+		DeferCleanup(func() {
+			err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to restore squid cache defaults")
+		})
+	})
+
 	BeforeEach(func() {
 		var err error
 

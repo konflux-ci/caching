@@ -7,4 +7,19 @@ metadata:
     {{- include "squid.labels" . | nindent 4 }}
 data:
   squid.conf: |-
-    {{- .Files.Get "squid.conf" | nindent 4 }} 
+    {{- .Files.Get "squid.conf" | nindent 4 }}
+
+    {{- if .Values.tlsOutgoingOptions.caFile }}
+    tls_outgoing_options cafile={{ .Values.tlsOutgoingOptions.caFile }}
+    {{- end }}
+
+    {{- if .Values.cache.allowList }}
+    {{- range .Values.cache.allowList }}
+    acl cached_urls url_regex {{ . }}
+    {{- end }}
+
+    cache allow cached_urls
+    cache deny all
+    {{- else }}
+    cache allow all
+    {{- end }}
