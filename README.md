@@ -156,7 +156,7 @@ kind load image-archive --name caching <(podman save localhost/konflux-ci/squid-
 
 ```bash
 # Install the Helm chart (or use: mage squidHelm:up)
-helm install squid ./squid
+helm install squid ./squid --environment=dev
 
 # Verify deployment (or use: mage squidHelm:status)
 kubectl get pods -n proxy
