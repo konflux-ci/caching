@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:5a57b4c2509df8df587e19cc7c2d9cfa45b012139f5decd77f942daeb2334228 AS squid-base
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:d8cba62fbd44610595a6ce7badd287ca4c9985cbe9df55cc9b6a5c311b9a46e6 AS squid-base
 
 ENV NAME="konflux-ci/squid"
 ENV SUMMARY="The Squid proxy caching server for Konflux CI"
@@ -44,7 +44,7 @@ RUN echo "pid_filename /run/squid/squid.pid" >> /etc/squid/squid.conf && \
 # ==========================================
 # Stage 2: Build squid-exporter
 # ==========================================
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:5a57b4c2509df8df587e19cc7c2d9cfa45b012139f5decd77f942daeb2334228 AS squid-exporter-builder
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:d8cba62fbd44610595a6ce7badd287ca4c9985cbe9df55cc9b6a5c311b9a46e6 AS squid-exporter-builder
 
 # Install required packages for Go build
 RUN microdnf install -y \
