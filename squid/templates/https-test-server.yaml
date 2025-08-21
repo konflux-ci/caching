@@ -1,0 +1,115 @@
+{{- if .Values.test.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-server
+  namespace: proxy
+  labels:
+    app: test-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-server
+  template:
+    metadata:
+      labels:
+        app: test-server
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 443
+        volumeMounts:
+        - name: tls
+          mountPath: "/etc/nginx/tls"
+          readOnly: true
+        - name: nginx-conf
+          mountPath: "/etc/nginx/conf.d/default.conf"
+          subPath: "default.conf"
+          readOnly: true
+      volumes:
+      - name: tls
+        secret:
+          secretName: test-server-tls
+      - name: nginx-conf
+        configMap:
+          name: test-server-nginx-conf
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-server
+  namespace: proxy
+spec:
+  selector:
+    app: test-server
+  ports:
+    - protocol: TCP
+      port: 443
+      targetPort: 443
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-server-nginx-conf
+  namespace: proxy
+data:
+  default.conf: |
+    server {
+        listen 443 ssl;
+        server_name test-server.proxy.svc.cluster.local;
+
+        ssl_certificate /etc/nginx/tls/tls.crt;
+        ssl_certificate_key /etc/nginx/tls/tls.key;
+
+        # Handle SSL-Bump test paths
+        location ~ ^/ssl-bump-test/(\w+)$ {
+            set $test_id $1;
+            add_header Content-Type application/json;
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+            return 200 '{\
+            "message": "SSL-Bump test", \
+            "test_id": "$test_id", \
+            "timestamp": "$time_iso8601"\
+            }';
+        }
+
+        location /ssl-bump-test {
+            add_header Content-Type application/json;
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+            return 200 '{\
+            "message": "SSL-Bump test without ID", \
+            "timestamp": "$time_iso8601"\
+            }';
+        }
+
+        # Handle SSL-Bump cache test paths (cacheable content for cache testing)
+        location ~ ^/ssl-bump-cache-test/(\w+)$ {
+            set $test_id $1;
+            add_header Content-Type application/json;
+            add_header Cache-Control "public, max-age=300";
+            return 200 '{\
+            "message": "SSL-Bump cache test", \
+            "test_id": "$test_id", \
+            "timestamp": "$time_iso8601", \
+            "cacheable": true\
+            }';
+        }
+
+        # Default location - return a simple response for testing
+        location / {
+            add_header Content-Type text/html;
+            return 200 '<html>\
+            <head>\
+               <title>HTTPS Test Server</title>\
+            </head>\
+            <body>\
+               <h1>HTTPS Test Server</h1>\
+               <p>SSL-Bump functionality test server is running.</p>\
+            </body>\
+            </html>';
+        }
+    }
+{{- end }}

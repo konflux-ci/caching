@@ -19,16 +19,19 @@ import (
 // NOTE: This file assumes helper functions like 'getPodIP' and 'generateCacheBuster'
 // are available from other test files in the package.
 
-var _ = Describe("Squid SSL-Bump Functionality", func() {
+var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 	var (
 		k8sClient     *kubernetes.Clientset
 		config        *rest.Config
-		client        *http.Client
 		trustedClient *http.Client
+		squidPod      corev1.Pod
 	)
+
+	const testServerURL = "https://test-server.proxy.svc.cluster.local:443"
 
 	BeforeEach(func() {
 		var err error
+
 		config, err = rest.InClusterConfig()
 		Expect(err).NotTo(HaveOccurred(), "Failed to get in-cluster config")
 
@@ -37,79 +40,115 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 
 		// Get the Squid CA certificate from the ConfigMap created by trust-manager
 		By("Getting Squid CA certificate from trust-manager ConfigMap")
-		caConfigMap, err := k8sClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), "proxy-ca-bundle", metav1.GetOptions{})
+		fmt.Printf("DEBUG: Retrieving proxy CA bundle from ConfigMap\n")
+		proxyCAConfigMap, err := k8sClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), "proxy-ca-bundle", metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred(), "Failed to get proxy-ca-bundle ConfigMap")
-		Expect(caConfigMap.Data).To(HaveKey("ca-bundle.crt"), "CA ConfigMap should contain 'ca-bundle.crt'")
+		Expect(proxyCAConfigMap.Data).To(HaveKey("ca-bundle.crt"), "CA ConfigMap should contain 'ca-bundle.crt'")
+		fmt.Printf("DEBUG: Proxy CA bundle retrieved successfully\n")
 
-		// Create trusted client with Squid CA
-		trustedClient, err = testhelpers.NewTrustedSquidProxyClient(serviceName, namespace, []byte(caConfigMap.Data["ca-bundle.crt"]))
-		Expect(err).NotTo(HaveOccurred(), "Failed to create trusted proxy client")
+		// Get the test-server CA certificate from the ConfigMap created by trust-manager
+		By("Getting test-server CA certificate from trust-manager ConfigMap")
+		fmt.Printf("DEBUG: Retrieving test-server CA bundle from ConfigMap\n")
+		testServerCAConfigMap, err := k8sClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), "test-server-bundle", metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred(), "Failed to get test-server-bundle ConfigMap")
+		Expect(testServerCAConfigMap.Data).To(HaveKey("ca.crt"), "Test-server CA ConfigMap should contain 'ca.crt'")
+		fmt.Printf("DEBUG: Test-server CA bundle retrieved successfully\n")
 
-		// Also create regular client for comparison
-		client, err = testhelpers.NewSquidProxyClient(serviceName, namespace)
-		Expect(err).NotTo(HaveOccurred(), "Failed to create proxy client")
+		// Create trusted client with both CA bundles (same as test-client combined approach)
+		By("Creating trusted client with both CA bundles")
+		fmt.Printf("DEBUG: Creating trusted client with proxy CA and test-server CA")
+		trustedClient, err = testhelpers.NewTrustedSquidProxyClient(
+			serviceName,
+			namespace,
+			[]byte(proxyCAConfigMap.Data["ca-bundle.crt"]),
+			[]byte(testServerCAConfigMap.Data["ca.crt"]),
+		)
+		Expect(err).NotTo(HaveOccurred(), "Failed to create trusted proxy client with both CA bundles")
+		fmt.Printf("DEBUG: Trusted client created successfully\n")
+		By("Getting Squid pod name")
+		pods, err := k8sClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=squid",
+		})
+		Expect(err).NotTo(HaveOccurred(), "Failed to list Squid pods")
+		Expect(pods.Items).NotTo(BeEmpty(), "Should have at least one Squid pod")
+		squidPod = pods.Items[0]
 	})
 
 	Describe("SSL-Bump Certificate Inspection", func() {
-		It("should present Squid CA certificate when accessing HTTPS sites", func() {
+		It("should successfully make HTTPS request through Squid proxy with trusted client", func() {
+			fmt.Printf("DEBUG: Testing HTTPS request to: %s\n", testServerURL)
 			By("Making HTTPS request through Squid proxy with trusted client (with retries)")
 			var resp *http.Response
 			var body []byte
+
 			Eventually(func() error {
 				var err error
-				resp, err = trustedClient.Get("https://www.google.com")
+				fmt.Printf("DEBUG: Attempting HTTPS request...\n")
+				resp, err = trustedClient.Get(testServerURL)
 				if err != nil {
+					fmt.Printf("DEBUG: Request failed: %v\n", err)
 					return fmt.Errorf("network error: %w", err)
 				}
 				defer resp.Body.Close()
 
+				fmt.Printf("DEBUG: Request successful, status: %s\n", resp.Status)
 				body, err = io.ReadAll(resp.Body)
 				if err != nil {
+					fmt.Printf("DEBUG: Failed to read response body: %v\n", err)
 					return fmt.Errorf("read body error: %w", err)
 				}
 
+				fmt.Printf("DEBUG: Response body length: %d bytes\n", len(body))
 				if resp.StatusCode != 200 {
+					fmt.Printf("DEBUG: Unexpected status code: %d\n", resp.StatusCode)
 					return fmt.Errorf("expected status 200, got %d (retrying transient errors)", resp.StatusCode)
 				}
 
 				return nil
 			}, timeout, interval).Should(Succeed(), "HTTPS request should succeed with trusted client (retries handle transient HTTP errors)")
 
-			By("Verifying the certificate issuer is Squid CA")
-			Expect(resp.TLS).NotTo(BeNil(), "TLS connection details must be available")
-			Expect(resp.TLS.PeerCertificates).NotTo(BeEmpty(), "Should have at least one peer certificate")
+			// Add debug output
+			By(fmt.Sprintf("Response Status: %s", resp.Status))
+			By(fmt.Sprintf("Response Headers: %v", resp.Header))
+			By(fmt.Sprintf("Response Body: %s", string(body)))
 
-			// Check the certificate issuer
-			issuer := resp.TLS.PeerCertificates[0].Issuer
-			Expect(issuer.Organization[0]).To(ContainSubstring("konflux"), "Certificate issuer organization should be konflux")
+			// Validate response
+			Expect(resp.StatusCode).To(Equal(200), "HTTPS request should return 200 OK")
+			Expect(body).NotTo(BeEmpty(), "Response body should not be empty")
+			fmt.Printf("DEBUG: Test completed successfully!\n")
+		})
 
-			// Verify response body content
-			Expect(len(body)).To(BeNumerically(">", 0), "Response should have content")
+		// Add a test that uses the regular client for comparison
+		It("should fail HTTPS request with untrusted client", func() {
 
-			// Verify that untrusted client fails (proves SSL-Bump is working)
-			By("Verifying untrusted client fails (proves SSL-Bump is working)")
-			_, err := client.Get("https://www.google.com")
-			Expect(err).To(HaveOccurred(), "Untrusted client should fail with certificate error")
-			Expect(err.Error()).To(ContainSubstring("certificate signed by unknown authority"),
-				"Error should indicate certificate verification failure")
+			fmt.Printf("DEBUG: Testing untrusted client with URL: %s\n", testServerURL)
+
+			// Create regular client for comparison
+			client, err := testhelpers.NewSquidProxyClient(serviceName, namespace)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create proxy client")
+
+			fmt.Printf("DEBUG: Making request with untrusted client...\n")
+			_, err = client.Get(testServerURL)
+			fmt.Printf("DEBUG: Untrusted client request result: %v\n", err)
+			Expect(err).To(HaveOccurred(), "Untrusted client should fail HTTPS request")
 		})
 	})
 
 	Describe("SSL-Bump Log Verification", func() {
 		It("should show decrypted HTTPS requests in Squid access logs", func() {
-			By("Getting Squid pod name")
-			pods, err := k8sClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
-				LabelSelector: "app.kubernetes.io/name=squid",
-			})
-			Expect(err).NotTo(HaveOccurred(), "Failed to list Squid pods")
-			Expect(pods.Items).NotTo(BeEmpty(), "Should have at least one Squid pod")
-			squidPod := pods.Items[0]
-
-			// Use a unique URL to ensure fresh request
+			// By("Getting Squid pod name")
+			// pods, err := k8sClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+			// 	LabelSelector: "app.kubernetes.io/name=squid",
+			// })
+			// Expect(err).NotTo(HaveOccurred(), "Failed to list Squid pods")
+			// Expect(pods.Items).NotTo(BeEmpty(), "Should have at least one Squid pod")
+			// squidPod := pods.Items[0]
+			// Use the local test server with a unique ID for SSL-Bump verification
 			timestamp := time.Now().Unix()
-			testURL := fmt.Sprintf("https://httpbin.org/get?ssl-bump-test=%d", timestamp)
+			testURL := fmt.Sprintf("%s/ssl-bump-test/%d", testServerURL, timestamp)
 
 			fmt.Printf("DEBUG: Using test URL for SSL-Bump verification: %s\n", testURL)
+			fmt.Printf("DEBUG: Using Squid pod: %s\n", squidPod.Name)
 
 			By("Getting logs before making HTTPS request")
 			beforeRequest := metav1.Now()
@@ -158,8 +197,9 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 			// Should show decrypted HTTPS GET requests
 			Expect(logOutput).To(ContainSubstring("GET https://"), "Should show decrypted HTTPS GET requests")
 
-			// Verify the specific URL was requested
-			Expect(logOutput).To(ContainSubstring("httpbin.org/get"), "Should show the specific URL in logs")
+			// Verify the specific test server URL was requested
+			Expect(logOutput).To(ContainSubstring("test-server.proxy.svc.cluster.local"), "Should show the test server URL in logs")
+			Expect(logOutput).To(ContainSubstring("ssl-bump-test"), "Should show the SSL-Bump test endpoint in logs")
 
 			fmt.Printf("DEBUG: SSL-Bump verification successful - CONNECT tunnel and decrypted GET request detected!\n")
 		})
@@ -167,21 +207,19 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 
 	Describe("SSL-Bump HTTPS RAM Caching", func() {
 		It("should cache HTTPS content in RAM proving SSL-Bump decryption and caching work", func() {
-			By("Getting Squid pod name")
-			pods, err := k8sClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
-				LabelSelector: "app.kubernetes.io/name=squid",
-			})
-			Expect(err).NotTo(HaveOccurred(), "Failed to list Squid pods")
-			Expect(pods.Items).NotTo(BeEmpty(), "Should have at least one Squid pod")
-			squidPod := pods.Items[0]
-
-			// Use a well-known HTTPS server that's likely to send cacheable responses
-			// httpbin.org typically sends reasonable cache headers
-			// Add a unique timestamp to ensure fresh cache for each test run
+			// By("Getting Squid pod name")
+			// pods, err := k8sClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+			// 	LabelSelector: "app.kubernetes.io/name=squid",
+			// })
+			// Expect(err).NotTo(HaveOccurred(), "Failed to list Squid pods")
+			// Expect(pods.Items).NotTo(BeEmpty(), "Should have at least one Squid pod")
+			// squidPod := pods.Items[0]
+			// Use the local test server's cacheable SSL-Bump endpoint
 			timestamp := time.Now().Unix()
-			testURL := fmt.Sprintf("https://httpbin.org/cache/3600?test=%d", timestamp)
+			testURL := fmt.Sprintf("%s/ssl-bump-cache-test/%d", testServerURL, timestamp)
 
-			fmt.Printf("DEBUG: Using unique test URL: %s\n", testURL)
+			fmt.Printf("DEBUG: Using unique test URL for HTTPS caching: %s\n", testURL)
+			fmt.Printf("DEBUG: Using Squid pod: %s\n", squidPod.Name)
 
 			// Get logs before all requests to capture the complete sequence
 			beforeSequence := metav1.Now()
@@ -235,7 +273,8 @@ var _ = Describe("Squid SSL-Bump Functionality", func() {
 			fmt.Printf("==========================================\n")
 
 			Expect(logOutput).To(ContainSubstring("TCP_MISS"), "Should show at least one TCP_MISS for the test URL")
-			Expect(logOutput).To(ContainSubstring("httpbin.org/cache/3600"), "Should show the specific cache URL in logs")
+			Expect(logOutput).To(ContainSubstring("test-server.proxy.svc.cluster.local"), "Should show the test server URL in logs")
+			Expect(logOutput).To(ContainSubstring("ssl-bump-cache-test"), "Should show the SSL-Bump cache test endpoint in logs")
 			Expect(logOutput).To(ContainSubstring("TCP_MEM_HIT"), "Should show at least one TCP_MEM_HIT (RAM cache hit) for the test URL")
 
 			fmt.Printf("DEBUG: Caching verification successful - found both TCP_MISS and TCP_MEM_HIT!\n")

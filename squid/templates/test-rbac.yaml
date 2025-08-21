@@ -30,11 +30,11 @@ metadata:
   {{- end }}
 rules:
 - apiGroups: [""]
-  resources: ["namespaces", "pods", "services", "endpoints", "secrets"]
-  verbs: ["get", "list", "watch", "create", "delete"]
+  resources: ["namespaces", "pods", "services", "endpoints", "secrets", "configmaps"]
+  verbs: ["get", "list", "watch", "create", "delete", "update"]
 - apiGroups: ["apps"]
   resources: ["deployments", "replicasets"]
-  verbs: ["get", "list", "watch"]
+  verbs: ["get", "list", "watch", "update"]
 - apiGroups: [""]
   resources: ["configmaps"]
   verbs: ["get", "list"]

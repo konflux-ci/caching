@@ -1,0 +1,52 @@
+{{- if .Values.test.enabled }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: test-server-selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-server-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: test-server-ca
+  secretName: test-server-ca-secret
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: test-server-selfsigned-issuer
+    kind: ClusterIssuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: test-server-ca-issuer
+spec:
+  ca:
+    secretName: test-server-ca-secret
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-server-cert
+  namespace: proxy
+spec:
+  secretName: test-server-tls
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  commonName: test-server.proxy.svc.cluster.local
+  dnsNames:
+  - test-server
+  - test-server.proxy
+  - test-server.proxy.svc
+  - test-server.proxy.svc.cluster.local
+  issuerRef:
+    name: test-server-ca-issuer
+    kind: ClusterIssuer
+{{- end }}
