@@ -1,6 +1,9 @@
 {
   "automergeStrategy": "merge-commit",
   "platformAutomerge": true,
+  "allowedCommands": [
+    "^helm dependency update$"
+  ],
   "packageRules": [
     {
       "description": "Auto-merge patch updates for Konflux components",
@@ -52,6 +55,16 @@
       "matchDatasources": ["go"],
       "automerge": false,
       "autoApprove": false
+    },
+    {
+      "description": "Auto-update Helm Chart.lock files when dependencies change",
+      "matchManagers": ["helmv3"],
+      "postUpgradeTasks": {
+        "commands": [
+          "cd {{{packageFileDir}}} && helm dependency update"
+        ],
+        "executionMode": "update"
+      }
     }
   ]
 } 
