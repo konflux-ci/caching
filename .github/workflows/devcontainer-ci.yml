@@ -114,6 +114,10 @@ jobs:
       run: |
         podman exec -w /workspaces/caching devcontainer-test hadolint .devcontainer/Containerfile
 
+    - name: Run unit tests
+      run: |
+        podman exec -w /workspaces/caching devcontainer-test mage test:unit
+
     - name: Deploy Kind environment
       run: |
         # Test that deploying our environment in Kind and our Helm chart works
