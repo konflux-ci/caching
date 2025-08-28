@@ -1,12 +1,12 @@
-{{- if .Values.installCertManagerComponents }}
+{{- if .Values.installTrustManagerComponents }}
 {{- $certManagerNs := (index .Values "cert-manager").namespace }}
 {{- $trustManagerNs := (index .Values "trust-manager").namespace }}
 {{- if ne $certManagerNs $trustManagerNs }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ $certManagerNs }}
+  name: {{ $trustManagerNs }}
   labels:
-    name: {{ $certManagerNs }}
+    name: {{ $trustManagerNs }}
 {{- end }}
 {{- end }}
