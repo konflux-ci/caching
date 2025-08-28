@@ -12,7 +12,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ .Values.namespace.name }}-self-signed-ca
-  namespace: {{ (index .Values "cert-manager").namespace }}
+  namespace: {{ include "squid.certificateManagement.namespace" . }}
   labels:
     {{- include "squid.labels" . | nindent 4 }}
 spec:
@@ -21,7 +21,7 @@ spec:
   isCA: true
   privateKey:
     algorithm: ECDSA
-    size: 256  
+    size: 256
   issuerRef:
     name: {{ .Values.namespace.name }}-self-signed-cluster-issuer
     kind: ClusterIssuer

@@ -409,7 +409,11 @@
     },
     "installCertManagerComponents": {
       "type": "boolean",
-      "description": "Install cert-manager and trust-manager components"
+      "description": "Install cert-manager components"
+    },
+    "installTrustManagerComponents": {
+      "type": "boolean",
+      "description": "Install trust-manager components"
     },
     "prometheus": {
       "type": "object",

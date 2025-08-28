@@ -1,0 +1,8 @@
+{{- if or .Values.installCertManagerComponents .Values.installTrustManagerComponents }}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ include "squid.certificateManagement.namespace" . }}
+  labels:
+    name: {{ include "squid.certificateManagement.namespace" . }}
+{{- end }}
