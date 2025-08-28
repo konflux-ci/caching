@@ -196,6 +196,7 @@ namespace:
 # Cert-manager and Trust-manager installation control
 # Set to true to install cert-manager and trust-manager components
 installCertManagerComponents: true
+installTrustManagerComponents: true
 
 # Cert-manager and Trust-manager configuration
 
