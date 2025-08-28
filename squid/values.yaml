@@ -198,65 +198,9 @@ namespace:
 installCertManagerComponents: true
 
 # Cert-manager and Trust-manager configuration
-# Prometheus monitoring configuration
-prometheus:
-  # Enable ServiceMonitor for Prometheus Operator
-  serviceMonitor:
-    enabled: true
-    # Namespace where the ServiceMonitor should be created
-    # If empty, it will be created in the same namespace as the application
-    namespace: ""
-    # Additional labels for the ServiceMonitor
-    labels: {}
-    # Scrape interval
-    interval: 30s
-    # Scrape timeout
-    scrapeTimeout: 10s
-    # Metrics path (should match squidExporter.metricsPath)
-    path: "/metrics"
-    # Additional annotations for the ServiceMonitor
-    annotations: {}
 
 # Cert-manager configuration
 # Based on https://cert-manager.io/docs/installation/helm/
-test:
-  enabled: true # Enable helm test functionality
-  image:
-    pullPolicy: IfNotPresent
-    # Note: repository and tag are set dynamically by environment helpers in _helpers.tpl
-  resources:
-    requests:
-      cpu: 100m
-      memory: 512Mi
-    limits:
-      cpu: 500m
-      memory: 1Gi
-
-# mirrord configuration for development and CI testing
-# The mirrord target pod provides connection stealing capabilities for local development
-mirrord:
-  enabled: true # Enable mirrord target pod (disable in production)
-  targetPod:
-    name: "mirrord-test-target" # Name of the mirrord target pod
-    image:
-      pullPolicy: IfNotPresent
-      # Note: repository and tag are set dynamically by squid.test.image helper in _helpers.tpl
-    ports:
-      http: 8080 # Standard HTTP port
-      testServer: 9090 # Test server port for connection stealing
-    env:
-      testServerPort: 9090 # TEST_SERVER_PORT environment variable
-    resources:
-      requests:
-        cpu: 50m
-        memory: 128Mi
-      limits:
-        cpu: 200m
-        memory: 256Mi
-  # NOTE: RBAC is shared with test infrastructure
-  # When mirrord.enabled=true, test RBAC becomes persistent (no helm hooks)
-  # When mirrord.enabled=false, test RBAC uses hooks for cleanup
-
 cert-manager:
   enabled: true # Set to true to enable cert-manager
   namespace: "cert-manager" # Deploy to dedicated namespace
@@ -307,6 +251,7 @@ cert-manager:
   tolerations: []
   affinity: {}
 
+# Trust-manager configuration
 trust-manager:
   crds:
     enabled: false
@@ -317,6 +262,63 @@ trust-manager:
 # Creates a self-signed issuer and bundle in the cert-manager namespace
 selfsigned-bundle:
   enabled: true  # Set to true to create a self-signed issuer and bundle
+
+# Prometheus monitoring configuration
+prometheus:
+  # Enable ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    enabled: true
+    # Namespace where the ServiceMonitor should be created
+    # If empty, it will be created in the same namespace as the application
+    namespace: ""
+    # Additional labels for the ServiceMonitor
+    labels: {}
+    # Scrape interval
+    interval: 30s
+    # Scrape timeout
+    scrapeTimeout: 10s
+    # Metrics path (should match squidExporter.metricsPath)
+    path: "/metrics"
+    # Additional annotations for the ServiceMonitor
+    annotations: {}
+
+test:
+  enabled: true # Enable helm test functionality
+  image:
+    pullPolicy: IfNotPresent
+    # Note: repository and tag are set dynamically by environment helpers in _helpers.tpl
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# mirrord configuration for development and CI testing
+# The mirrord target pod provides connection stealing capabilities for local development
+mirrord:
+  enabled: true # Enable mirrord target pod (disable in production)
+  targetPod:
+    name: "mirrord-test-target" # Name of the mirrord target pod
+    image:
+      pullPolicy: IfNotPresent
+      # Note: repository and tag are set dynamically by squid.test.image helper in _helpers.tpl
+    ports:
+      http: 8080 # Standard HTTP port
+      testServer: 9090 # Test server port for connection stealing
+    env:
+      testServerPort: 9090 # TEST_SERVER_PORT environment variable
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  # NOTE: RBAC is shared with test infrastructure
+  # When mirrord.enabled=true, test RBAC becomes persistent (no helm hooks)
+  # When mirrord.enabled=false, test RBAC uses hooks for cleanup
 
 # SSL Database configuration
 # Persistent storage for SSL certificates
