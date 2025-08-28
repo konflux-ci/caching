@@ -24,6 +24,7 @@ spec:
   - name: ginkgo-test
     image: "{{ include "squid.test.image" . }}"
     imagePullPolicy: {{ .Values.test.image.pullPolicy | default "IfNotPresent" }}
+    workingDir: /app
     command:
     - /bin/bash
     - -c
@@ -35,8 +36,7 @@ spec:
 
       # Run the compiled test binary
       echo "Running tests..."
-      cd /app/tests
-      ./e2e/e2e.test -ginkgo.v
+      ./tests/e2e/e2e.test -ginkgo.v
     env:
     - name: SQUID_NAMESPACE
       value: "{{ .Values.namespace.name }}"

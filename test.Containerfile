@@ -10,14 +10,25 @@ RUN microdnf install -y \
     gcc-14.2.1-7.el10 && \
     microdnf clean all
 
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Install Go (version-locked)
 ARG GO_VERSION=1.24.4
 ARG GO_SHA256=77e5da33bb72aeaef1ba4418b6fe511bc4d041873cbf82e5aa6318740df98717
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz && \
     echo "${GO_SHA256}  go.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xzf go.tar.gz && \
     rm go.tar.gz
+
+# Install Helm (version-locked)
+ARG HELM_VERSION=v3.18.6
+ARG HELM_SHA256=3f43c0aa57243852dd542493a0f54f1396c0bc8ec7296bbb2c01e802010819ce
+RUN curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" -o helm.tar.gz && \
+    echo "${HELM_SHA256}  helm.tar.gz" | sha256sum -c - && \
+    mkdir -p /tmp/helm && \
+    tar -C /tmp/helm -xzf helm.tar.gz && \
+    mv /tmp/helm/linux-amd64/helm /usr/local/bin/helm && \
+    rm -rf /tmp/helm helm.tar.gz
 
 # Set Go environment
 ENV PATH="/usr/local/go/bin:/root/go/bin:$PATH"
@@ -35,6 +46,9 @@ COPY go.mod go.sum ./
 
 # Copy test source files maintaining directory structure
 COPY tests/ ./tests/
+
+# Copy squid chart
+COPY squid/ ./squid/
 
 # Set up Go module and compile tests and testserver at build time
 RUN go mod download && \

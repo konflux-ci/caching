@@ -3,8 +3,10 @@ package e2e_test
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -23,9 +25,6 @@ var (
 	clientset         *kubernetes.Clientset
 	certManagerClient *certmanagerclient.Clientset
 	ctx               context.Context
-
-	// Suite-level variables for squid configuration management
-	suiteSquidConfigMgr *testhelpers.SquidConfigManager
 )
 
 const (
@@ -49,6 +48,48 @@ func getPodIP() (string, error) {
 	}
 
 	return podIP, nil
+}
+
+// setupHTTPTestServerAndClient sets up an HTTP test server
+// Registers a cleanup function to automatically close the test server
+func setupHTTPTestServer(msg string) *testhelpers.ProxyTestServer {
+	// Get pod IP for test server
+	podIP, err := getPodIP()
+	Expect(err).NotTo(HaveOccurred(), "Failed to get pod IP")
+
+	// Get test server port
+	testPort := 0
+	if testPortStr := os.Getenv("TEST_SERVER_PORT"); testPortStr != "" {
+		if port, parseErr := strconv.Atoi(testPortStr); parseErr == nil {
+			testPort = port
+		}
+	}
+
+	// Create test server
+	server, err := testhelpers.NewProxyTestServer(msg, podIP, testPort)
+	Expect(err).NotTo(HaveOccurred(), "Failed to create test server")
+	Expect(server).NotTo(BeNil())
+
+	DeferCleanup(func() {
+		fmt.Printf("DEBUG: Closing test server\n")
+		server.Close()
+	})
+
+	return server
+}
+
+// setupHTTPTestClient sets up an HTTP test client
+// Registers a cleanup function to automatically close idle connections
+func setupHTTPTestClient() *http.Client {
+	client, err := testhelpers.NewSquidProxyClient(serviceName, namespace)
+	Expect(err).NotTo(HaveOccurred(), "Failed to create proxy client")
+
+	DeferCleanup(func() {
+		fmt.Printf("DEBUG: Closing idle test client connections\n")
+		client.CloseIdleConnections()
+	})
+
+	return client
 }
 
 var _ = BeforeSuite(func() {
@@ -80,69 +121,12 @@ var _ = BeforeSuite(func() {
 	certManagerClient, err = certmanagerclient.NewForConfig(config)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create cert-manager client")
 
+	err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
+	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods("proxy").List(ctx, metav1.ListOptions{Limit: 1})
 	Expect(err).NotTo(HaveOccurred(), "Failed to connect to Kubernetes cluster")
-
-	By("Setting up suite-level squid configuration")
-
-	// Create SquidConfigManager for suite-level configuration
-	suiteSquidConfigMgr = testhelpers.NewSquidConfigManager(
-		clientset, namespace, "squid-config", deploymentName)
-
-	// Ensure required TLS configuration is present
-	By("Ensuring required TLS configuration is present")
-	err = suiteSquidConfigMgr.EnsureRequiredTLSConfig(ctx)
-	Expect(err).NotTo(HaveOccurred(), "Failed to ensure required TLS config")
-
-	// Restart deployment if configuration was modified
-	if suiteSquidConfigMgr.WasConfigModified() {
-		By("Restarting squid deployment for suite-level config changes")
-		fmt.Printf("DEBUG: Configuration was modified, restarting deployment\n")
-
-		err = suiteSquidConfigMgr.RestartSquidDeployment(ctx)
-		Expect(err).NotTo(HaveOccurred(), "Failed to restart squid deployment")
-	} else {
-		By("TLS configuration already present, no restart needed")
-		fmt.Printf("DEBUG: Configuration was not modified, no restart needed\n")
-	}
-
-	// Set up cleanup using DeferCleanup
-	DeferCleanup(func() {
-		By("Cleaning up suite-level squid configuration")
-
-		if suiteSquidConfigMgr == nil {
-			fmt.Printf("DEBUG: No configuration manager found, skipping cleanup\n")
-			return
-		}
-
-		wasModified := suiteSquidConfigMgr.WasConfigModified()
-		fmt.Printf("DEBUG: Configuration modified: %t\n", wasModified)
-
-		if !wasModified {
-			fmt.Printf("DEBUG: No configuration changes to restore\n")
-			return
-		}
-
-		// Restore the original configuration
-		By("Restoring original squid configuration")
-		wasRestored, err := suiteSquidConfigMgr.RestoreOriginalConfig(ctx)
-		Expect(err).NotTo(HaveOccurred(), "Failed to restore original squid config")
-
-		if !wasRestored {
-			fmt.Printf("DEBUG: Configuration restoration was not needed\n")
-			return
-		}
-
-		// Restart deployment to apply restored configuration
-		By("Restarting squid deployment to apply restored configuration")
-		fmt.Printf("DEBUG: Configuration restored, restarting deployment\n")
-
-		err = suiteSquidConfigMgr.RestartSquidDeployment(ctx)
-		Expect(err).NotTo(HaveOccurred(), "Failed to restart squid deployment after restore")
-
-		fmt.Printf("DEBUG: Suite cleanup completed successfully\n")
-	})
 
 	By("Suite setup complete - Configuration is ready")
 	fmt.Printf("DEBUG: Suite-level configuration setup complete\n")
