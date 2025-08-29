@@ -52,7 +52,17 @@
       "matchDatasources": ["go"],
       "automerge": false,
       "autoApprove": false
+    },
+    {
+      "description": "Auto-update Helm Chart.lock files when dependencies change",
+      "matchManagers": ["helmv3"],
+      "postUpgradeTasks": {
+        "commands": [
+          "cd {{{packageFileDir}}} && helm dependency update"
+        ],
+        "executionMode": "update"
+      }
     }
   ]
-} 
+}
 
