@@ -40,6 +40,15 @@ func Default() error {
 	return sh.Run("mage", "-l")
 }
 
+// Test:Unit runs unit tests only (no cluster required)
+func (Test) Unit() error {
+	fmt.Println("🧪 Running unit tests")
+	if err := sh.RunV("go", "test", "./cmd/squid-per-site-exporter", "-v"); err != nil {
+		return fmt.Errorf("unit tests failed: %w", err)
+	}
+	return nil
+}
+
 // Kind:Up creates or connects to a kind cluster named 'caching'
 func (Kind) Up() error {
 	fmt.Println("🚀 Setting up kind cluster...")
@@ -416,6 +425,9 @@ func All() error {
 	fmt.Println("This will set up the complete local dev/test environment")
 	fmt.Println("(dependencies will be handled automatically)")
 	fmt.Println()
+
+	// Run unit tests first for fast feedback
+	mg.Deps(Test.Unit)
 
 	// SquidHelm.Up will automatically handle all dependencies:
 	// SquidHelm.Up -> Build.LoadSquid + Build.LoadSquidExporter + Build.LoadTestImage -> Kind.Up + Build.Squid + Build.TestImage
