@@ -29,36 +29,6 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
 
-      # --- INIT CONTAINER ---
-      # This container runs as root to prepare certificates, initialize the SSL DB,
-      # and set the correct file permissions before the main Squid container starts.
-      initContainers:
-      - name: squid-init
-        image: "{{ include "squid.image" . }}"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        securityContext:
-          # Must run as root to perform chown
-          runAsUser: 0
-        command:
-          - /bin/sh
-          - -c
-          - |
-            set -e
-            echo "Initializing SSL certificate database at /var/spool/squid/ssl_db..."
-            # 1. Create the database structure.
-            /usr/lib64/squid/security_file_certgen -c -s /var/spool/squid/ssl_db -M 16MB
-
-            echo "Setting permissions on /var/spool/squid for user {{ .Values.securityContext.runAsUser }}..."
-            # 2. Change ownership to the non-root user of the main container.
-            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} /var/spool/squid
-
-            echo "Initialization complete."
-
-        volumeMounts:
-        # Mount the shared volume.
-        - name: squid-spool-vol
-          mountPath: /var/spool/squid
-
       containers:
         - name: squid
           securityContext:
@@ -85,7 +55,7 @@ spec:
             - name: squid-certs-secret
               mountPath: /etc/squid/certs
               readOnly: true
-            # Mount the entire spool directory for the main container
+            # Mount the entire spool directory for cache and SSL database
             - name: squid-spool-vol
               mountPath: /var/spool/squid
             {{- if .Values.test.enabled }}
@@ -166,8 +136,8 @@ spec:
         - name: squid-certs-secret
           secret:
             secretName: {{ .Values.namespace.name }}-tls
-        # A single volume for all of Squid's spool data, including the ssl_db
-        # Use emptyDir instead of PVC
+        # Volume for Squid's entire spool directory (cache and SSL database)
+        # Use emptyDir with fsGroup for proper permissions
         - name: squid-spool-vol
           emptyDir: {}
         {{- if .Values.test.enabled }}
@@ -177,7 +147,7 @@ spec:
             name: test-server-bundle # This is the ConfigMap created by the Bundle in Step 5
             items:
             - key: ca.crt
-              path: ca.crt          
+              path: ca.crt
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

@@ -565,7 +565,17 @@
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Create self-signed issuer and bundle"
+          "description": "Create self-signed bundle"
+        }
+      },
+      "additionalProperties": false
+    },
+    "selfsigned-certificate": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Create self-signed issuer and certificate"
         }
       },
       "additionalProperties": false

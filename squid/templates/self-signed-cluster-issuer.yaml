@@ -1,4 +1,4 @@
-{{- if (index .Values "selfsigned-bundle").enabled }}
+{{- if (index .Values "selfsigned-certificate").enabled }}
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
