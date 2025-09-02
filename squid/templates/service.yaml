@@ -24,5 +24,11 @@ spec:
       protocol: TCP
       name: metrics
     {{- end }}
+    {{- if .Values.perSiteExporter.enabled }}
+    - port: {{ .Values.perSiteExporter.port }}
+      targetPort: per-site-http
+      protocol: TCP
+      name: per-site-http
+    {{- end }}
   selector:
     {{- include "squid.selectorLabels" . | nindent 4 }}

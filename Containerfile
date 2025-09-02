@@ -42,9 +42,9 @@ RUN echo "pid_filename /run/squid/squid.pid" >> /etc/squid/squid.conf && \
     chmod g=u /etc/squid/squid.conf /run/squid /var/spool/squid /var/log/squid
 
 # ==========================================
-# Stage 2: Build squid-exporter
+# Stage 2: Go builder base (toolchain + deps cache)
 # ==========================================
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:d8cba62fbd44610595a6ce7badd287ca4c9985cbe9df55cc9b6a5c311b9a46e6 AS squid-exporter-builder
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:d8cba62fbd44610595a6ce7badd287ca4c9985cbe9df55cc9b6a5c311b9a46e6 AS go-builder
 
 # Install required packages for Go build
 RUN microdnf install -y \
@@ -70,15 +70,32 @@ ENV PATH="/usr/local/go/bin:/root/go/bin:$PATH"
 ENV GOPATH="/root/go"
 ENV GOCACHE="/tmp/go-cache"
 
-# Set working directory for build
+# ==========================================
+# Stage 3: Build squid-exporter
+# ==========================================
+FROM go-builder AS squid-exporter-builder
 WORKDIR /workspace
-
-# Install squid-exporter directly from upstream and copy to expected location
 RUN CGO_ENABLED=0 GOOS=linux go install github.com/boynux/squid-exporter@v1.13.0 && \
     cp /root/go/bin/squid-exporter /workspace/squid-exporter
 
 # ==========================================
-# Final Stage: Squid with integrated exporter
+# Stage 4: Build squid per-site exporter
+# ==========================================
+FROM go-builder AS per-site-exporter-builder
+
+# Pre-fetch deps
+WORKDIR /workspace
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/tmp/go-cache \
+    go mod download
+
+# Copy source and build the per-site exporter
+COPY ./cmd/squid-per-site-exporter ./cmd/squid-per-site-exporter
+RUN --mount=type=cache,target=/tmp/go-cache \
+    CGO_ENABLED=0 GOOS=linux go build -o /workspace/per-site-exporter ./cmd/squid-per-site-exporter
+
+# ==========================================
+# Final Stage: Squid with integrated exporters
 # ==========================================
 FROM squid-base
 
@@ -88,8 +105,15 @@ COPY --from=squid-exporter-builder /workspace/squid-exporter /usr/local/bin/squi
 # Set permissions for squid-exporter
 RUN chmod +x /usr/local/bin/squid-exporter
 
-# Expose squid-exporter metrics port (only in final stage where the binary exists)
+# Copy per-site exporter binary from builder stage
+COPY --from=per-site-exporter-builder /workspace/per-site-exporter /usr/local/bin/per-site-exporter
+
+# Set permissions for per-site exporter
+RUN chmod +x /usr/local/bin/per-site-exporter
+
+# Expose exporters' metrics ports
 EXPOSE 9301
+EXPOSE 9302
 
 USER 1001
 

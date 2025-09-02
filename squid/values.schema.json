@@ -239,7 +239,29 @@
           "$ref": "#/$defs/httpProbe"
         }
       },
-      "required": ["enabled"],
+      "required": ["enabled", "port", "metricsPath"],
+      "additionalProperties": false
+    },
+    "perSiteExporter": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable per-site exporter sidecar"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Port for per-site exporter metrics endpoint"
+        },
+        "metricsPath": {
+          "type": "string",
+          "pattern": "^/.*",
+          "description": "HTTP path for per-site exporter metrics"
+        }
+      },
+      "required": ["enabled", "port", "metricsPath"],
       "additionalProperties": false
     },
     "ingress": {

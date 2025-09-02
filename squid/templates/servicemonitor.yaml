@@ -30,4 +30,12 @@ spec:
         - sourceLabels: [__name__]
           regex: squid_.*
           action: keep
+    {{- if .Values.perSiteExporter.enabled }}
+    - port: per-site-http
+      path: {{ .Values.perSiteExporter.metricsPath }}
+      scheme: https
+      interval: {{ .Values.prometheus.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.prometheus.serviceMonitor.scrapeTimeout }}
+      honorLabels: true
+    {{- end }}
 {{- end }} 

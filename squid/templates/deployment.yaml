@@ -39,12 +39,30 @@ spec:
             - name: http
               containerPort: 3128
               protocol: TCP
+          {{- if .Values.perSiteExporter.enabled }}
+            - name: per-site-http
+              containerPort: {{ .Values.perSiteExporter.port }}
+              protocol: TCP
+          {{- end }}
+          {{- if .Values.perSiteExporter.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: per-site-http
+              scheme: HTTPS
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: per-site-http
+              scheme: HTTPS
+          {{- else }}
           livenessProbe:
             tcpSocket:
               port: http
           readinessProbe:
             tcpSocket:
               port: http
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
@@ -64,6 +82,16 @@ spec:
               mountPath: /etc/squid/trust/test-server
               readOnly: true
             {{- end }}
+          {{- if .Values.perSiteExporter.enabled }}
+          args:
+            - squid-with-per-site-exporter
+            - -web.listen-address
+            - ":{{ .Values.perSiteExporter.port }}"
+            - -web.tls-cert-file
+            - /etc/squid/certs/tls.crt
+            - -web.tls-key-file
+            - /etc/squid/certs/tls.key
+          {{- end }}
         {{- if .Values.squidExporter.enabled }}
         - name: squid-exporter
           image: "{{ include "squid.image" . }}"
