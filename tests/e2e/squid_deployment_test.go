@@ -91,7 +91,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should have the correct container image and configuration", func() {
-			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(2))
+			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(3))
 
 			// Find squid container
 			var squidContainer *corev1.Container
@@ -123,6 +123,21 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			Expect(exporterContainer.Ports).To(HaveLen(1))
 			Expect(exporterContainer.Ports[0].ContainerPort).To(Equal(int32(9301)))
 			Expect(exporterContainer.Ports[0].Name).To(Equal("metrics"))
+
+			// Find per-site-exporter container
+			var perSiteExporter *corev1.Container
+			for i := range deployment.Spec.Template.Spec.Containers {
+				if deployment.Spec.Template.Spec.Containers[i].Name == "per-site-exporter" {
+					perSiteExporter = &deployment.Spec.Template.Spec.Containers[i]
+					break
+				}
+			}
+			Expect(perSiteExporter).NotTo(BeNil(), "per-site-exporter container should exist")
+
+			// Check per-site-exporter port configuration
+			Expect(perSiteExporter.Ports).To(HaveLen(1))
+			Expect(perSiteExporter.Ports[0].ContainerPort).To(Equal(int32(9302)))
+			Expect(perSiteExporter.Ports[0].Name).To(Equal("per-site-http"))
 		})
 	})
 
@@ -145,7 +160,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should have the correct port configuration", func() {
-			Expect(service.Spec.Ports).To(HaveLen(2))
+			Expect(service.Spec.Ports).To(HaveLen(3))
 
 			// Find http port (squid)
 			var httpPort *corev1.ServicePort
@@ -232,7 +247,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 		It("should have correct resource configuration", func() {
 			for _, pod := range pods.Items {
-				Expect(pod.Spec.Containers).To(HaveLen(2))
+				Expect(pod.Spec.Containers).To(HaveLen(3))
 
 				squidContainer := pod.Spec.Containers[0]
 				Expect(squidContainer.Name).To(Equal("squid"))

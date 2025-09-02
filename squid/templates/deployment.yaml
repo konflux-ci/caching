@@ -44,12 +44,26 @@ spec:
           - -c
           - |
             set -e
-            echo "Initializing SSL certificate database at /var/spool/squid/ssl_db..."
-            # 1. Create the database structure.
-            /usr/lib64/squid/security_file_certgen -c -s /var/spool/squid/ssl_db -M 16MB
+            echo "Preparing /var/spool/squid/ssl_db..."
+            echo "Directory perms before setup:";
+            ls -ld /var /var/spool /var/spool/squid
+            mkdir -p /var/spool/squid
+            chmod 0775 /var/spool/squid
+            if [ ! -f /var/spool/squid/ssl_db/index.txt ]; then
+              echo "(Re)creating SSL DB with security_file_certgen..."
+              rm -rf /var/spool/squid/ssl_db
+              /usr/lib64/squid/security_file_certgen -c -s /var/spool/squid/ssl_db -M 16MB
+            else
+              echo "SSL DB already initialized; skipping creation."
+            fi
+
+            echo "Ensuring squid log path and access.log exist..."
+            mkdir -p /var/log/squid
+            touch /var/log/squid/access.log
+            chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} /var/log/squid
+            chmod -R g+rwX /var/log/squid
 
             echo "Setting permissions on /var/spool/squid for user {{ .Values.securityContext.runAsUser }}..."
-            # 2. Change ownership to the non-root user of the main container.
             chown -R {{ .Values.securityContext.runAsUser }}:{{ .Values.securityContext.runAsGroup }} /var/spool/squid
 
             echo "Initialization complete."
@@ -58,6 +72,9 @@ spec:
         # Mount the shared volume.
         - name: squid-spool-vol
           mountPath: /var/spool/squid
+        # Mount shared logs volume
+        - name: squid-logs
+          mountPath: /var/log/squid
 
       containers:
         - name: squid
@@ -81,7 +98,9 @@ spec:
             - name: squid-config
               mountPath: /etc/squid/squid.conf
               subPath: squid.conf
-            # Mount the shared volume for the certificates
+            # Shared logs volume so sidecar can read access logs
+            - name: squid-logs
+              mountPath: /var/log/squid
             - name: squid-certs-secret
               mountPath: /etc/squid/certs
               readOnly: true
@@ -94,6 +113,36 @@ spec:
               mountPath: /etc/squid/trust/test-server
               readOnly: true
             {{- end }}
+        {{- if .Values.perSiteExporter.enabled }}
+        - name: per-site-exporter
+          image: "{{ include "squid.image" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: per-site-http
+              containerPort: {{ .Values.perSiteExporter.port }}
+              protocol: TCP
+          command: ["/bin/sh","-c"]
+          args:
+           - tail -n +1 -F /var/log/squid/access.log | exec /usr/local/bin/squid-per-site-exporter -web.listen-address :{{ .Values.perSiteExporter.port }} -web.tls-cert-file /etc/squid/certs/tls.crt -web.tls-key-file /etc/squid/certs/tls.key
+          livenessProbe:
+            tcpSocket:
+              port: per-site-http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: per-site-http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.perSiteExporter.resources | nindent 12 }}
+          volumeMounts:
+            - name: squid-logs
+              mountPath: /var/log/squid
+            - name: squid-certs-secret
+              mountPath: /etc/squid/certs
+              readOnly: true
+        {{- end }}
         {{- if .Values.squidExporter.enabled }}
         - name: squid-exporter
           image: "{{ include "squid.image" . }}"
@@ -162,6 +211,9 @@ spec:
         - name: squid-config
           configMap:
             name: {{ include "squid.fullname" . }}-config
+        # Shared logs volume for per-site exporter sidecar
+        - name: squid-logs
+          emptyDir: {}
         # Mount the secret created by cert-manager
         - name: squid-certs-secret
           secret:
