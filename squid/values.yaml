@@ -56,16 +56,19 @@ podAnnotations: {}
 podLabels: {}
 
 podSecurityContext:
-  fsGroup: 0
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
 
 securityContext:
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - "ALL"
+  seccompProfile:
+    type: RuntimeDefault
+  readOnlyRootFilesystem: true
   runAsNonRoot: true
-  runAsUser: 1001
-  runAsGroup: 0
 
 # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
 service:
@@ -251,12 +254,14 @@ cert-manager:
   tolerations: []
   affinity: {}
 
-# Trust-manager configuration
 trust-manager:
   crds:
     enabled: false
     keep: false
   namespace: "cert-manager"
+
+selfsigned-certificate:
+  enabled: true  # Enable certificate creation - needed for SSL functionality
 
 # Issuer configuration
 # Creates a self-signed issuer and bundle in the cert-manager namespace
