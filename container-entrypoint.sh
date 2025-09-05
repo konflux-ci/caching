@@ -22,6 +22,13 @@ else
   echo "SSL certificate database already exists. Skipping initialization."
 fi
 
+# Initialize cache directories
 /usr/sbin/squid -d 1 --foreground -f /etc/squid/squid.conf -z
+
+# Sidecar: per-site-exporter - stream access.log into the exporter
+if [ "${1:-squid}" = "squid-with-per-site-exporter" ]; then
+  shift || true
+  exec bash -lc '/usr/sbin/squid -d 1 --foreground -f /etc/squid/squid.conf | /usr/local/bin/per-site-exporter "$@"' _ "$@"
+fi
 
 exec /usr/sbin/squid -d 1 --foreground -f /etc/squid/squid.conf "$@"

@@ -104,10 +104,12 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			Expect(squidContainer).NotTo(BeNil(), "squid container should exist")
 			Expect(squidContainer.Image).To(ContainSubstring("squid"))
 
-			// Squid container should expose only proxy port
-			Expect(squidContainer.Ports).To(HaveLen(1))
+			// Squid container should expose proxy and per-site-http ports
+			Expect(squidContainer.Ports).To(HaveLen(2))
 			Expect(squidContainer.Ports[0].Name).To(Equal("http"))
 			Expect(squidContainer.Ports[0].ContainerPort).To(Equal(int32(3128)))
+			Expect(squidContainer.Ports[1].Name).To(Equal("per-site-http"))
+			Expect(squidContainer.Ports[1].ContainerPort).To(Equal(int32(9302)))
 
 			// Find squid-exporter container
 			var exporterContainer *corev1.Container
@@ -145,7 +147,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should have the correct port configuration", func() {
-			Expect(service.Spec.Ports).To(HaveLen(2))
+			Expect(service.Spec.Ports).To(HaveLen(3))
 
 			// Find http port (squid)
 			var httpPort *corev1.ServicePort

@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"flag"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -31,6 +33,16 @@ func fileExists(path string) bool {
 func getEnvDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+// getEnvDurationDefault returns the duration from env or the provided default
+func getEnvDurationDefault(key string, defaultValue time.Duration) time.Duration {
+	if value := os.Getenv(key); value != "" {
+		if d, err := time.ParseDuration(value); err == nil {
+			return d
+		}
 	}
 	return defaultValue
 }
@@ -209,6 +221,10 @@ func (e *Exporter) readFromStdin() {
 		line := scanner.Text()
 		if line != "" {
 			e.parseFunc(line)
+			// Forward input to stdout so container logs still contain Squid access logs
+			if _, err := os.Stdout.WriteString(line + "\n"); err != nil {
+				log.Fatalf("Failed to forward log line to stdout: %v", err)
+			}
 		}
 	}
 
@@ -245,6 +261,14 @@ func main() {
 		getEnvDefault("WEB_TLS_REQUIRED", "true") == "true",
 		"Require TLS certificate and key to be present. If true and files are missing, the server will not start. (Env: WEB_TLS_REQUIRED)")
 
+	// Health check options
+	squidHealthAddr := flag.String("squid.health-addr",
+		getEnvDefault("SQUID_HEALTH_ADDR", "127.0.0.1:3128"),
+		"Address to check Squid health (host:port). (Env: SQUID_HEALTH_ADDR)")
+	squidHealthTimeout := flag.Duration("squid.health-timeout",
+		getEnvDurationDefault("SQUID_HEALTH_TIMEOUT", 500*time.Millisecond),
+		"Timeout for Squid health dial (e.g., 500ms). (Env: SQUID_HEALTH_TIMEOUT)")
+
 	flag.Parse()
 
 	log.Printf("Starting squid per-site exporter")
@@ -273,8 +297,14 @@ func main() {
 			</html>`))
 	})
 
-	// Health check endpoint
+	// Health check endpoint: validates exporter process and Squid TCP port
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		conn, err := net.DialTimeout("tcp", *squidHealthAddr, *squidHealthTimeout)
+		if err != nil {
+			http.Error(w, "squid unreachable", http.StatusServiceUnavailable)
+			return
+		}
+		_ = conn.Close()
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})

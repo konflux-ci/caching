@@ -119,6 +119,12 @@ squidExporter:
     initialDelaySeconds: 5
     periodSeconds: 5
 
+# Per-site exporter configuration
+perSiteExporter:
+  enabled: true
+  port: 9302
+  metricsPath: "/metrics"
+
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
