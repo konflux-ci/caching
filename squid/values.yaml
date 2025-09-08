@@ -95,6 +95,16 @@ squidExporter:
   extractServiceTimes: "true"
   # Custom labels to add to metrics
   customLabels: {}
+  # Security context for the squid-exporter container
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - "ALL"
+    seccompProfile:
+      type: RuntimeDefault
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
   # Resource limits and requests for the exporter
   resources:
     requests:
