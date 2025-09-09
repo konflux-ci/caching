@@ -26,15 +26,18 @@ var _ = Describe("parseLogLine", func() {
 			// MEM_HIT for CDN asset
 			"1732700100 50 10.0.0.3 MEM_HIT/200 512 GET http://assets.cdn.com/img.png - DIRECT/- image/png",
 			// CONNECT (should be ignored by method filter)
-			"1732700200 10 10.0.0.4 TCP_TUNNEL/200 0 CONNECT https://secure.example.com:443 - DIRECT/- -",
+			// Note: such requests don't include the protocol in the URL
+			"1732700200 10 10.0.0.4 NONE_NONE/200 0 CONNECT secure.example.com:443 - DIRECT/- -",
 			// HEAD allowed; counts as MISS
 			"1732700300 5 10.0.0.5 TCP_MISS/404 0 HEAD http://notfound.example.com/ - DIRECT/- text/plain",
 			// POST allowed; counts as HIT
-			"1732700350 200 10.0.0.6 TCP_HIT/200 2048 POST http://api.example.com/submit - DIRECT/- application/json",
+			"1732700350 200 10.0.0.6 TCP_HIT/200 2048 POST http://post.example.com/ - DIRECT/- application/json",
 			// Invalid URL (ignored)
 			"1732700400 5 10.0.0.7 TCP_HIT/200 10 GET ://bad - DIRECT/- -",
-			// Unsupported method (ignored)
-			"1732700450 5 10.0.0.8 TCP_HIT/200 10 PATCH http://patch.example.com/ - DIRECT/- text/plain",
+			// PATCH allowed; counts as HIT
+			"1732700450 5 10.0.0.8 TCP_HIT/200 2048 PATCH http://patch.example.com/ - DIRECT/- text/plain",
+			// PUT (should be ignored by method filter)
+			"1732700500 5 10.0.0.9 TCP_MISS/200 2048 PUT http://put.example.com/ - DIRECT/- text/plain",
 		}
 
 		for _, l := range lines {
@@ -66,11 +69,29 @@ var _ = Describe("parseLogLine", func() {
 		Expect(get(squidMissTotal, "notfound.example.com")).To(Equal(1.0))
 		Expect(get(squidBytesTotal, "notfound.example.com")).To(Equal(0.0))
 
-		// api.example.com: 1 HIT via POST
-		Expect(get(squidRequestsTotal, "api.example.com")).To(Equal(1.0))
-		Expect(get(squidHitTotal, "api.example.com")).To(Equal(1.0))
-		Expect(get(squidMissTotal, "api.example.com")).To(Equal(0.0))
-		Expect(get(squidBytesTotal, "api.example.com")).To(Equal(2048.0))
+		// post.example.com: 1 HIT via POST
+		Expect(get(squidRequestsTotal, "post.example.com")).To(Equal(1.0))
+		Expect(get(squidHitTotal, "post.example.com")).To(Equal(1.0))
+		Expect(get(squidMissTotal, "post.example.com")).To(Equal(0.0))
+		Expect(get(squidBytesTotal, "post.example.com")).To(Equal(2048.0))
+
+		// patch.example.com: 1 HIT via PATCH
+		Expect(get(squidRequestsTotal, "patch.example.com")).To(Equal(1.0))
+		Expect(get(squidHitTotal, "patch.example.com")).To(Equal(1.0))
+		Expect(get(squidMissTotal, "patch.example.com")).To(Equal(0.0))
+		Expect(get(squidBytesTotal, "patch.example.com")).To(Equal(2048.0))
+
+		// put.example.com: uncacheable (0 request metrics)
+		Expect(get(squidRequestsTotal, "put.example.com")).To(Equal(0.0))
+		Expect(get(squidHitTotal, "put.example.com")).To(Equal(0.0))
+		Expect(get(squidMissTotal, "put.example.com")).To(Equal(0.0))
+		Expect(get(squidBytesTotal, "put.example.com")).To(Equal(0.0))
+
+		// secure.example.com: uncacheable (0 request metrics)
+		Expect(get(squidRequestsTotal, "secure.example.com")).To(Equal(0.0))
+		Expect(get(squidHitTotal, "secure.example.com")).To(Equal(0.0))
+		Expect(get(squidMissTotal, "secure.example.com")).To(Equal(0.0))
+		Expect(get(squidBytesTotal, "secure.example.com")).To(Equal(0.0))
 
 		// Malformed line (<7 fields) should log and be ignored
 		var buf bytes.Buffer

@@ -148,6 +148,14 @@ func (e *Exporter) parseLogLine(line string) {
 		return
 	}
 
+	// Silently skip uncacheable methods to avoid filling the logs with unnecessary noise.
+	// GET and HEAD requests are cacheable.
+	// POST and PATCH are conditionally cacheable if the necessary response headers are set.
+	// See: https://wiki.squid-cache.org/SquidFaq/SquidLogs#request-methods
+	if method != "GET" && method != "HEAD" && method != "POST" && method != "PATCH" {
+		return
+	}
+
 	// Parse URL to extract hostname
 	parsedURL, err := url.Parse(urlStr)
 	if err != nil {
