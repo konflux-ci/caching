@@ -94,6 +94,8 @@ spec:
           {{- end }}
         {{- if .Values.squidExporter.enabled }}
         - name: squid-exporter
+          securityContext:
+            {{- toYaml .Values.squidExporter.securityContext | nindent 12 }}
           image: "{{ include "squid.image" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:

@@ -118,43 +118,7 @@
       "description": "Security context for the pod"
     },
     "securityContext": {
-      "type": "object",
-      "properties": {
-        "capabilities": {
-          "type": "object",
-          "properties": {
-            "add": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "drop": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        "readOnlyRootFilesystem": {
-          "type": "boolean"
-        },
-        "runAsNonRoot": {
-          "type": "boolean"
-        },
-        "runAsUser": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "runAsGroup": {
-          "type": "integer",
-          "minimum": 0
-        }
-      },
-      "additionalProperties": true,
-      "description": "Security context for the container"
+      "$ref": "#/$defs/securityContext"
     },
     "service": {
       "type": "object",
@@ -228,6 +192,9 @@
             "type": "string"
           },
           "description": "Custom labels for metrics"
+        },
+        "securityContext": {
+          "$ref": "#/$defs/securityContext"
         },
         "resources": {
           "$ref": "#/$defs/resources"
@@ -831,6 +798,52 @@
         }
       },
       "additionalProperties": false
+    },
+    "securityContext": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "object",
+          "properties": {
+            "add": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "drop": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "readOnlyRootFilesystem": {
+          "type": "boolean"
+        },
+        "runAsNonRoot": {
+          "type": "boolean"
+        },
+        "runAsUser": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runAsGroup": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "allowPrivilegeEscalation": {
+          "type": "boolean"
+        },
+        "seccompProfile": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true,
+      "description": "Security context for the container"
     }
   }
 }
