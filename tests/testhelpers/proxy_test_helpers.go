@@ -17,6 +17,7 @@ import (
 	"time"
 
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -244,18 +245,8 @@ func WaitForSquidDeploymentReady(ctx context.Context, client kubernetes.Interfac
 
 	fmt.Printf("Waiting for only one squid pod to be present...\n")
 	Eventually(func() error {
-		pods, err := client.CoreV1().Pods("proxy").List(ctx, metav1.ListOptions{
-			LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component=squid-proxy",
-		})
-		if err != nil {
-			return fmt.Errorf("failed to get pods: %w", err)
-		}
-
-		if len(pods.Items) != 1 {
-			return fmt.Errorf("expected 1 pod, got %d", len(pods.Items))
-		}
-
-		return nil
+		_, err := GetSquidPod(ctx, client, "proxy")
+		return err
 	}, 120*time.Second, 5*time.Second).Should(Succeed())
 
 	return nil
@@ -332,4 +323,34 @@ func UpgradeChart(releaseName, chartName string, values map[string]string) error
 		return fmt.Errorf("failed to run helm upgrade command: %w\n%s", err, string(output))
 	}
 	return nil
+}
+
+// GetSquidPod queries for the active squid pod. Returns an error if no or multiple pods are found.
+func GetSquidPod(ctx context.Context, client kubernetes.Interface, namespace string) (*corev1.Pod, error) {
+	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component=squid-proxy",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list squid pods: %w", err)
+	}
+
+	if len(pods.Items) == 0 {
+		return nil, fmt.Errorf("no squid pods found")
+	}
+
+	if len(pods.Items) > 1 {
+		return nil, fmt.Errorf("%d squid pods found", len(pods.Items))
+	}
+
+	return &pods.Items[0], nil
+}
+
+// GetPodLogsSince retrieves logs from a pod container since a specific timestamp
+func GetPodLogsSince(ctx context.Context, client kubernetes.Interface, namespace, podName, containerName string, since *metav1.Time) ([]byte, error) {
+	logOptions := &corev1.PodLogOptions{
+		Container: containerName,
+		SinceTime: since,
+	}
+
+	return client.CoreV1().Pods(namespace).GetLogs(podName, logOptions).Do(ctx).Raw()
 }

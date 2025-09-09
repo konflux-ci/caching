@@ -194,75 +194,64 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 	})
 
 	Describe("Pod", func() {
-		var pods *corev1.PodList
+		var pod *corev1.Pod
 
 		BeforeEach(func() {
 			var err error
-			// Select only squid deployment pods (exclude test and mirrord target pods)
-			labelSelector := "app.kubernetes.io/name=squid,app.kubernetes.io/component notin (test,mirrord-target)"
-			pods, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-				LabelSelector: labelSelector,
-			})
-			Expect(err).NotTo(HaveOccurred(), "Failed to list squid pods")
-			Expect(pods.Items).NotTo(BeEmpty(), "No squid pods found")
+			pod, err = testhelpers.GetSquidPod(ctx, clientset, namespace)
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pod")
 		})
 
 		It("should be running and ready", func() {
-			for _, pod := range pods.Items {
-				Eventually(func() corev1.PodPhase {
-					currentPod, err := clientset.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-					Expect(err).NotTo(HaveOccurred())
-					return currentPod.Status.Phase
-				}, timeout, interval).Should(Equal(corev1.PodRunning), fmt.Sprintf("Pod %s should be running", pod.Name))
+			Eventually(func() corev1.PodPhase {
+				currentPod, err := clientset.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+				Expect(err).NotTo(HaveOccurred())
+				return currentPod.Status.Phase
+			}, timeout, interval).Should(Equal(corev1.PodRunning), fmt.Sprintf("Pod %s should be running", pod.Name))
 
-				// Check readiness
-				Eventually(func() bool {
-					currentPod, err := clientset.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-					if err != nil {
-						return false
-					}
-
-					for _, condition := range currentPod.Status.Conditions {
-						if condition.Type == corev1.PodReady {
-							return condition.Status == corev1.ConditionTrue
-						}
-					}
+			// Check readiness
+			Eventually(func() bool {
+				currentPod, err := clientset.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+				if err != nil {
 					return false
-				}, timeout, interval).Should(BeTrue(), fmt.Sprintf("Pod %s should be ready", pod.Name))
-			}
+				}
+
+				for _, condition := range currentPod.Status.Conditions {
+					if condition.Type == corev1.PodReady {
+						return condition.Status == corev1.ConditionTrue
+					}
+				}
+				return false
+			}, timeout, interval).Should(BeTrue(), fmt.Sprintf("Pod %s should be ready", pod.Name))
 		})
 
 		It("should have correct resource configuration", func() {
-			for _, pod := range pods.Items {
-				Expect(pod.Spec.Containers).To(HaveLen(2))
+			Expect(pod.Spec.Containers).To(HaveLen(2))
 
-				squidContainer := pod.Spec.Containers[0]
-				Expect(squidContainer.Name).To(Equal("squid"))
+			squidContainer := pod.Spec.Containers[0]
+			Expect(squidContainer.Name).To(Equal("squid"))
 
-				// Check squid security context (should run as non-root)
-				if squidContainer.SecurityContext != nil {
-					Expect(squidContainer.SecurityContext.RunAsNonRoot).NotTo(BeNil())
-					if squidContainer.SecurityContext.RunAsNonRoot != nil {
-						Expect(*squidContainer.SecurityContext.RunAsNonRoot).To(BeTrue())
-					}
+			// Check squid security context (should run as non-root)
+			if squidContainer.SecurityContext != nil {
+				Expect(squidContainer.SecurityContext.RunAsNonRoot).NotTo(BeNil())
+				if squidContainer.SecurityContext.RunAsNonRoot != nil {
+					Expect(*squidContainer.SecurityContext.RunAsNonRoot).To(BeTrue())
 				}
 			}
 		})
 
 		It("should have the squid configuration mounted", func() {
-			for _, pod := range pods.Items {
-				container := pod.Spec.Containers[0]
+			container := pod.Spec.Containers[0]
 
-				// Check for volume mounts
-				var foundConfigMount bool
-				for _, mount := range container.VolumeMounts {
-					if mount.Name == "squid-config" || mount.MountPath == "/etc/squid/squid.conf" {
-						foundConfigMount = true
-						break
-					}
+			// Check for volume mounts
+			var foundConfigMount bool
+			for _, mount := range container.VolumeMounts {
+				if mount.Name == "squid-config" || mount.MountPath == "/etc/squid/squid.conf" {
+					foundConfigMount = true
+					break
 				}
-				Expect(foundConfigMount).To(BeTrue(), "Pod should have squid configuration mounted")
 			}
+			Expect(foundConfigMount).To(BeTrue(), "Pod should have squid configuration mounted")
 		})
 	})
 

@@ -24,7 +24,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 		k8sClient     *kubernetes.Clientset
 		config        *rest.Config
 		trustedClient *http.Client
-		squidPod      corev1.Pod
+		squidPod      *corev1.Pod
 	)
 
 	const testServerURL = "https://test-server.proxy.svc.cluster.local:443"
@@ -68,7 +68,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 
 		// Create trusted client with both CA bundles (same as test-client combined approach)
 		By("Creating trusted client with both CA bundles")
-		fmt.Printf("DEBUG: Creating trusted client with proxy CA and test-server CA")
+		fmt.Printf("DEBUG: Creating trusted client with proxy CA and test-server CA\n")
 		trustedClient, err = testhelpers.NewTrustedSquidProxyClient(
 			serviceName,
 			namespace,
@@ -77,13 +77,8 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 		)
 		Expect(err).NotTo(HaveOccurred(), "Failed to create trusted proxy client with both CA bundles")
 		fmt.Printf("DEBUG: Trusted client created successfully\n")
-		By("Getting Squid pod name")
-		pods, err := k8sClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
-			LabelSelector: "app.kubernetes.io/name=squid",
-		})
-		Expect(err).NotTo(HaveOccurred(), "Failed to list Squid pods")
-		Expect(pods.Items).NotTo(BeEmpty(), "Should have at least one Squid pod")
-		squidPod = pods.Items[0]
+		squidPod, err = testhelpers.GetSquidPod(ctx, clientset, namespace)
+		Expect(err).NotTo(HaveOccurred(), "Failed to get Squid pod")
 	})
 
 	Describe("SSL-Bump Certificate Inspection", func() {
@@ -148,13 +143,6 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 
 	Describe("SSL-Bump Log Verification", func() {
 		It("should show decrypted HTTPS requests in Squid access logs", func() {
-			// By("Getting Squid pod name")
-			// pods, err := k8sClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
-			// 	LabelSelector: "app.kubernetes.io/name=squid",
-			// })
-			// Expect(err).NotTo(HaveOccurred(), "Failed to list Squid pods")
-			// Expect(pods.Items).NotTo(BeEmpty(), "Should have at least one Squid pod")
-			// squidPod := pods.Items[0]
 			// Use the local test server with a unique ID for SSL-Bump verification
 			timestamp := time.Now().Unix()
 			testURL := fmt.Sprintf("%s/ssl-bump-test/%d", testServerURL, timestamp)
@@ -188,10 +176,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 			time.Sleep(1 * time.Second)
 
 			By("Getting logs since before the request")
-			requestLogs, err := k8sClient.CoreV1().Pods(namespace).GetLogs(squidPod.Name, &corev1.PodLogOptions{
-				Container: "squid",
-				SinceTime: &beforeRequest,
-			}).Do(context.Background()).Raw()
+			requestLogs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, squidPod.Name, "squid", &beforeRequest)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get logs")
 
 			By("Verifying logs show SSL-Bump evidence")
@@ -219,13 +204,6 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 
 	Describe("SSL-Bump HTTPS RAM Caching", func() {
 		It("should cache HTTPS content in RAM proving SSL-Bump decryption and caching work", func() {
-			// By("Getting Squid pod name")
-			// pods, err := k8sClient.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
-			// 	LabelSelector: "app.kubernetes.io/name=squid",
-			// })
-			// Expect(err).NotTo(HaveOccurred(), "Failed to list Squid pods")
-			// Expect(pods.Items).NotTo(BeEmpty(), "Should have at least one Squid pod")
-			// squidPod := pods.Items[0]
 			// Use the local test server's cacheable SSL-Bump endpoint
 			timestamp := time.Now().Unix()
 			testURL := fmt.Sprintf("%s/ssl-bump-cache-test/%d", testServerURL, timestamp)
@@ -271,10 +249,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 
 			// Verify the complete caching sequence in logs
 			By("Getting logs since before the sequence")
-			allLogs, err := k8sClient.CoreV1().Pods(namespace).GetLogs(squidPod.Name, &corev1.PodLogOptions{
-				Container: "squid",
-				SinceTime: &beforeSequence,
-			}).Do(context.Background()).Raw()
+			allLogs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, squidPod.Name, "squid", &beforeSequence)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get logs")
 
 			By("Verifying caching behavior: at least one TCP_MISS and at least one TCP_MEM_HIT (RAM cache hit)")

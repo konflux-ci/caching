@@ -143,9 +143,8 @@ func (e *Exporter) parseLogLine(line string) {
 	urlStr := fields[6]
 
 	// Skip non-HTTP methods
-	if !strings.HasPrefix(method, "GET") && !strings.HasPrefix(method, "POST") &&
-		!strings.HasPrefix(method, "HEAD") && !strings.HasPrefix(method, "PUT") {
-		log.Printf("Unsupported method %q", method)
+	if method == "-" {
+		log.Printf("Skipping non-HTTP request for line: %q", line)
 		return
 	}
 
