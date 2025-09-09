@@ -78,7 +78,7 @@ mage all
 
 This single command will:
 - Create the 'caching' kind cluster (or connect to existing)
-- Build the consolidated squid container image (with integrated squid-exporter)
+- Build the consolidated squid container image (with integrated squid-exporter and per-site exporter)
 - Load the image into the cluster
 - Deploy the Helm chart with all dependencies
 - Verify the deployment status
@@ -286,7 +286,12 @@ When adding new tests:
 5. **Update VS Code config**: Add debug configurations for new test files
 ## Prometheus Monitoring
 
-This chart includes comprehensive Prometheus monitoring capabilities through the integrated [squid-exporter](https://github.com/boynux/squid-exporter) (upstream). The squid-exporter is built into the main Squid container, providing a single, consolidated image. The monitoring system provides detailed metrics about Squid's operational status, including:
+This chart includes comprehensive Prometheus monitoring capabilities through:
+
+- Integrated upstream [squid-exporter](https://github.com/boynux/squid-exporter) for standard Squid metrics
+- A per-site exporter that parses Squid access logs (via STDOUT piping) to emit per-host request metrics
+
+Both exporters are bundled into the single Squid container image. The monitoring system provides detailed metrics about Squid's operational status, including:
 
 - **Liveness**: Squid service information and connection status
 - **Bandwidth Usage**: Client HTTP and Server HTTP traffic metrics
@@ -315,6 +320,16 @@ squidExporter:
       memory: 64Mi
 ```
 
+Per-site exporter (enabled by default):
+
+```yaml
+# In values.yaml or via --set flags
+perSiteExporter:
+  enabled: true
+  port: 9302
+  metricsPath: "/metrics"
+```
+
 ### Prometheus Integration
 
 #### Option 1: Prometheus Operator (Recommended)
@@ -329,6 +344,8 @@ prometheus:
     scrapeTimeout: 10s
     namespace: ""  # Leave empty to use the same namespace as the app
 ```
+
+When enabled, the ServiceMonitor exposes endpoints for both exporters: `9301` (standard) and `9302` (per-site).
 
 #### Option 2: Manual Prometheus Configuration
 
@@ -371,6 +388,15 @@ The monitoring system provides numerous metrics including:
 - `squid_service_times_seconds`: Service times for different operations
 - `squid_up`: Squid availability status
 
+#### Per-site Metrics (Port 9302)
+
+- `squid_site_requests_total{host="<hostname>"}`: Total requests per origin host
+- `squid_site_hits_total{host="<hostname>"}`: Cache hits per host
+- `squid_site_misses_total{host="<hostname>"}`: Cache misses per host
+- `squid_site_bytes_total{host="<hostname>"}`: Bytes transferred per host
+- `squid_site_hit_ratio{host="<hostname>"}`: Hit ratio gauge per host
+- `squid_site_response_time_seconds{host="<hostname>",le="..."}`: Response time histogram per host
+
 ### Accessing Metrics
 
 #### Via Port Forward
@@ -383,6 +409,16 @@ kubectl port-forward -n proxy svc/squid 9301:9301
 curl http://localhost:9301/metrics
 ```
 
+Per-site exporter metrics:
+
+```bash
+# Forward the per-site exporter metrics port
+kubectl port-forward -n proxy svc/squid 9302:9302
+
+# View per-site metrics
+curl http://localhost:9302/metrics
+```
+
 #### Via Service
 
 The metrics are exposed on the service:
@@ -390,6 +426,12 @@ The metrics are exposed on the service:
 ```bash
 # Standard squid-exporter metrics (from within the cluster)
 curl http://squid.proxy.svc.cluster.local:9301/metrics
+```
+
+Per-site exporter metrics (from within the cluster):
+
+```bash
+curl http://squid.proxy.svc.cluster.local:9302/metrics
 ```
 
 ### Troubleshooting Metrics
