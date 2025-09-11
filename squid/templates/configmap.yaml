@@ -23,3 +23,7 @@ data:
     {{- else }}
     cache allow all
     {{- end }}
+
+    # --- MEMORY CACHE CONFIGURATION ---
+    cache_mem {{ .Values.cache.memory.size }}
+    maximum_object_size_in_memory {{ .Values.cache.memory.maxObjectSize }}
