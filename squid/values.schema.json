@@ -631,6 +631,23 @@
             "type": "string"
           },
           "description": "List of URL regex patterns to cache"
+        },
+        "memory": {
+          "type": "object",
+          "properties": {
+            "size": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\s+(MB|GB|TB|KB|B))?$",
+              "description": "RAM allocated for caching (cache_mem)"
+            },
+            "maxObjectSize": {
+              "type": "string",
+              "pattern": "^[0-9]+(\\s+(MB|GB|TB|KB|B))?$",
+              "description": "Maximum size of objects cached in memory (maximum_object_size_in_memory)"
+            }
+          },
+          "additionalProperties": false,
+          "description": "Memory cache configuration options"
         }
       },
       "additionalProperties": false
