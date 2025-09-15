@@ -37,5 +37,19 @@ spec:
       interval: {{ .Values.prometheus.serviceMonitor.interval }}
       scrapeTimeout: {{ .Values.prometheus.serviceMonitor.scrapeTimeout }}
       honorLabels: true
+      {{- if .Values.prometheus.serviceMonitor.perSiteTLS.enabled }}
+      tlsConfig:
+        {{- $clusterDomain := (default "cluster.local" .Values.clusterDomain) }}
+        {{- $svcFQDN := printf "%s.%s.svc.%s" (include "squid.fullname" .) .Values.namespace.name $clusterDomain }}
+        serverName: {{ .Values.prometheus.serviceMonitor.perSiteTLS.serverName | default $svcFQDN }}
+        insecureSkipVerify: {{ .Values.prometheus.serviceMonitor.perSiteTLS.insecureSkipVerify | default false }}
+        {{- with .Values.prometheus.serviceMonitor.perSiteTLS.ca }}
+        ca:
+          secret:
+            name: {{ .secretName }}
+            key: {{ .key | default "ca.crt" }}
+        {{- end }}
+        caFile: {{ .Values.prometheus.serviceMonitor.perSiteTLS.caFile }}
+      {{- end }}
     {{- end }}
 {{- end }} 

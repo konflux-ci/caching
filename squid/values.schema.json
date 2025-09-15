@@ -6,6 +6,10 @@
   "type": "object",
 
   "properties": {
+    "clusterDomain": {
+      "type": "string",
+      "description": "Kubernetes cluster DNS suffix (e.g., cluster.local). Leave empty to use default."
+    },
     "replicaCount": {
       "type": "integer",
       "minimum": 1,
@@ -442,6 +446,30 @@
                 "type": "string"
               },
               "description": "ServiceMonitor annotations"
+            },
+            "perSiteTLS": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "serverName": { "type": "string" },
+                "insecureSkipVerify": { "type": "boolean" },
+                "ca": {
+                  "type": "object",
+                  "properties": {
+                    "secretName": { "type": "string" },
+                    "key": { "type": "string" }
+                  },
+                  "required": ["secretName"],
+                  "additionalProperties": false
+                },
+                "caFile": { "type": "string" }
+              },
+              "required": ["enabled"],
+              "anyOf": [
+                { "required": ["ca"] },
+                { "required": ["caFile"] }
+              ],
+              "additionalProperties": false
             }
           },
           "required": ["enabled"],

@@ -2,6 +2,9 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Cluster DNS domain. If empty, templates assume "cluster.local".
+clusterDomain: ""
+
 # Environment selector (default to release, override with --set environment=dev for development)
 environment: release
 
@@ -302,6 +305,20 @@ prometheus:
     path: "/metrics"
     # Additional annotations for the ServiceMonitor
     annotations: {}
+    # TLS options for per-site exporter scrape (9302). If enabled, Prometheus will
+    # validate the HTTPS endpoint using the provided serverName and CA.
+    perSiteTLS:
+      enabled: true
+      # Leave empty to auto-derive: <service>.<namespace>.svc.<cluster-domain>
+      serverName: ""
+      # If you don't have a CA handy, you can point to a Secret with ca.crt
+      ca:
+        secretName: "proxy-tls"
+        # key: "ca.crt" # optional, defaults to ca.crt
+      # Alternatively, reference a mounted CA file path inside Prometheus
+      # caFile: "/etc/prometheus/configmaps/proxy-ca/ca.crt"
+      # As a last resort only (not recommended), you can skip verification
+      insecureSkipVerify: false
 
 test:
   enabled: true # Enable helm test functionality
