@@ -27,7 +27,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 		squidPod      *corev1.Pod
 	)
 
-	const testServerURL = "https://test-server.proxy.svc.cluster.local:443"
+	const testServerURL = "https://test-server." + namespace + ".svc.cluster.local:443"
 
 	BeforeAll(func() {
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
@@ -52,11 +52,11 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 
 		// Get the Squid CA certificate from the ConfigMap created by trust-manager
 		By("Getting Squid CA certificate from trust-manager ConfigMap")
-		fmt.Printf("DEBUG: Retrieving proxy CA bundle from ConfigMap\n")
-		proxyCAConfigMap, err := k8sClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), "proxy-ca-bundle", metav1.GetOptions{})
-		Expect(err).NotTo(HaveOccurred(), "Failed to get proxy-ca-bundle ConfigMap")
-		Expect(proxyCAConfigMap.Data).To(HaveKey("ca-bundle.crt"), "CA ConfigMap should contain 'ca-bundle.crt'")
-		fmt.Printf("DEBUG: Proxy CA bundle retrieved successfully\n")
+		fmt.Printf("DEBUG: Retrieving caching CA bundle from ConfigMap\n")
+		cachingCAConfigMap, err := k8sClient.CoreV1().ConfigMaps(namespace).Get(context.Background(), namespace+"-ca-bundle", metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred(), "Failed to get "+namespace+"-ca-bundle ConfigMap")
+		Expect(cachingCAConfigMap.Data).To(HaveKey("ca-bundle.crt"), "CA ConfigMap should contain 'ca-bundle.crt'")
+		fmt.Printf("DEBUG: Caching CA bundle retrieved successfully\n")
 
 		// Get the test-server CA certificate from the ConfigMap created by trust-manager
 		By("Getting test-server CA certificate from trust-manager ConfigMap")
@@ -68,23 +68,23 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 
 		// Create trusted client with both CA bundles (same as test-client combined approach)
 		By("Creating trusted client with both CA bundles")
-		fmt.Printf("DEBUG: Creating trusted client with proxy CA and test-server CA\n")
-		trustedClient, err = testhelpers.NewTrustedSquidProxyClient(
+		fmt.Printf("DEBUG: Creating trusted client with caching CA and test-server CA\n")
+		trustedClient, err = testhelpers.NewTrustedSquidCachingClient(
 			serviceName,
 			namespace,
-			[]byte(proxyCAConfigMap.Data["ca-bundle.crt"]),
+			[]byte(cachingCAConfigMap.Data["ca-bundle.crt"]),
 			[]byte(testServerCAConfigMap.Data["ca.crt"]),
 		)
-		Expect(err).NotTo(HaveOccurred(), "Failed to create trusted proxy client with both CA bundles")
+		Expect(err).NotTo(HaveOccurred(), "Failed to create trusted caching client with both CA bundles")
 		fmt.Printf("DEBUG: Trusted client created successfully\n")
 		squidPod, err = testhelpers.GetSquidPod(ctx, clientset, namespace)
 		Expect(err).NotTo(HaveOccurred(), "Failed to get Squid pod")
 	})
 
 	Describe("SSL-Bump Certificate Inspection", func() {
-		It("should successfully make HTTPS request through Squid proxy with trusted client", func() {
+		It("should successfully make HTTPS request through Squid caching with trusted client", func() {
 			fmt.Printf("DEBUG: Testing HTTPS request to: %s\n", testServerURL)
-			By("Making HTTPS request through Squid proxy with trusted client (with retries)")
+			By("Making HTTPS request through Squid caching with trusted client (with retries)")
 			var resp *http.Response
 			var body []byte
 
@@ -112,7 +112,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 				}
 
 				return nil
-			}, timeout, interval).Should(Succeed(), "HTTPS request should succeed with trusted client (retries handle transient HTTP errors)")
+			}, timeout, interval).Should(Succeed(), "HTTPS request should succeed with trusted caching client (retries handle transient HTTP errors)")
 
 			// Add debug output
 			By(fmt.Sprintf("Response Status: %s", resp.Status))
@@ -126,13 +126,13 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 		})
 
 		// Add a test that uses the regular client for comparison
-		It("should fail HTTPS request with untrusted client", func() {
+		It("should fail HTTPS request with untrusted caching client", func() {
 
 			fmt.Printf("DEBUG: Testing untrusted client with URL: %s\n", testServerURL)
 
 			// Create regular client for comparison
-			client, err := testhelpers.NewSquidProxyClient(serviceName, namespace)
-			Expect(err).NotTo(HaveOccurred(), "Failed to create proxy client")
+			client, err := testhelpers.NewSquidCachingClient(serviceName, namespace)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create caching client")
 
 			fmt.Printf("DEBUG: Making request with untrusted client...\n")
 			_, err = client.Get(testServerURL)
@@ -176,7 +176,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 			time.Sleep(1 * time.Second)
 
 			By("Getting logs since before the request")
-			requestLogs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, squidPod.Name, "squid", &beforeRequest)
+			requestLogs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, squidPod.Name, deploymentName, &beforeRequest)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get logs")
 
 			By("Verifying logs show SSL-Bump evidence")
@@ -195,7 +195,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 			Expect(logOutput).To(ContainSubstring("GET https://"), "Should show decrypted HTTPS GET requests")
 
 			// Verify the specific test server URL was requested
-			Expect(logOutput).To(ContainSubstring("test-server.proxy.svc.cluster.local"), "Should show the test server URL in logs")
+			Expect(logOutput).To(ContainSubstring("test-server."+namespace+".svc.cluster.local"), "Should show the test server URL in logs")
 			Expect(logOutput).To(ContainSubstring("ssl-bump-test"), "Should show the SSL-Bump test endpoint in logs")
 
 			fmt.Printf("DEBUG: SSL-Bump verification successful - CONNECT tunnel and decrypted GET request detected!\n")
@@ -249,7 +249,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 
 			// Verify the complete caching sequence in logs
 			By("Getting logs since before the sequence")
-			allLogs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, squidPod.Name, "squid", &beforeSequence)
+			allLogs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, squidPod.Name, deploymentName, &beforeSequence)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get logs")
 
 			By("Verifying caching behavior: at least one TCP_MISS and at least one TCP_HIT (RAM cache hit)")
@@ -260,9 +260,9 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 			fmt.Printf("==========================================\n")
 
 			Expect(logOutput).To(ContainSubstring("TCP_MISS"), "Should show at least one TCP_MISS for the test URL")
-			Expect(logOutput).To(ContainSubstring("test-server.proxy.svc.cluster.local"), "Should show the test server URL in logs")
+			Expect(logOutput).To(ContainSubstring("test-server."+namespace+".svc.cluster.local"), "Should show the test server URL in logs")
 			Expect(logOutput).To(ContainSubstring("ssl-bump-cache-test"), "Should show the SSL-Bump cache test endpoint in logs")
-			Expect(logOutput).To(ContainSubstring("TCP_HIT"), "Should show at least one TCP_HIT for the test URL")
+			Expect(logOutput).To(ContainSubstring("TCP_HIT"), "Should show at least one TCP_HIT (RAM cache hit) for the test URL")
 
 			fmt.Printf("DEBUG: Caching verification successful - found both TCP_MISS and TCP_HIT!\n")
 		})

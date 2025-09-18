@@ -50,11 +50,11 @@ func generateCacheBuster(testName string) string {
 var _ = Describe("Squid Helm Chart Deployment", func() {
 
 	Describe("Namespace", func() {
-		It("should have the proxy namespace created", func() {
-			namespace, err := clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get proxy namespace")
-			Expect(namespace.Name).To(Equal("proxy"))
-			Expect(namespace.Status.Phase).To(Equal(corev1.NamespaceActive))
+		It("should have the caching namespace created", func() {
+			ns, err := clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to get caching namespace")
+			Expect(ns.Name).To(Equal(namespace))
+			Expect(ns.Status.Phase).To(Equal(corev1.NamespaceActive))
 		})
 	})
 
@@ -68,15 +68,15 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should exist and be properly configured", func() {
-			Expect(deployment.Name).To(Equal("squid"))
-			Expect(deployment.Namespace).To(Equal("proxy"))
+			Expect(deployment.Name).To(Equal(deploymentName))
+			Expect(deployment.Namespace).To(Equal(namespace))
 
 			// Check deployment spec
 			Expect(deployment.Spec.Replicas).NotTo(BeNil())
 			Expect(*deployment.Spec.Replicas).To(BeNumerically(">=", 1))
 
 			// Check selector and labels
-			Expect(deployment.Spec.Selector.MatchLabels).To(HaveKeyWithValue("app.kubernetes.io/name", "squid"))
+			Expect(deployment.Spec.Selector.MatchLabels).To(HaveKeyWithValue("app.kubernetes.io/name", deploymentName))
 		})
 
 		It("should be ready and available", func() {
@@ -96,15 +96,15 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			// Find squid container
 			var squidContainer *corev1.Container
 			for i := range deployment.Spec.Template.Spec.Containers {
-				if deployment.Spec.Template.Spec.Containers[i].Name == "squid" {
+				if deployment.Spec.Template.Spec.Containers[i].Name == deploymentName {
 					squidContainer = &deployment.Spec.Template.Spec.Containers[i]
 					break
 				}
 			}
 			Expect(squidContainer).NotTo(BeNil(), "squid container should exist")
-			Expect(squidContainer.Image).To(ContainSubstring("squid"))
+			Expect(squidContainer.Image).To(ContainSubstring(deploymentName))
 
-			// Squid container should expose proxy and per-site-http ports
+			// Squid container should expose caching and per-site-http ports
 			Expect(squidContainer.Ports).To(HaveLen(2))
 			Expect(squidContainer.Ports[0].Name).To(Equal("http"))
 			Expect(squidContainer.Ports[0].ContainerPort).To(Equal(int32(3128)))
@@ -114,7 +114,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			// Find squid-exporter container
 			var exporterContainer *corev1.Container
 			for i := range deployment.Spec.Template.Spec.Containers {
-				if deployment.Spec.Template.Spec.Containers[i].Name == "squid-exporter" {
+				if deployment.Spec.Template.Spec.Containers[i].Name == deploymentName+"-exporter" {
 					exporterContainer = &deployment.Spec.Template.Spec.Containers[i]
 					break
 				}
@@ -135,7 +135,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 				}
 			}
 			Expect(icapContainer).NotTo(BeNil(), "icap-server container should exist")
-			Expect(icapContainer.Image).To(ContainSubstring("squid"))
+			Expect(icapContainer.Image).To(ContainSubstring(deploymentName))
 			// icap-server should expose the icap port
 			Expect(icapContainer.Ports[0].ContainerPort).To(Equal(int32(1344)))
 			Expect(icapContainer.Ports[0].Name).To(Equal("icap"))
@@ -159,8 +159,8 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 			// Verify label selector targets correct pods
 			labels := rule.PodAffinityTerm.LabelSelector.MatchLabels
-			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/name", "squid"))
-			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/component", "squid-proxy"))
+			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/name", deploymentName))
+			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/component", deploymentName+"-"+namespace))
 			// Note: instance label will be "squid" in actual deployment vs "test-release" in template tests
 			Expect(labels).To(HaveKey("app.kubernetes.io/instance"))
 		})
@@ -180,7 +180,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 			// Verify pods are actually running (not stuck in pending due to anti-affinity)
 			pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-				LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component=squid-proxy",
+				LabelSelector: "app.kubernetes.io/name=" + deploymentName + ",app.kubernetes.io/component=" + deploymentName + "-" + namespace,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -209,12 +209,12 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should exist and be properly configured", func() {
-			Expect(service.Name).To(Equal("squid"))
-			Expect(service.Namespace).To(Equal("proxy"))
+			Expect(service.Name).To(Equal(deploymentName))
+			Expect(service.Namespace).To(Equal(namespace))
 
 			// Check service type and selector
 			Expect(service.Spec.Type).To(Equal(corev1.ServiceTypeClusterIP))
-			Expect(service.Spec.Selector).To(HaveKeyWithValue("app.kubernetes.io/name", "squid"))
+			Expect(service.Spec.Selector).To(HaveKeyWithValue("app.kubernetes.io/name", deploymentName))
 		})
 
 		It("should have the correct port configuration", func() {
@@ -300,7 +300,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			Expect(pod.Spec.Containers).To(HaveLen(3))
 
 			squidContainer := pod.Spec.Containers[0]
-			Expect(squidContainer.Name).To(Equal("squid"))
+			Expect(squidContainer.Name).To(Equal(deploymentName))
 
 			// Check squid security context (should run as non-root)
 			if squidContainer.SecurityContext != nil {
@@ -317,7 +317,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			// Check for volume mounts
 			var foundConfigMount bool
 			for _, mount := range container.VolumeMounts {
-				if mount.Name == "squid-config" || mount.MountPath == "/etc/squid/squid.conf" {
+				if mount.Name == deploymentName+"-config" || mount.MountPath == "/etc/squid/squid.conf" {
 					foundConfigMount = true
 					break
 				}
@@ -328,7 +328,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 	Describe("ConfigMap", func() {
 		It("should exist and contain squid configuration", func() {
-			configMap, err := clientset.CoreV1().ConfigMaps(namespace).Get(ctx, "squid-config", metav1.GetOptions{})
+			configMap, err := clientset.CoreV1().ConfigMaps(namespace).Get(ctx, deploymentName+"-config", metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid-config ConfigMap")
 
 			Expect(configMap.Data).To(HaveKey("squid.conf"))
@@ -351,7 +351,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 	Describe("HTTP Caching Functionality", func() {
 		var (
-			testServer *testhelpers.ProxyTestServer
+			testServer *testhelpers.CachingTestServer
 			client     *http.Client
 		)
 
@@ -367,7 +367,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			testURL := testServer.URL + "?" + generateCacheBuster("cache-basic")
 
 			By("Making the first HTTP request through Squid proxy")
-			resp1, body1, err := testhelpers.MakeProxyRequest(client, testURL)
+			resp1, body1, err := testhelpers.MakeCachingRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred(), "First request should succeed")
 			defer resp1.Body.Close()
 
@@ -386,7 +386,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			// Wait a moment to ensure any timing-related caching issues are avoided
 			time.Sleep(100 * time.Millisecond)
 
-			resp2, body2, err := testhelpers.MakeProxyRequest(client, testURL)
+			resp2, body2, err := testhelpers.MakeCachingRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred(), "Second request should succeed")
 			defer resp2.Body.Close()
 
@@ -417,7 +417,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 			// First URL
 			url1 := testServer.URL + "/endpoint1?" + baseBuster + "&endpoint=1"
-			resp1, _, err := testhelpers.MakeProxyRequest(client, url1)
+			resp1, _, err := testhelpers.MakeCachingRequest(client, url1)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp1.Body.Close()
 
@@ -425,7 +425,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 			// Second URL (different from first)
 			url2 := testServer.URL + "/endpoint2?" + baseBuster + "&endpoint=2"
-			resp2, _, err := testhelpers.MakeProxyRequest(client, url2)
+			resp2, _, err := testhelpers.MakeCachingRequest(client, url2)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp2.Body.Close()
 
@@ -436,7 +436,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 	Describe("Caching Verification", func() {
 		It("should verify configuration is set for disk caching", func() {
-			configMap, err := clientset.CoreV1().ConfigMaps(namespace).Get(ctx, "squid-config", metav1.GetOptions{})
+			configMap, err := clientset.CoreV1().ConfigMaps(namespace).Get(ctx, deploymentName+"-config", metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid-config ConfigMap")
 
 			squidConf := configMap.Data["squid.conf"]
@@ -454,23 +454,23 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 	Describe("Resources verification", func() {
 		It("should have the self-signed cluster issuer created", func() {
-			clusterIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, "proxy-self-signed-cluster-issuer", metav1.GetOptions{})
+			clusterIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, namespace+"-self-signed-cluster-issuer", metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get self-signed cluster issuer")
 			Expect(clusterIssuer).NotTo(BeNil(), "ClusterIssuer should not be nil")
-			Expect(clusterIssuer.Name).To(Equal("proxy-self-signed-cluster-issuer"))
+			Expect(clusterIssuer.Name).To(Equal(namespace + "-self-signed-cluster-issuer"))
 			Expect(clusterIssuer.Spec.SelfSigned).NotTo(BeNil(), "SelfSigned spec should not be nil")
 		})
 
 		It("should have the CA certificate created in cert-manager namespace", func() {
 			// Get the CA certificate from the cert-manager namespace
-			caCert, err := certManagerClient.CertmanagerV1().Certificates("cert-manager").Get(ctx, "proxy-self-signed-ca", metav1.GetOptions{})
+			caCert, err := certManagerClient.CertmanagerV1().Certificates("cert-manager").Get(ctx, namespace+"-self-signed-ca", metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get CA certificate")
 			Expect(caCert).NotTo(BeNil(), "CA Certificate should not be nil")
-			Expect(caCert.Name).To(Equal("proxy-self-signed-ca"))
+			Expect(caCert.Name).To(Equal(namespace + "-self-signed-ca"))
 
 			// Verify the certificate spec
-			Expect(caCert.Spec.SecretName).To(Equal("proxy-root-ca-secret"))
-			Expect(caCert.Spec.IssuerRef.Name).To(Equal("proxy-self-signed-cluster-issuer"))
+			Expect(caCert.Spec.SecretName).To(Equal(namespace + "-root-ca-secret"))
+			Expect(caCert.Spec.IssuerRef.Name).To(Equal(namespace + "-self-signed-cluster-issuer"))
 			Expect(caCert.Spec.IssuerRef.Kind).To(Equal("ClusterIssuer"))
 			Expect(caCert.Spec.IsCA).To(BeTrue(), "CA certificate should have isCA set to true")
 
@@ -489,10 +489,10 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 		It("should have the CA secret created in cert-manager namespace", func() {
 			// Get the CA secret from the cert-manager namespace
-			caSecret, err := clientset.CoreV1().Secrets("cert-manager").Get(ctx, "proxy-root-ca-secret", metav1.GetOptions{})
+			caSecret, err := clientset.CoreV1().Secrets("cert-manager").Get(ctx, namespace+"-root-ca-secret", metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get CA secret")
 			Expect(caSecret).NotTo(BeNil(), "CA Secret should not be nil")
-			Expect(caSecret.Name).To(Equal("proxy-root-ca-secret"))
+			Expect(caSecret.Name).To(Equal(namespace + "-root-ca-secret"))
 			Expect(caSecret.Namespace).To(Equal("cert-manager"))
 			Expect(caSecret.Type).To(Equal(corev1.SecretTypeTLS), "CA secret should be of type TLS")
 
@@ -505,50 +505,50 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 		It("should have the CA cluster issuer created", func() {
 			// Get the CA cluster issuer
-			caIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, "proxy-ca-issuer", metav1.GetOptions{})
+			caIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, namespace+"-ca-issuer", metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get CA cluster issuer")
 			Expect(caIssuer).NotTo(BeNil(), "CA ClusterIssuer should not be nil")
-			Expect(caIssuer.Name).To(Equal("proxy-ca-issuer"))
+			Expect(caIssuer.Name).To(Equal(namespace + "-ca-issuer"))
 
 			// Verify the issuer spec
 			Expect(caIssuer.Spec.CA).NotTo(BeNil(), "CA spec should not be nil")
-			Expect(caIssuer.Spec.CA.SecretName).To(Equal("proxy-root-ca-secret"), "CA issuer should reference the proxy-root-ca-secret")
+			Expect(caIssuer.Spec.CA.SecretName).To(Equal(namespace+"-root-ca-secret"), "CA issuer should reference the "+namespace+"-root-ca-secret")
 		})
 
-		It("should have the proxy certificate created in proxy namespace", func() {
-			// Get the proxy certificate from the proxy namespace
-			proxyCert, err := certManagerClient.CertmanagerV1().Certificates(namespace).Get(ctx, namespace+"-cert", metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get proxy certificate")
-			Expect(proxyCert).NotTo(BeNil(), "Proxy Certificate should not be nil")
-			Expect(proxyCert.Name).To(Equal(namespace + "-cert"))
+		It("should have the caching certificate created in caching namespace", func() {
+			// Get the caching certificate from the caching namespace
+			cachingCert, err := certManagerClient.CertmanagerV1().Certificates(namespace).Get(ctx, namespace+"-cert", metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to get caching certificate")
+			Expect(cachingCert).NotTo(BeNil(), "Caching Certificate should not be nil")
+			Expect(cachingCert.Name).To(Equal(namespace + "-cert"))
 
 			// Verify the certificate spec
-			Expect(proxyCert.Spec.SecretName).To(Equal(namespace + "-tls"))
-			Expect(proxyCert.Spec.IssuerRef.Name).To(Equal("proxy-ca-issuer"))
-			Expect(proxyCert.Spec.IssuerRef.Kind).To(Equal("ClusterIssuer"))
-			Expect(proxyCert.Spec.IsCA).To(BeTrue(), "Proxy certificate should have isCA set to true")
+			Expect(cachingCert.Spec.SecretName).To(Equal(namespace + "-tls"))
+			Expect(cachingCert.Spec.IssuerRef.Name).To(Equal(namespace + "-ca-issuer"))
+			Expect(cachingCert.Spec.IssuerRef.Kind).To(Equal("ClusterIssuer"))
+			Expect(cachingCert.Spec.IsCA).To(BeTrue(), "Caching certificate should have isCA set to true")
 
 			// Verify DNS names
-			Expect(proxyCert.Spec.DNSNames).To(ContainElement("localhost"))
-			Expect(proxyCert.Spec.DNSNames).To(ContainElement("squid"))
-			Expect(proxyCert.Spec.DNSNames).To(ContainElement("squid." + namespace + ".svc"))
-			Expect(proxyCert.Spec.DNSNames).To(ContainElement("squid." + namespace + ".svc.cluster.local"))
+			Expect(cachingCert.Spec.DNSNames).To(ContainElement("localhost"))
+			Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName))
+			Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName + "." + namespace + ".svc"))
+			Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName + "." + namespace + ".svc.cluster.local"))
 
 			// Verify the certificate status
-			Expect(proxyCert.Status.Conditions).NotTo(BeEmpty(), "Proxy certificate should have status conditions")
+			Expect(cachingCert.Status.Conditions).NotTo(BeEmpty(), "Caching certificate should have status conditions")
 			var readyCondition *certmanagerv1.CertificateCondition
-			for _, condition := range proxyCert.Status.Conditions {
+			for _, condition := range cachingCert.Status.Conditions {
 				if condition.Type == "Ready" {
 					readyCondition = &condition
 					break
 				}
 			}
-			Expect(readyCondition).NotTo(BeNil(), "Proxy certificate should have Ready condition")
-			Expect(string(readyCondition.Status)).To(Equal("True"), "Proxy certificate should be ready")
+			Expect(readyCondition).NotTo(BeNil(), "Caching certificate should have Ready condition")
+			Expect(string(readyCondition.Status)).To(Equal("True"), "Caching certificate should be ready")
 		})
 
 		It("should have the TLS secret created with certificate data", func() {
-			// Get the TLS secret from the proxy namespace
+			// Get the TLS secret from the caching namespace
 			tlsSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, namespace+"-tls", metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get TLS secret")
 			Expect(tlsSecret).NotTo(BeNil(), "TLS Secret should not be nil")

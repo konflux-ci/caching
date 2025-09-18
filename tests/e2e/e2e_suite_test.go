@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
-	"time"
 
 	certmanagerclient "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	"github.com/konflux-ci/caching/tests/testhelpers"
@@ -28,12 +27,11 @@ var (
 )
 
 const (
-	// Test configuration
-	namespace      = "proxy"
-	deploymentName = "squid"
-	serviceName    = "squid"
-	timeout        = 60 * time.Second
-	interval       = 2 * time.Second
+	namespace      = testhelpers.Namespace
+	deploymentName = testhelpers.DeploymentName
+	serviceName    = testhelpers.ServiceName
+	timeout        = testhelpers.Timeout
+	interval       = testhelpers.Interval
 )
 
 // getPodIP returns the pod IP address from downward API
@@ -52,7 +50,7 @@ func getPodIP() (string, error) {
 
 // setupHTTPTestServerAndClient sets up an HTTP test server
 // Registers a cleanup function to automatically close the test server
-func setupHTTPTestServer(msg string) *testhelpers.ProxyTestServer {
+func setupHTTPTestServer(msg string) *testhelpers.CachingTestServer {
 	// Get pod IP for test server
 	podIP, err := getPodIP()
 	Expect(err).NotTo(HaveOccurred(), "Failed to get pod IP")
@@ -66,7 +64,7 @@ func setupHTTPTestServer(msg string) *testhelpers.ProxyTestServer {
 	}
 
 	// Create test server
-	server, err := testhelpers.NewProxyTestServer(msg, podIP, testPort)
+	server, err := testhelpers.NewCachingTestServer(msg, podIP, testPort)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create test server")
 	Expect(server).NotTo(BeNil())
 
@@ -81,8 +79,8 @@ func setupHTTPTestServer(msg string) *testhelpers.ProxyTestServer {
 // setupHTTPTestClient sets up an HTTP test client
 // Registers a cleanup function to automatically close idle connections
 func setupHTTPTestClient() *http.Client {
-	client, err := testhelpers.NewSquidProxyClient(serviceName, namespace)
-	Expect(err).NotTo(HaveOccurred(), "Failed to create proxy client")
+	client, err := testhelpers.NewSquidCachingClient(serviceName, namespace)
+	Expect(err).NotTo(HaveOccurred(), "Failed to create caching client")
 
 	DeferCleanup(func() {
 		fmt.Printf("DEBUG: Closing idle test client connections\n")
@@ -125,7 +123,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
 
 	// Verify we can connect to the cluster
-	_, err = clientset.CoreV1().Pods("proxy").List(ctx, metav1.ListOptions{Limit: 1})
+	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})
 	Expect(err).NotTo(HaveOccurred(), "Failed to connect to Kubernetes cluster")
 
 	By("Suite setup complete - Configuration is ready")

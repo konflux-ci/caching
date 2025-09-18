@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-var _ = Describe("Squid Proxy Metrics Integration", func() {
+var _ = Describe("Squid Caching Metrics Integration", func() {
 
 	Describe("Metrics Endpoint", func() {
 		It("should have squid-exporter container running with correct configuration", func() {
@@ -28,7 +28,7 @@ var _ = Describe("Squid Proxy Metrics Integration", func() {
 			// Find squid-exporter container
 			var exporterContainer *v1.Container
 			for i := range deployment.Spec.Template.Spec.Containers {
-				if deployment.Spec.Template.Spec.Containers[i].Name == "squid-exporter" {
+				if deployment.Spec.Template.Spec.Containers[i].Name == deploymentName+"-exporter" {
 					exporterContainer = &deployment.Spec.Template.Spec.Containers[i]
 					break
 				}
@@ -36,7 +36,7 @@ var _ = Describe("Squid Proxy Metrics Integration", func() {
 			Expect(exporterContainer).NotTo(BeNil(), "squid-exporter container should exist")
 
 			// Verify container configuration
-			Expect(exporterContainer.Image).To(ContainSubstring("squid"))
+			Expect(exporterContainer.Image).To(ContainSubstring(deploymentName))
 			Expect(exporterContainer.Ports).To(HaveLen(1))
 			Expect(exporterContainer.Ports[0].ContainerPort).To(Equal(int32(9301)))
 			Expect(exporterContainer.Ports[0].Name).To(Equal("metrics"))
@@ -152,7 +152,7 @@ var _ = Describe("Squid Proxy Metrics Integration", func() {
 		var (
 			client        *http.Client
 			metricsClient *http.Client
-			testServer    *testhelpers.ProxyTestServer
+			testServer    *testhelpers.CachingTestServer
 		)
 
 		BeforeEach(func() {
@@ -225,7 +225,7 @@ var _ = Describe("Squid Proxy Metrics Integration", func() {
 			}, timeout, interval).Should(Equal(1.0), "squid_up should be 1 when squid is healthy")
 		})
 
-		It("should increment request metrics when traffic flows through proxy", func() {
+		It("should increment request metrics when traffic flows through caching", func() {
 			// Get initial request count
 			initialMetrics, err := getMetrics()
 			Expect(err).NotTo(HaveOccurred(), "Should get initial metrics")
@@ -236,7 +236,7 @@ var _ = Describe("Squid Proxy Metrics Integration", func() {
 			// Generate some traffic through the proxy
 			for i := 0; i < 3; i++ {
 				testURL := testServer.URL + "?" + generateCacheBuster("request-metrics-test")
-				resp, _, err := testhelpers.MakeProxyRequest(client, testURL+fmt.Sprintf("&req=%d", i))
+				resp, _, err := testhelpers.MakeCachingRequest(client, testURL+fmt.Sprintf("&req=%d", i))
 				Expect(err).NotTo(HaveOccurred(), "Request should succeed")
 				resp.Body.Close()
 			}
@@ -255,7 +255,7 @@ var _ = Describe("Squid Proxy Metrics Integration", func() {
 
 				// Should have increased by at least 3 requests
 				return updatedRequests >= initialRequests+3
-			}, timeout, interval).Should(BeTrue(), "Request metrics should increase after proxy traffic")
+			}, timeout, interval).Should(BeTrue(), "Request metrics should increase after caching traffic")
 		})
 
 		It("should expose squid operational metrics", func() {
@@ -276,7 +276,7 @@ var _ = Describe("Squid Proxy Metrics Integration", func() {
 
 			By("Making a request to generate activity")
 			testURL := testServer.URL + "/activity-test"
-			resp, body, err := testhelpers.MakeProxyRequest(client, testURL)
+			resp, body, err := testhelpers.MakeCachingRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred(), "Request should succeed")
 			resp.Body.Close()
 

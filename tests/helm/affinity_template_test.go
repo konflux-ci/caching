@@ -20,8 +20,8 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 			Expect(err).NotTo(HaveOccurred(), "Helm template rendering should succeed")
 
 			// Check that the squid deployment is present
-			Expect(output).To(ContainSubstring("name: squid"), "Should contain squid deployment")
-			Expect(output).To(ContainSubstring("namespace: proxy"), "Should be in proxy namespace")
+			Expect(output).To(ContainSubstring("name: "+testhelpers.DeploymentName), "Should contain squid deployment")
+			Expect(output).To(ContainSubstring("namespace: "+testhelpers.Namespace), "Should be in caching namespace")
 
 			// Check for anti-affinity configuration
 			Expect(output).To(ContainSubstring("podAntiAffinity"), "Should contain podAntiAffinity")
@@ -30,8 +30,8 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 			Expect(output).To(ContainSubstring("weight: 100"), "Should have weight 100")
 
 			// Verify label selector
-			Expect(output).To(ContainSubstring("app.kubernetes.io/name: squid"), "Should target squid pods")
-			Expect(output).To(ContainSubstring("app.kubernetes.io/component: squid-proxy"), "Should target squid-proxy component")
+			Expect(output).To(ContainSubstring("app.kubernetes.io/name: "+testhelpers.DeploymentName), "Should target squid pods")
+			Expect(output).To(ContainSubstring("app.kubernetes.io/component: "+testhelpers.DeploymentName+"-"+testhelpers.Namespace), "Should target squid-proxy component")
 		})
 
 		It("should not include required anti-affinity (only preferred)", func() {
@@ -52,7 +52,7 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 			Expect(err).NotTo(HaveOccurred(), "Helm template rendering should succeed")
 
 			// Should contain the deployment but no affinity section
-			Expect(output).To(ContainSubstring("name: squid"), "Should contain squid deployment")
+			Expect(output).To(ContainSubstring("name: "+testhelpers.DeploymentName), "Should contain squid deployment")
 
 			// Extract just the squid deployment section for more precise checking
 			squidDeploymentSection := extractSquidDeploymentSection(output)
@@ -163,7 +163,7 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 				// Verify basic Kubernetes resource structure
 				Expect(output).To(ContainSubstring("apiVersion:"), "Should contain apiVersion")
 				Expect(output).To(ContainSubstring("kind:"), "Should contain kind")
-				Expect(output).To(ContainSubstring("name: squid"), "Should contain squid deployment")
+				Expect(output).To(ContainSubstring("name: "+testhelpers.DeploymentName), "Should contain squid deployment")
 			}
 		})
 	})

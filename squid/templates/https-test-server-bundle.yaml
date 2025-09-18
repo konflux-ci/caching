@@ -3,7 +3,7 @@ apiVersion: trust.cert-manager.io/v1alpha1
 kind: Bundle
 metadata:
   name: test-server-bundle
-  namespace: proxy
+  namespace: {{ .Values.namespace.name }}
 spec:
   sources:
   - secret:

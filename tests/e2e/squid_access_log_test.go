@@ -22,7 +22,7 @@ var _ = Describe("Squid Access Logs", Ordered, func() {
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pod")
 
 			By("Getting the squid container logs from the last 10s")
-			logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, squidPod.Name, "squid", &start)
+			logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, squidPod.Name, deploymentName, &start)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get logs")
 
 			By("Analyzing access logs for filtered content patterns")

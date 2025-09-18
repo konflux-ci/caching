@@ -7,15 +7,15 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  # Squid Proxy Metrics
+  # Squid Caching Metrics
   - job_name: 'squid-proxy'
     static_configs:
-      - targets: ['squid.proxy.svc.cluster.local:9301']  # Adjust namespace if different
+      - targets: ['squid.{{ .Values.namespace.name }}.svc.cluster.local:9301']  # Adjust namespace if different
     scrape_interval: 30s
     scrape_timeout: 10s
     metrics_path: '/metrics'
     honor_labels: true
-    
+
     # Optional: Add custom labels to all metrics from this job
     relabel_configs:
       - source_labels: [__address__]
@@ -23,12 +23,12 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: squid.proxy.svc.cluster.local:9301
+        replacement: squid.{{ .Values.namespace.name }}.svc.cluster.local:9301
       - target_label: service
-        replacement: squid-proxy
+        replacement: squid-{{ .Values.namespace.name }}
       - target_label: component
-        replacement: proxy
-        
+        replacement: {{ .Values.namespace.name }}
+
     # Optional: Filter metrics to only include squid-related ones
     metric_relabel_configs:
       - source_labels: [__name__]

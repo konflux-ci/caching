@@ -33,16 +33,16 @@ type TestServerResponse struct {
 	ServerHits float64 `json:"server_hits"`
 }
 
-// ProxyTestServer wraps an HTTP test server with request counting and proxy-friendly configuration
-type ProxyTestServer struct {
+// CachingTestServer wraps an HTTP test server with request counting and caching-friendly configuration
+type CachingTestServer struct {
 	*httptest.Server
 	RequestCount *int32
 	PodIP        string
 	URL          string
 }
 
-// NewProxyTestServer creates a new test server configured for cross-pod communication
-func NewProxyTestServer(message string, podIP string, port int) (*ProxyTestServer, error) {
+// NewCachingTestServer creates a new test server configured for cross-pod communication
+func NewCachingTestServer(message string, podIP string, port int) (*CachingTestServer, error) {
 	var requestCount int32
 
 	// Create HTTP server with request tracking
@@ -80,7 +80,7 @@ func NewProxyTestServer(message string, podIP string, port int) (*ProxyTestServe
 	_, actualPortStr, _ := net.SplitHostPort(server.Listener.Addr().String())
 	serverURL := fmt.Sprintf("http://%s:%s", podIP, actualPortStr)
 
-	return &ProxyTestServer{
+	return &CachingTestServer{
 		Server:       server,
 		RequestCount: &requestCount,
 		PodIP:        podIP,
@@ -89,26 +89,26 @@ func NewProxyTestServer(message string, podIP string, port int) (*ProxyTestServe
 }
 
 // GetRequestCount returns the current request count
-func (pts *ProxyTestServer) GetRequestCount() int32 {
+func (pts *CachingTestServer) GetRequestCount() int32 {
 	return atomic.LoadInt32(pts.RequestCount)
 }
 
 // ResetRequestCount resets the request counter to zero
-func (pts *ProxyTestServer) ResetRequestCount() {
+func (pts *CachingTestServer) ResetRequestCount() {
 	atomic.StoreInt32(pts.RequestCount, 0)
 }
 
-// NewSquidProxyClient creates an HTTP client configured to use the Squid proxy
-func NewSquidProxyClient(serviceName, namespace string) (*http.Client, error) {
-	// Set up proxy URL to squid service
-	proxyURL, err := url.Parse(fmt.Sprintf("http://%s.%s.svc.cluster.local:3128", serviceName, namespace))
+// NewSquidCachingClient creates an HTTP client configured to use the Squid caching
+func NewSquidCachingClient(serviceName, namespace string) (*http.Client, error) {
+	// Set up caching URL to squid service
+	cachingURL, err := url.Parse(fmt.Sprintf("http://%s.%s.svc.cluster.local:3128", serviceName, namespace))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse proxy URL: %w", err)
+		return nil, fmt.Errorf("failed to parse caching URL: %w", err)
 	}
 
-	// Create HTTP client with proxy configuration
+	// Create HTTP client with caching configuration
 	transport := &http.Transport{
-		Proxy: http.ProxyURL(proxyURL),
+		Proxy: http.ProxyURL(cachingURL),
 		// Disable keep-alive to ensure fresh connections for cache testing
 		DisableKeepAlives: true,
 	}
@@ -119,12 +119,12 @@ func NewSquidProxyClient(serviceName, namespace string) (*http.Client, error) {
 	}, nil
 }
 
-// NewTrustedSquidProxyClient creates an HTTP client configured to use the Squid proxy and trust both the Squid CA and test-server CA
-func NewTrustedSquidProxyClient(serviceName, namespace string, squidCACertPEM []byte, testServerCACertPEM []byte) (*http.Client, error) {
-	// Set up proxy URL to squid service
-	proxyURL, err := url.Parse(fmt.Sprintf("http://%s.%s.svc.cluster.local:3128", serviceName, namespace))
+// NewTrustedSquidCachingClient creates an HTTP client configured to use the Squid caching and trust both the Squid CA and test-server CA
+func NewTrustedSquidCachingClient(serviceName, namespace string, squidCACertPEM []byte, testServerCACertPEM []byte) (*http.Client, error) {
+	// Set up caching URL to squid service
+	cachingURL, err := url.Parse(fmt.Sprintf("http://%s.%s.svc.cluster.local:3128", serviceName, namespace))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse proxy URL: %w", err)
+		return nil, fmt.Errorf("failed to parse caching URL: %w", err)
 	}
 
 	// Create a combined certificate pool with both CAs
@@ -149,9 +149,9 @@ func NewTrustedSquidProxyClient(serviceName, namespace string, squidCACertPEM []
 		RootCAs: caCertPool,
 	}
 
-	// Create HTTP client with proxy configuration and trusted TLS
+	// Create HTTP client with caching configuration and trusted TLS
 	transport := &http.Transport{
-		Proxy:           http.ProxyURL(proxyURL),
+		Proxy:           http.ProxyURL(cachingURL),
 		TLSClientConfig: tlsConfig,
 		// Disable keep-alive to ensure fresh connections for cache testing
 		DisableKeepAlives: true,
@@ -163,8 +163,8 @@ func NewTrustedSquidProxyClient(serviceName, namespace string, squidCACertPEM []
 	}, nil
 }
 
-// MakeProxyRequest makes an HTTP request through the Squid proxy and returns the response
-func MakeProxyRequest(client *http.Client, url string) (*http.Response, []byte, error) {
+// MakeCachingRequest makes an HTTP request through the Squid caching and returns the response
+func MakeCachingRequest(client *http.Client, url string) (*http.Response, []byte, error) {
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, nil, fmt.Errorf("request failed: %w", err)
@@ -214,7 +214,7 @@ func ValidateCacheHeaders(resp *http.Response) {
 }
 
 // ValidateServerHit verifies that a request actually hit the server
-func ValidateServerHit(response *TestServerResponse, expectedRequestID float64, server *ProxyTestServer) {
+func ValidateServerHit(response *TestServerResponse, expectedRequestID float64, server *CachingTestServer) {
 	Expect(response.RequestID).To(Equal(expectedRequestID),
 		"Request should have expected request ID")
 	Expect(server.GetRequestCount()).To(Equal(int32(expectedRequestID)),
@@ -226,8 +226,8 @@ func WaitForSquidDeploymentReady(ctx context.Context, client kubernetes.Interfac
 	fmt.Printf("Waiting for squid deployment to be ready...\n")
 
 	Eventually(func() error {
-		deployments, err := client.AppsV1().Deployments("proxy").List(ctx, metav1.ListOptions{
-			LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component=squid-proxy",
+		deployments, err := client.AppsV1().Deployments("caching").List(ctx, metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component=squid-caching",
 		})
 		if err != nil {
 			return fmt.Errorf("failed to get deployments: %w", err)
@@ -248,7 +248,7 @@ func WaitForSquidDeploymentReady(ctx context.Context, client kubernetes.Interfac
 
 	fmt.Printf("Waiting for only one squid pod to be present...\n")
 	Eventually(func() error {
-		_, err := GetSquidPod(ctx, client, "proxy")
+		_, err := GetSquidPod(ctx, client, "caching")
 		return err
 	}, 120*time.Second, 5*time.Second).Should(Succeed())
 
@@ -442,7 +442,7 @@ func findChartYamlInDirectory(rootDir string) (string, error) {
 // GetSquidPod queries for the active squid pod. Returns an error if no or multiple pods are found.
 func GetSquidPod(ctx context.Context, client kubernetes.Interface, namespace string) (*corev1.Pod, error) {
 	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component=squid-proxy",
+		LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component=squid-caching",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list squid pods: %w", err)
