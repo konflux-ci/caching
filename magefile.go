@@ -40,12 +40,28 @@ func Default() error {
 	return sh.Run("mage", "-l")
 }
 
-// Test:Unit runs unit tests only (no cluster required)
-func (Test) Unit() error {
-	fmt.Println("🧪 Running unit tests")
+// Test:UnitExporter runs unit tests for the per-site prometheus exporter
+func (Test) UnitExporter() error {
+	fmt.Println("🧪 Running per-site exporter unit tests")
 	if err := sh.RunV("go", "test", "./cmd/squid-per-site-exporter", "-v"); err != nil {
 		return fmt.Errorf("unit tests failed: %w", err)
 	}
+	return nil
+}
+
+// Test:UnitStoreID runs unit tests for the store-id helper
+func (Test) UnitStoreID() error {
+	fmt.Println("🧪 Running store-id helper unit tests")
+	if err := sh.RunV("go", "test", "./cmd/squid-store-id", "-v"); err != nil {
+		return fmt.Errorf("Store ID helper unit tests failed: %w", err)
+	}
+	return nil
+}
+
+// Test:Unit runs all unit tests (no cluster required)
+func (Test) Unit() error {
+	fmt.Println("🧪 Running unit tests")
+	mg.SerialDeps(Test.UnitExporter, Test.UnitStoreID)
 	return nil
 }
 

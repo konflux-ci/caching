@@ -95,6 +95,22 @@ RUN --mount=type=cache,target=/tmp/go-cache \
     CGO_ENABLED=0 GOOS=linux go build -o /workspace/per-site-exporter ./cmd/squid-per-site-exporter
 
 # ==========================================
+# Stage 6: Build squid store-id helper
+# ==========================================
+FROM go-builder AS store-id-builder
+
+# Pre-fetch deps (reuse existing deps)
+WORKDIR /workspace
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/tmp/go-cache \
+    go mod download
+
+# Copy source and build the store-id helper
+COPY ./cmd/squid-store-id ./cmd/squid-store-id
+RUN --mount=type=cache,target=/tmp/go-cache \
+    CGO_ENABLED=0 GOOS=linux go build -o /workspace/squid-store-id ./cmd/squid-store-id
+
+# ==========================================
 # Final Stage: Squid with integrated exporters
 # ==========================================
 FROM squid-base
@@ -110,6 +126,12 @@ COPY --from=per-site-exporter-builder /workspace/per-site-exporter /usr/local/bi
 
 # Set permissions for per-site exporter
 RUN chmod +x /usr/local/bin/per-site-exporter
+
+# Copy store-id helper binary from builder stage
+COPY --from=store-id-builder /workspace/squid-store-id /usr/local/bin/squid-store-id
+
+# Set permissions for store-id helper
+RUN chmod +x /usr/local/bin/squid-store-id
 
 # Expose exporters' metrics ports
 EXPOSE 9301

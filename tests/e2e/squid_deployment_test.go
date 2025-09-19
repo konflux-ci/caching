@@ -379,7 +379,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			Expect(squidConf).NotTo(ContainSubstring("cache_dir"), "Should not have disk cache configured for RAM-only caching")
 
 			// Verify cache replacement policy
-			Expect(squidConf).To(ContainSubstring("cache_replacement_policy heap LFUDA"), "Should use LFUDA replacement policy")
+			Expect(squidConf).To(ContainSubstring("memory_replacement_policy heap LFUDA"), "Should use LFUDA replacement policy")
 		})
 	})
 
