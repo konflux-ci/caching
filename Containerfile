@@ -35,14 +35,12 @@ RUN microdnf install -y "squid-${SQUID_VERSION}" && microdnf clean all
 
 COPY --chmod=0755 container-entrypoint.sh /usr/sbin/container-entrypoint.sh
 
-# move location of pid file to a directory where squid user can recreate it
-RUN echo "pid_filename /run/squid/squid.pid" >> /etc/squid/squid.conf && \
-    sed -i "s/# http_access allow localnet/http_access allow localnet/g" /etc/squid/squid.conf && \
-    chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /run/squid && \
+# Set up permissions for squid directories
+RUN chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /run/squid && \
     chmod g=u /etc/squid/squid.conf /run/squid /var/spool/squid /var/log/squid
 
 # ==========================================
-# Stage 2: Go builder base (toolchain + deps cache)
+# Stage 2: Combined Go builder (toolchain + both exporters)
 # ==========================================
 FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:53de6ac7c3e830b0ddfc9867ff6a8092785bcf156ab4e63dfa9af83c880fd988 AS go-builder
 
@@ -70,21 +68,15 @@ ENV PATH="/usr/local/go/bin:/root/go/bin:$PATH"
 ENV GOPATH="/root/go"
 ENV GOCACHE="/tmp/go-cache"
 
-# ==========================================
-# Stage 3: Build squid-exporter
-# ==========================================
-FROM go-builder AS squid-exporter-builder
 WORKDIR /workspace
+
+# Build both exporters in a single stage
+# 1. Build external squid-exporter
 RUN CGO_ENABLED=0 GOOS=linux go install github.com/boynux/squid-exporter@v1.13.0 && \
     cp /root/go/bin/squid-exporter /workspace/squid-exporter
 
-# ==========================================
-# Stage 4: Build squid per-site exporter
-# ==========================================
-FROM go-builder AS per-site-exporter-builder
-
-# Pre-fetch deps
-WORKDIR /workspace
+# 2. Build custom per-site exporter
+# Pre-fetch deps for per-site exporter
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/tmp/go-cache \
     go mod download
@@ -100,13 +92,13 @@ RUN --mount=type=cache,target=/tmp/go-cache \
 FROM squid-base
 
 # Copy squid-exporter binary from builder stage
-COPY --from=squid-exporter-builder /workspace/squid-exporter /usr/local/bin/squid-exporter
+COPY --from=go-builder /workspace/squid-exporter /usr/local/bin/squid-exporter
 
 # Set permissions for squid-exporter
 RUN chmod +x /usr/local/bin/squid-exporter
 
 # Copy per-site exporter binary from builder stage
-COPY --from=per-site-exporter-builder /workspace/per-site-exporter /usr/local/bin/per-site-exporter
+COPY --from=go-builder /workspace/per-site-exporter /usr/local/bin/per-site-exporter
 
 # Set permissions for per-site exporter
 RUN chmod +x /usr/local/bin/per-site-exporter
