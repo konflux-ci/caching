@@ -1,6 +1,9 @@
 {
   "automergeStrategy": "merge-commit",
   "platformAutomerge": true,
+  "lockFileMaintenance": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "description": "Auto-merge patch updates for Konflux components",
