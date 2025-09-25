@@ -42,15 +42,15 @@ func main() {
 	fmt.Printf("🚀 Starting Go server (with cgo) on port %d...\n", port)
 	fmt.Printf("📝 Message: %s\n", *message)
 
-	// Create ProxyTestServer with the specified port
-	proxyServer, err := testhelpers.NewProxyTestServer(*message, podIP, port)
+	// Create CachingTestServer with the specified port
+	cachingServer, err := testhelpers.NewCachingTestServer(*message, podIP, port)
 	if err != nil {
-		fmt.Printf("❌ Failed to create proxy test server: %v\n", err)
+		fmt.Printf("❌ Failed to create caching test server: %v\n", err)
 		os.Exit(1)
 	}
-	defer proxyServer.Close()
+	defer cachingServer.Close()
 
-	fmt.Printf("✅ Server listening on %s\n", proxyServer.URL)
+	fmt.Printf("✅ Server listening on %s\n", cachingServer.URL)
 
 	// Keep the server running
 	select {}

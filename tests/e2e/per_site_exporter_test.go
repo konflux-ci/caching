@@ -97,7 +97,7 @@ var _ = Describe("Per-Site Exporter", func() {
 var _ = Describe("Squid Per-Site Exporter Integration", func() {
 	Describe("Per-Site Metrics Endpoint", func() {
 		var (
-			testServer *testhelpers.ProxyTestServer
+			testServer *testhelpers.CachingTestServer
 			client     *http.Client
 		)
 
@@ -105,11 +105,11 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			podIP, err := getPodIP()
 			Expect(err).NotTo(HaveOccurred(), "Failed to get pod IP")
 
-			testServer, err = testhelpers.NewProxyTestServer("Per-site metrics endpoint test", podIP, 0)
+			testServer, err = testhelpers.NewCachingTestServer("Per-site metrics endpoint test", podIP, 0)
 			Expect(err).NotTo(HaveOccurred(), "Failed to create test server")
 
-			client, err = testhelpers.NewSquidProxyClient(serviceName, namespace)
-			Expect(err).NotTo(HaveOccurred(), "Failed to create proxy client")
+			client, err = testhelpers.NewSquidCachingClient(serviceName, namespace)
+			Expect(err).NotTo(HaveOccurred(), "Failed to create caching client")
 		})
 
 		AfterEach(func() {
@@ -121,9 +121,9 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 		It("should return valid per-site metrics from the exporter endpoint", func() {
 			testURL := testServer.URL + "?" + generateCacheBuster("metrics-endpoint-test")
 
-			By("Making HTTP requests through the proxy to generate metrics")
+			By("Making HTTP requests through the caching to generate metrics")
 			for i := 0; i < 5; i++ {
-				resp, _, err := testhelpers.MakeProxyRequest(client, testURL+fmt.Sprintf("&req=%d", i))
+				resp, _, err := testhelpers.MakeCachingRequest(client, testURL+fmt.Sprintf("&req=%d", i))
 				Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Request %d should succeed", i))
 				resp.Body.Close()
 				time.Sleep(100 * time.Millisecond)
@@ -191,7 +191,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 
 	Describe("Per-Site Metrics with Traffic", func() {
 		var (
-			testServer    *testhelpers.ProxyTestServer
+			testServer    *testhelpers.CachingTestServer
 			client        *http.Client
 			metricsClient *http.Client
 		)
@@ -201,11 +201,11 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			Expect(err).NotTo(HaveOccurred(), "Failed to get pod IP")
 
 			var err2 error
-			testServer, err2 = testhelpers.NewProxyTestServer("Per-site exporter test", podIP, 0)
+			testServer, err2 = testhelpers.NewCachingTestServer("Per-site exporter test", podIP, 0)
 			Expect(err2).NotTo(HaveOccurred(), "Failed to create test server")
 
-			client, err2 = testhelpers.NewSquidProxyClient(serviceName, namespace)
-			Expect(err2).NotTo(HaveOccurred(), "Failed to create proxy client")
+			client, err2 = testhelpers.NewSquidCachingClient(serviceName, namespace)
+			Expect(err2).NotTo(HaveOccurred(), "Failed to create caching client")
 
 			metricsClient = newHTTPSClient(10 * time.Second)
 		})
@@ -265,9 +265,9 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			metricsContentBefore, _ := getPerSiteMetrics()
 			baselineRequests, _ := getPerSiteMetricsValue(metricsContentBefore, "squid_site_requests_total", testHostname)
 
-			By("Making HTTP requests through the proxy")
+			By("Making HTTP requests through the caching")
 			for i := 0; i < 3; i++ {
-				resp, _, err := testhelpers.MakeProxyRequest(client, testURL+fmt.Sprintf("&req=%d", i))
+				resp, _, err := testhelpers.MakeCachingRequest(client, testURL+fmt.Sprintf("&req=%d", i))
 				Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Request %d should succeed", i))
 				resp.Body.Close()
 			}
@@ -290,7 +290,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 		It("should expose bandwidth metrics per site", func() {
 			testHostname := strings.Split(strings.TrimPrefix(testServer.URL, "http://"), ":")[0]
 			testURL := testServer.URL + "?" + generateCacheBuster("per-site-bandwidth-test")
-			resp, body, err := testhelpers.MakeProxyRequest(client, testURL)
+			resp, body, err := testhelpers.MakeCachingRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred(), "Request should succeed")
 			resp.Body.Close()
 			Expect(len(body)).To(BeNumerically(">", 0), "Should receive response body")
