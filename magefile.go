@@ -58,10 +58,19 @@ func (Test) UnitStoreID() error {
 	return nil
 }
 
+// Test:UnitICAPServer runs unit tests for the ICAP server
+func (Test) UnitICAPServer() error {
+	fmt.Println("🧪 Running ICAP server unit tests")
+	if err := sh.RunV("go", "test", "./cmd/icap-server", "-v"); err != nil {
+		return fmt.Errorf("ICAP server unit tests failed: %w", err)
+	}
+	return nil
+}
+
 // Test:Unit runs all unit tests (no cluster required)
 func (Test) Unit() error {
 	fmt.Println("🧪 Running unit tests")
-	mg.SerialDeps(Test.UnitExporter, Test.UnitStoreID)
+	mg.SerialDeps(Test.UnitExporter, Test.UnitStoreID, Test.UnitICAPServer)
 	return nil
 }
 
