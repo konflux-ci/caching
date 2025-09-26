@@ -235,6 +235,16 @@
       "required": ["enabled", "port", "metricsPath"],
       "additionalProperties": false
     },
+    "icapServer": {
+      "type": "object",
+      "properties": {
+        "resources": {
+          "$ref": "#/$defs/resources"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Configuration for the ICAP server sidecar"
+    },
     "ingress": {
       "type": "object",
       "properties": {

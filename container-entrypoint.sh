@@ -5,6 +5,11 @@ if [ "${1:-squid}" = "exporter" ]; then
   exec /usr/local/bin/squid-exporter "$@"
 fi
 
+if [ "${1:-squid}" = "icap-server" ]; then
+  shift || true
+  exec /usr/local/bin/icap-server "$@"
+fi
+
 SPOOL_DIR="/var/spool/squid"
 SSL_DB_DIR="${SPOOL_DIR}/ssl_db"
 

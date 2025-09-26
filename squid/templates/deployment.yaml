@@ -92,6 +92,25 @@ spec:
             - -web.tls-key-file
             - /etc/squid/certs/tls.key
           {{- end }}
+        - name: icap-server
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ include "squid.image" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: icap
+              containerPort: 1344
+              protocol: TCP
+          args:
+            - icap-server
+          livenessProbe:
+            tcpSocket:
+              port: icap
+          readinessProbe:
+            tcpSocket:
+              port: icap
+          resources:
+            {{- toYaml .Values.icapServer.resources | nindent 12 }}
         {{- if .Values.squidExporter.enabled }}
         - name: squid-exporter
           securityContext:
