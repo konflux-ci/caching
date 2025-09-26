@@ -90,6 +90,10 @@ COPY ./cmd/squid-store-id ./cmd/squid-store-id
 RUN --mount=type=cache,target=/tmp/go-cache \
     CGO_ENABLED=0 GOOS=linux go build -o /workspace/squid-store-id ./cmd/squid-store-id
 
+COPY ./cmd/icap-server ./cmd/icap-server
+RUN --mount=type=cache,target=/tmp/go-cache \
+    CGO_ENABLED=0 GOOS=linux go build -o /workspace/icap-server ./cmd/icap-server
+
 # ==========================================
 # Final Stage: Squid with integrated exporters and helpers
 # ==========================================
@@ -100,17 +104,21 @@ COPY --from=go-builder \
     /workspace/squid-exporter \
     /workspace/per-site-exporter \
     /workspace/squid-store-id \
+    /workspace/icap-server \
     /usr/local/bin/
 
 # Set permissions for all binaries
 RUN chmod +x \
     /usr/local/bin/squid-exporter \
     /usr/local/bin/per-site-exporter \
-    /usr/local/bin/squid-store-id
+    /usr/local/bin/squid-store-id \
+    /usr/local/bin/icap-server
 
 # Expose exporters' metrics ports
 EXPOSE 9301
 EXPOSE 9302
+# Expose ICAP port
+EXPOSE 1344
 
 USER 1001
 
