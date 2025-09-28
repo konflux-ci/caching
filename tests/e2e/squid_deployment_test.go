@@ -140,6 +140,63 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			Expect(icapContainer.Ports[0].ContainerPort).To(Equal(int32(1344)))
 			Expect(icapContainer.Ports[0].Name).To(Equal("icap"))
 		})
+
+		It("should have correct anti-affinity configuration in deployed resources", func() {
+			// Verify the actual deployed deployment has expected affinity rules
+
+			// Check affinity configuration in the deployment
+			affinity := deployment.Spec.Template.Spec.Affinity
+			Expect(affinity).NotTo(BeNil(), "Deployed deployment should have affinity rules")
+			Expect(affinity.PodAntiAffinity).NotTo(BeNil(), "Should have pod anti-affinity in deployed resources")
+
+			// Verify the anti-affinity configuration matches our template defaults
+			preferred := affinity.PodAntiAffinity.PreferredDuringSchedulingIgnoredDuringExecution
+			Expect(preferred).To(HaveLen(1), "Should have exactly one anti-affinity rule")
+
+			rule := preferred[0]
+			Expect(rule.Weight).To(Equal(int32(100)), "Should have maximum weight preference")
+			Expect(rule.PodAffinityTerm.TopologyKey).To(Equal("kubernetes.io/hostname"), "Should spread by hostname")
+
+			// Verify label selector targets correct pods
+			labels := rule.PodAffinityTerm.LabelSelector.MatchLabels
+			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/name", "squid"))
+			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/component", "squid-proxy"))
+			// Note: instance label will be "squid" in actual deployment vs "test-release" in template tests
+			Expect(labels).To(HaveKey("app.kubernetes.io/instance"))
+		})
+
+		It("should successfully schedule multiple replicas despite anti-affinity on single node", func() {
+			// This tests that preferred anti-affinity doesn't prevent scheduling
+			// when constraints can't be satisfied (single node scenario)
+
+			// Verify all replicas are ready despite anti-affinity constraints
+			Eventually(func() bool {
+				dep, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+				if err != nil {
+					return false
+				}
+				return dep.Status.ReadyReplicas == *dep.Spec.Replicas
+			}, timeout, interval).Should(BeTrue(), "All replicas should be ready despite anti-affinity constraints")
+
+			// Verify pods are actually running (not stuck in pending due to anti-affinity)
+			pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+				LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component=squid-proxy",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, pod := range pods.Items {
+				Expect(pod.Status.Phase).To(Equal(corev1.PodRunning), "Pod %s should be running", pod.Name)
+			}
+
+			// On single node, all pods will be on the same node, but that's expected
+			// The important thing is that preferred anti-affinity didn't prevent scheduling
+			if len(pods.Items) > 1 {
+				GinkgoWriter.Printf("ℹ️  Multiple pods scheduled successfully despite anti-affinity (single-node cluster)\n")
+				for _, pod := range pods.Items {
+					GinkgoWriter.Printf("   Pod %s on node %s\n", pod.Name, pod.Spec.NodeName)
+				}
+			}
+		})
 	})
 
 	Describe("Service", func() {

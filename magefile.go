@@ -67,10 +67,19 @@ func (Test) UnitICAPServer() error {
 	return nil
 }
 
+// Test:UnitHelmTemplate runs unit tests for Helm templates
+func (Test) UnitHelmTemplate() error {
+	fmt.Println("🧪 Running Helm template unit tests")
+	if err := sh.RunV("go", "test", "./tests/helm/", "-v"); err != nil {
+		return fmt.Errorf("Helm template unit tests failed: %w", err)
+	}
+	return nil
+}
+
 // Test:Unit runs all unit tests (no cluster required)
 func (Test) Unit() error {
 	fmt.Println("🧪 Running unit tests")
-	mg.SerialDeps(Test.UnitExporter, Test.UnitStoreID, Test.UnitICAPServer)
+	mg.SerialDeps(Test.UnitExporter, Test.UnitStoreID, Test.UnitICAPServer, Test.UnitHelmTemplate)
 	return nil
 }
 

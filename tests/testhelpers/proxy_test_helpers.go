@@ -11,7 +11,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -323,6 +326,117 @@ func UpgradeChart(releaseName, chartName string, values map[string]string) error
 		return fmt.Errorf("failed to run helm upgrade command: %w\n%s", err, string(output))
 	}
 	return nil
+}
+
+// RenderHelmTemplate renders the Helm template with the given values and returns the YAML output
+func RenderHelmTemplate(chartPath string, values map[string]string) (string, error) {
+	cmdParts := []string{"helm", "template", "test-release", chartPath}
+
+	// Add --set parameters for each value in the map
+	for key, value := range values {
+		cmdParts = append(cmdParts, "--set", fmt.Sprintf("%s=%s", key, value))
+	}
+
+	cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
+	// Set working directory to chart parent directory to ensure relative paths work
+	chartParentDir, err := FindChartDirectory()
+	if err != nil {
+		return "", fmt.Errorf("failed to find chart directory: %w", err)
+	}
+	cmd.Dir = chartParentDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("helm template failed: %w\n%s", err, string(output))
+	}
+
+	return string(output), nil
+}
+
+// RenderHelmTemplateWithJSON renders the Helm template with JSON values and returns the YAML output
+func RenderHelmTemplateWithJSON(chartPath string, jsonValues map[string]string) (string, error) {
+	cmdParts := []string{"helm", "template", "test-release", chartPath}
+
+	// Add --set-json parameters for each value in the map
+	for key, value := range jsonValues {
+		cmdParts = append(cmdParts, "--set-json", fmt.Sprintf("%s=%s", key, value))
+	}
+
+	cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
+	// Set working directory to chart parent directory to ensure relative paths work
+	chartParentDir, err := FindChartDirectory()
+	if err != nil {
+		return "", fmt.Errorf("failed to find chart directory: %w", err)
+	}
+	cmd.Dir = chartParentDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("helm template failed: %w\n%s", err, string(output))
+	}
+
+	return string(output), nil
+}
+
+// FindChartDirectory finds the directory containing any Helm chart
+// It starts from the directory containing this source file and walks up the tree
+// looking for any directory that contains Chart.yaml (indicating a Helm chart)
+func FindChartDirectory() (string, error) {
+	// Get the directory containing this source file
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("unable to determine caller information")
+	}
+
+	// Start from the directory containing this file
+	dir := filepath.Dir(filename)
+
+	// Walk up the directory tree looking for any Chart.yaml file
+	for {
+		// Search for Chart.yaml files in this directory and its subdirectories
+		chartYamlPath, err := findChartYamlInDirectory(dir)
+		if err == nil {
+			// Found Chart.yaml, return the directory that contains the chart directory
+			// For example, if Chart.yaml is at /project/squid/Chart.yaml,
+			// we return /project so that "./squid" works as a relative path
+			chartDir := filepath.Dir(chartYamlPath)
+			return filepath.Dir(chartDir), nil
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// Reached root directory without finding any Chart.yaml
+			return "", fmt.Errorf("no Chart.yaml found in any subdirectory")
+		}
+		dir = parent
+	}
+}
+
+// findChartYamlInDirectory searches for Chart.yaml files in the given directory and its subdirectories
+func findChartYamlInDirectory(rootDir string) (string, error) {
+	var chartYamlPath string
+
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Check if this is a Chart.yaml file
+		if info.Name() == "Chart.yaml" {
+			chartYamlPath = path
+			return filepath.SkipDir // Stop walking once we find the first Chart.yaml
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return "", err
+	}
+
+	if chartYamlPath == "" {
+		return "", fmt.Errorf("no Chart.yaml found")
+	}
+
+	return chartYamlPath, nil
 }
 
 // GetSquidPod queries for the active squid pod. Returns an error if no or multiple pods are found.
