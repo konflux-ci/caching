@@ -91,7 +91,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should have the correct container image and configuration", func() {
-			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(2))
+			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(3))
 
 			// Find squid container
 			var squidContainer *corev1.Container
@@ -125,6 +125,20 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			Expect(exporterContainer.Ports).To(HaveLen(1))
 			Expect(exporterContainer.Ports[0].ContainerPort).To(Equal(int32(9301)))
 			Expect(exporterContainer.Ports[0].Name).To(Equal("metrics"))
+
+			// Find icap-server container
+			var icapContainer *corev1.Container
+			for i := range deployment.Spec.Template.Spec.Containers {
+				if deployment.Spec.Template.Spec.Containers[i].Name == "icap-server" {
+					icapContainer = &deployment.Spec.Template.Spec.Containers[i]
+					break
+				}
+			}
+			Expect(icapContainer).NotTo(BeNil(), "icap-server container should exist")
+			Expect(icapContainer.Image).To(ContainSubstring("squid"))
+			// icap-server should expose the icap port
+			Expect(icapContainer.Ports[0].ContainerPort).To(Equal(int32(1344)))
+			Expect(icapContainer.Ports[0].Name).To(Equal("icap"))
 		})
 	})
 
@@ -226,7 +240,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should have correct resource configuration", func() {
-			Expect(pod.Spec.Containers).To(HaveLen(2))
+			Expect(pod.Spec.Containers).To(HaveLen(3))
 
 			squidContainer := pod.Spec.Containers[0]
 			Expect(squidContainer.Name).To(Equal("squid"))

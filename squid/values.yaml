@@ -132,6 +132,17 @@ squidExporter:
     initialDelaySeconds: 5
     periodSeconds: 5
 
+# ICAP server sidecar configuration
+icapServer:
+  resources:
+    {}
+    # requests:
+    #   cpu: 10m
+    #   memory: 32Mi
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+
 # Per-site exporter configuration
 perSiteExporter:
   enabled: true
