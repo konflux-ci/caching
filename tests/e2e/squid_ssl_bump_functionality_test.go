@@ -229,7 +229,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 				return nil
 			}, timeout, interval).Should(Succeed(), "First HTTPS request should eventually succeed")
 
-			By("Making second HTTPS request until successful (should be TCP_MEM_HIT)")
+			By("Making second HTTPS request until successful (should be TCP_HIT)")
 			Eventually(func() error {
 				resp2, err := trustedClient.Get(testURL)
 				if err != nil {
@@ -252,7 +252,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 			allLogs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, squidPod.Name, "squid", &beforeSequence)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get logs")
 
-			By("Verifying caching behavior: at least one TCP_MISS and at least one TCP_MEM_HIT (RAM cache hit)")
+			By("Verifying caching behavior: at least one TCP_MISS and at least one TCP_HIT (RAM cache hit)")
 			logOutput := string(allLogs)
 			fmt.Printf("DEBUG: Complete caching sequence logs:\n")
 			fmt.Printf("==========================================\n")
@@ -262,9 +262,9 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 			Expect(logOutput).To(ContainSubstring("TCP_MISS"), "Should show at least one TCP_MISS for the test URL")
 			Expect(logOutput).To(ContainSubstring("test-server.proxy.svc.cluster.local"), "Should show the test server URL in logs")
 			Expect(logOutput).To(ContainSubstring("ssl-bump-cache-test"), "Should show the SSL-Bump cache test endpoint in logs")
-			Expect(logOutput).To(ContainSubstring("TCP_MEM_HIT"), "Should show at least one TCP_MEM_HIT (RAM cache hit) for the test URL")
+			Expect(logOutput).To(ContainSubstring("TCP_HIT"), "Should show at least one TCP_HIT for the test URL")
 
-			fmt.Printf("DEBUG: Caching verification successful - found both TCP_MISS and TCP_MEM_HIT!\n")
+			fmt.Printf("DEBUG: Caching verification successful - found both TCP_MISS and TCP_HIT!\n")
 		})
 	})
 })

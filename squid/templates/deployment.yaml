@@ -73,9 +73,12 @@ spec:
             - name: squid-certs-secret
               mountPath: /etc/squid/certs
               readOnly: true
-            # Mount the entire spool directory for cache and SSL database
-            - name: squid-spool-vol
-              mountPath: /var/spool/squid
+            # Mount the cache volume
+            - name: squid-spool-cache
+              mountPath: /var/spool/squid/cache
+            # Mount the SSL database volume
+            - name: squid-spool-ssl
+              mountPath: /var/spool/squid/ssl
             {{- if .Values.test.enabled }}
             # Mount the test-server's CA bundle for upstream trust
             - name: test-server-ca-bundle-vol
@@ -185,9 +188,13 @@ spec:
         - name: squid-certs-secret
           secret:
             secretName: {{ .Values.namespace.name }}-tls
-        # Volume for Squid's entire spool directory (cache and SSL database)
-        # Use emptyDir with fsGroup for proper permissions
-        - name: squid-spool-vol
+        # Volume for Squid's cache
+        - name: squid-spool-cache
+          emptyDir:
+            medium: Memory
+            sizeLimit: {{ .Values.cache.memory.size }}Mi
+        # Volume for Squid's SSL database
+        - name: squid-spool-ssl
           emptyDir: {}
         {{- if .Values.test.enabled }}
         # This volume makes the ConfigMap created by the test-server-bundle available

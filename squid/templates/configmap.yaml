@@ -24,6 +24,10 @@ data:
     cache allow all
     {{- end }}
 
-    # --- MEMORY CACHE CONFIGURATION ---
-    cache_mem {{ .Values.cache.memory.size }}
-    maximum_object_size_in_memory {{ .Values.cache.memory.maxObjectSize }}
+    # Use an asynchronous(aufs) disk cache (backed by a tmpfs memory volume)
+    # Set storage limit at 80% of the total volume's size (per cache_dir docs)
+    # Structure: 16 first-level directories, 256 second-level subdirectories
+    cache_dir aufs /var/spool/squid/cache {{ mulf .Values.cache.memory.size 0.8 | int }} 16 256
+
+    # Maximum object size to cache
+    maximum_object_size {{ .Values.cache.memory.maxObjectSize }} MB
