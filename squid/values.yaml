@@ -217,7 +217,10 @@ nodeSelector: {}
 
 tolerations: []
 
-affinity: {}
+# Affinity rules for pod scheduling
+# By default, pod anti-affinity rules are applied to spread pods across nodes
+# Uncomment the affinity section below to customize or disable these defaults
+# affinity: {}
 
 # IMPORTANT: This chart creates and manages its own namespace via templates/namespace.yaml
 # DO NOT use `helm install --namespace` or `helm upgrade --namespace` with this chart

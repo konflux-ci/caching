@@ -73,3 +73,17 @@ Get test image for current environment
 {{- $envSettings := index .Values.envSettings $env -}}
 {{- printf "%s:%s" $envSettings.test.image.repository $envSettings.test.image.tag -}}
 {{- end }}
+
+{{/*
+Default affinity rules when none are specified
+*/}}
+{{- define "squid.defaultAffinity" -}}
+podAntiAffinity:
+  preferredDuringSchedulingIgnoredDuringExecution:
+  - weight: 100
+    podAffinityTerm:
+      labelSelector:
+        matchLabels:
+          {{- include "squid.selectorLabels" . | nindent 10 }}
+      topologyKey: kubernetes.io/hostname
+{{- end }}

@@ -202,9 +202,14 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if hasKey .Values "affinity" }}
       {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      affinity:
+        {{- include "squid.defaultAffinity" . | nindent 8 }}
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:
