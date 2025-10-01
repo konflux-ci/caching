@@ -1,0 +1,25 @@
+---
+# RPM input file for both Containerfile and test.Containerfile
+# Used by Cachi2 to prefetch RPMs for hermetic builds
+# Includes packages for both main squid image and test image
+packages:
+  # Main squid image packages
+  - squid-6.10-5.el10
+  - tar
+  - gzip
+  - gcc
+  - curl
+  - ca-certificates
+  - git
+  # Test image specific packages (version-locked)
+  - tar-2:1.35-7.el10
+  - gzip-1.13-3.el10
+  - which-2.21-44.el10_0
+  - procps-ng-4.0.4-7.el10
+  - gcc-14.2.1-7.el10
+contentOrigin:
+  repofiles:
+    - ./ubi-10.repo
+arches:
+  - x86_64
+

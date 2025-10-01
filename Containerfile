@@ -31,7 +31,8 @@ EXPOSE 3130
 
 COPY LICENSE /licenses/
 
-RUN microdnf install -y "squid-${SQUID_VERSION}" && microdnf clean all
+RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
+    microdnf install -y "squid-${SQUID_VERSION}" && microdnf clean all
 
 COPY --chmod=0755 container-entrypoint.sh /usr/sbin/container-entrypoint.sh
 
@@ -45,7 +46,8 @@ RUN chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /ru
 FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:649f7ce8082531148ac5e45b61612046a21e36648ab096a77e6ba0c94428cf60 AS go-builder
 
 # Install required packages for Go build
-RUN microdnf install -y \
+RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
+    microdnf install -y \
     tar \
     gzip \
     gcc \
@@ -58,7 +60,13 @@ RUN microdnf install -y \
 ARG GO_VERSION=1.24.4
 ARG GO_SHA256=77e5da33bb72aeaef1ba4418b6fe511bc4d041873cbf82e5aa6318740df98717
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz && \
+# Use prefetched Go tarball from Cachi2
+RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
+    if [ -f /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz ]; then \
+        cp /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz go.tar.gz; \
+    else \
+        curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz; \
+    fi && \
     echo "${GO_SHA256}  go.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xzf go.tar.gz && \
     rm go.tar.gz
@@ -71,27 +79,30 @@ ENV GOCACHE="/tmp/go-cache"
 WORKDIR /workspace
 
 # Build both exporters in a single stage
-# 1. Build external squid-exporter
-RUN CGO_ENABLED=0 GOOS=linux go install github.com/boynux/squid-exporter@v1.13.0 && \
-    cp /root/go/bin/squid-exporter /workspace/squid-exporter
-
-# 2. Pre-fetch deps for exporters and helpers
+# 1. Pre-fetch deps for exporters and helpers
 COPY go.mod go.sum ./
-RUN --mount=type=cache,target=/tmp/go-cache \
+RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     go mod download
+
+# 2. Build external squid-exporter (using prefetched modules)
+RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
+    CGO_ENABLED=0 GOOS=linux go build -o /workspace/squid-exporter github.com/boynux/squid-exporter
 
 # 3. Copy source and build the per-site exporter
 COPY ./cmd/squid-per-site-exporter ./cmd/squid-per-site-exporter
 RUN --mount=type=cache,target=/tmp/go-cache \
+    if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     CGO_ENABLED=0 GOOS=linux go build -o /workspace/per-site-exporter ./cmd/squid-per-site-exporter
 
 # 4. Copy source and build the store-id helper
 COPY ./cmd/squid-store-id ./cmd/squid-store-id
 RUN --mount=type=cache,target=/tmp/go-cache \
+    if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     CGO_ENABLED=0 GOOS=linux go build -o /workspace/squid-store-id ./cmd/squid-store-id
 
 COPY ./cmd/icap-server ./cmd/icap-server
 RUN --mount=type=cache,target=/tmp/go-cache \
+    if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     CGO_ENABLED=0 GOOS=linux go build -o /workspace/icap-server ./cmd/icap-server
 
 # ==========================================
