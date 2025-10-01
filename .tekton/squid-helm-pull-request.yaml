@@ -33,6 +33,8 @@ spec:
       value: helm.Containerfile
     - name: path-context
       value: "squid"
+    - name: hermetic
+      value: "true"
   pipelineSpec:
     description: |
       This pipeline is ideal for building Helm charts while maintaining trust after pipeline customization.
