@@ -28,6 +28,8 @@ spec:
   - name: output-image
     value: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester:on-pr-{{revision}}
   - name: image-expires-after
+  - name: hermetic
+    value: "true"
     value: 5d
   - name: dockerfile
     value: test.Containerfile

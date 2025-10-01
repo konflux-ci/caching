@@ -28,6 +28,8 @@ spec:
     - name: path-context
       value: "squid"
   pipelineSpec:
+    - name: hermetic
+      value: "true"
     description: |
       This pipeline is ideal for building Helm charts while maintaining trust after pipeline customization.
     params:
