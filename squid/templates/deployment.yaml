@@ -192,7 +192,7 @@ spec:
         - name: squid-spool-cache
           emptyDir:
             medium: Memory
-            sizeLimit: {{ .Values.cache.memory.size }}Mi
+            sizeLimit: {{ .Values.cache.size }}Mi
         # Volume for Squid's SSL database
         - name: squid-spool-ssl
           emptyDir: {}
