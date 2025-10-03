@@ -617,22 +617,15 @@
           },
           "description": "List of URL regex patterns to cache"
         },
-        "memory": {
-          "type": "object",
-          "properties": {
-            "size": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "RAM allocated for caching in MiB"
-            },
-            "maxObjectSize": {
-              "type": "integer",
-              "minimum": 1,
-              "description": "Maximum object size to cache in MiB"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Memory cache configuration options"
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Size of the cache in MiB"
+        },
+        "maxObjectSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum object size to cache in MiB"
         }
       },
       "additionalProperties": false
