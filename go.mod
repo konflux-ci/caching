@@ -1,11 +1,11 @@
 module github.com/konflux-ci/caching
 
-go 1.24.0
+go 1.25.0
 
 toolchain go1.25.1
 
 require (
-	github.com/cert-manager/cert-manager v1.18.2
+	github.com/cert-manager/cert-manager v1.19.0
 	github.com/intra-sh/icap v0.1.1
 	github.com/magefile/mage v1.15.0
 	github.com/onsi/ginkgo/v2 v2.26.0
