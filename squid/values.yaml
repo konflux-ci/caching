@@ -226,7 +226,7 @@ tolerations: []
 # DO NOT use `helm install --namespace` or `helm upgrade --namespace` with this chart
 # All resources will be deployed to the namespace specified below
 namespace:
-  name: proxy
+  name: caching
   annotations: {}
 
 # Cert-manager and Trust-manager installation control

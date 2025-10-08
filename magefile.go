@@ -390,8 +390,8 @@ func (SquidHelm) Down() error {
 		return fmt.Errorf("failed to uninstall helm chart: %w", err)
 	}
 
-	// Wait for proxy namespace to be fully deleted
-	err = internal.WaitForNamespaceDeleted("proxy")
+	// Wait for caching namespace to be fully deleted
+	err = internal.WaitForNamespaceDeleted("caching")
 	if err != nil {
 		fmt.Printf("⚠️  Warning: %v\n", err)
 		// Don't fail the function, just warn - the namespace might be stuck
@@ -430,21 +430,21 @@ func (SquidHelm) Status() error {
 
 	// Show pod status
 	fmt.Printf("🖥️  Pod status:\n")
-	err = sh.RunV("kubectl", "get", "pods", "-n", "proxy", "-l", "app.kubernetes.io/name=squid")
+	err = sh.RunV("kubectl", "get", "pods", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
 	if err != nil {
 		fmt.Printf("⚠️  Could not get pod status: %v\n", err)
 	}
 
 	// Show service status
 	fmt.Printf("🌐 Service status:\n")
-	err = sh.RunV("kubectl", "get", "svc", "-n", "proxy", "-l", "app.kubernetes.io/name=squid")
+	err = sh.RunV("kubectl", "get", "svc", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
 	if err != nil {
 		fmt.Printf("⚠️  Could not get service status: %v\n", err)
 	}
 
 	// Show deployment status
 	fmt.Printf("📦 Deployment status:\n")
-	err = sh.RunV("kubectl", "get", "deployment", "-n", "proxy", "-l", "app.kubernetes.io/name=squid")
+	err = sh.RunV("kubectl", "get", "deployment", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
 	if err != nil {
 		fmt.Printf("⚠️  Could not get deployment status: %v\n", err)
 	}
@@ -483,7 +483,7 @@ func All() error {
 	fmt.Println("🎉 Complete automation workflow finished successfully!")
 	fmt.Println("Your local dev/test environment is ready:")
 	fmt.Println("  • Kind cluster: 'caching'")
-	fmt.Println("  • Squid proxy: http://squid.proxy.svc.cluster.local:3128")
+	fmt.Println("  • Squid caching: http://squid.caching.svc.cluster.local:3128")
 	fmt.Println("  • Helm tests: ✅ All passing")
 	fmt.Println("  • Ready for development and testing!")
 	return nil
@@ -535,7 +535,7 @@ func (Test) Cluster() error {
 
 	// Verify mirrord target pod is ready (deployed by Helm chart)
 	fmt.Println("⏳ Waiting for mirrord target pod to be ready...")
-	err = sh.Run("kubectl", "wait", "--for=condition=Ready", "pod/mirrord-test-target", "-n", "proxy", "--timeout=60s")
+	err = sh.Run("kubectl", "wait", "--for=condition=Ready", "pod/mirrord-test-target", "-n", "caching", "--timeout=60s")
 	if err != nil {
 		return fmt.Errorf("mirrord target pod not ready - check Helm deployment: %w", err)
 	}
