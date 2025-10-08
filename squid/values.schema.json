@@ -607,31 +607,6 @@
       },
       "additionalProperties": false
     },
-    "sslDb": {
-      "type": "object",
-      "properties": {
-        "storage": {
-          "type": "object",
-          "properties": {
-            "size": {
-              "type": "string",
-              "pattern": "^[0-9]+(Ei|Pi|Ti|Gi|Mi|Ki|E|P|T|G|M|K)?$",
-              "description": "Size of the PVC for SSL database storage"
-            },
-            "storageClass": {
-              "type": "string",
-              "description": "Storage class to use for the PVC (empty for default)"
-            }
-          },
-          "required": ["size", "storageClass"],
-          "additionalProperties": false,
-          "description": "Persistent storage configuration for SSL certificates"
-        }
-      },
-      "required": ["storage"],
-      "additionalProperties": false,
-      "description": "SSL Database configuration for persistent storage of SSL certificates"
-    },
     "cache": {
       "type": "object",
       "properties": {
@@ -642,22 +617,15 @@
           },
           "description": "List of URL regex patterns to cache"
         },
-        "memory": {
-          "type": "object",
-          "properties": {
-            "size": {
-              "type": "string",
-              "pattern": "^[0-9]+(\\s+(MB|GB|TB|KB|B))?$",
-              "description": "RAM allocated for caching (cache_mem)"
-            },
-            "maxObjectSize": {
-              "type": "string",
-              "pattern": "^[0-9]+(\\s+(MB|GB|TB|KB|B))?$",
-              "description": "Maximum size of objects cached in memory (maximum_object_size_in_memory)"
-            }
-          },
-          "additionalProperties": false,
-          "description": "Memory cache configuration options"
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Size of the cache in MiB"
+        },
+        "maxObjectSize": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum object size to cache in MiB"
         }
       },
       "additionalProperties": false

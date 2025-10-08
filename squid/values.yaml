@@ -269,7 +269,7 @@ cert-manager:
     replicaCount: 1
     image:
       repository: quay.io/jetstack/cert-manager-cainjector
-      tag: v1.18.2
+      tag: v1.19.0
       pullPolicy: IfNotPresent
   resources:
     requests:
@@ -372,24 +372,18 @@ mirrord:
   # When mirrord.enabled=true, test RBAC becomes persistent (no helm hooks)
   # When mirrord.enabled=false, test RBAC uses hooks for cleanup
 
-# SSL Database configuration
-# Persistent storage for SSL certificates
-sslDb:
-  storage:
-    size: 1Gi  # Size of the PVC for SSL database
-    storageClass: ""  # Storage class to use (empty for default)
-
 # Cache configuration
 cache:
   # Defines a list of URL patterns to cache. All other URLs are not cached.
   # An empty list disables this feature, meaning all URL patterns are cached.
   allowList: []
-  # Memory cache configuration
-  memory:
-    # RAM allocated for caching (cache_mem)
-    size: 256 MB
-    # Maximum size of objects cached in memory (maximum_object_size_in_memory)
-    maxObjectSize: 256 MB
+  # Size of the cache in MiB
+  # This counts towards the pod's memory limit. It should be less than the pod's memory limit
+  # and account for the rest of the pod's memory usage.
+  size: 256
+  # Maximum object size to cache in MiB
+  # Should not exceed 80% of `size`
+  maxObjectSize: 192
 
 # TLS outgoing options
 tlsOutgoingOptions:

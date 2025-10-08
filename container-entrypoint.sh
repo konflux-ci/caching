@@ -11,7 +11,7 @@ if [ "${1:-squid}" = "icap-server" ]; then
 fi
 
 SPOOL_DIR="/var/spool/squid"
-SSL_DB_DIR="${SPOOL_DIR}/ssl_db"
+SSL_DB_DIR="${SPOOL_DIR}/ssl/db"
 
 # Check if the ssl_db directory exists and has been initialized.
 # We check for the 'index.txt' file which is created by the certgen tool.
