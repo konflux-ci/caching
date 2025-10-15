@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -118,6 +120,43 @@ var _ = Describe("normalizeStoreID", func() {
 	})
 })
 
+var _ = Describe("processInput", func() {
+	var normalizeFuncDifferent = func(client HTTPClient, url string) string { return "normalized-" + url }
+
+	It("processes multiple lines concurrently", func() {
+		in := strings.NewReader(
+			"1 http://example.com/a\n" +
+				"2 http://example.com/b\n" +
+				"http://example.com/c\n" +
+				"4 http://example.com/d\n" +
+				"http://example.com/e\n" +
+				"6 http://example.com/f\n",
+		)
+		out := &MockWriter{}
+
+		err := processInput(in, out, normalizeFuncDifferent)
+		Expect(err).To(BeNil())
+
+		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+		Expect(lines).To(ConsistOf(
+			"1 OK store-id=normalized-http://example.com/a",
+			"2 OK store-id=normalized-http://example.com/b",
+			"OK store-id=normalized-http://example.com/c",
+			"4 OK store-id=normalized-http://example.com/d",
+			"OK store-id=normalized-http://example.com/e",
+			"6 OK store-id=normalized-http://example.com/f",
+		))
+	})
+
+	It("propagates scanner read errors", func() {
+		in := MockErrorReader{err: io.ErrUnexpectedEOF}
+		out := &MockWriter{}
+
+		err := processInput(in, out, normalizeFuncDifferent)
+		Expect(err).To(MatchError(io.ErrUnexpectedEOF))
+	})
+})
+
 // MockHTTPClient implements HTTPClient interface for testing
 type MockHTTPClient struct {
 	StatusCode  int
@@ -138,4 +177,31 @@ func (m *MockHTTPClient) Get(url string) (*http.Response, error) {
 	}
 
 	return resp, nil
+}
+
+// MockWriter implements io.Writer for testing
+type MockWriter struct {
+	buf bytes.Buffer
+	mu  sync.Mutex
+}
+
+func (m *MockWriter) Write(p []byte) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.buf.Write(p)
+}
+
+func (m *MockWriter) String() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.buf.String()
+}
+
+// MockErrorReader implements io.Reader for testing and allows for injection of an error
+type MockErrorReader struct {
+	err error
+}
+
+func (e MockErrorReader) Read(p []byte) (int, error) {
+	return 0, e.err
 }
