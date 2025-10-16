@@ -3,12 +3,14 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var cdnRegex = regexp.MustCompile(`^https://cdn(\d{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}`)
@@ -80,6 +82,40 @@ func parseLine(line string, normalizeFunc func(HTTPClient, string) string) strin
 	return response
 }
 
+// processInput reads lines from in, processes each concurrently, and writes responses to out
+func processInput(in io.Reader, out io.Writer, normalizeFunc func(HTTPClient, string) string) error {
+	scanner := bufio.NewScanner(in)
+
+	// Use a wait group to ensure all goroutines gracefully exit
+	wg := sync.WaitGroup{}
+
+	// Process each line from Squid concurrently
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+
+		wg.Add(1)
+		go func(l string) {
+			defer wg.Done()
+			response := parseLine(l, normalizeFunc)
+			log.Printf("Response: %s", response)
+			fmt.Fprintln(out, response)
+		}(line)
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+
+	// Check for scanning errors
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	// Initialize logging to stderr so it doesn't interfere with stdout communication
 	log.SetOutput(os.Stderr)
@@ -87,25 +123,7 @@ func main() {
 
 	log.Println("Starting Squid store-id helper")
 
-	// Create scanner to read from stdin line by line
-	scanner := bufio.NewScanner(os.Stdin)
-
-	// Process each line from Squid
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		if line == "" {
-			continue
-		}
-
-		response := parseLine(line, normalizeStoreID)
-
-		log.Printf("Response: %s", response)
-		fmt.Println(response)
-	}
-
-	// Check for scanning errors
-	if err := scanner.Err(); err != nil {
+	if err := processInput(os.Stdin, os.Stdout, normalizeStoreID); err != nil {
 		log.Printf("Error reading from stdin: %v", err)
 		os.Exit(1)
 	}
