@@ -119,8 +119,17 @@ var _ = BeforeSuite(func() {
 	certManagerClient, err = certmanagerclient.NewForConfig(config)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create cert-manager client")
 
-	err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
-	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+	// In CI (pipeline), Squid is already deployed - just wait for it to be ready
+	// In local dev, we need to deploy/configure Squid ourselves
+	if os.Getenv("CI") == "true" {
+		fmt.Printf("CI=true: Skipping helm operations, using pipeline-deployed Squid\n")
+		err = testhelpers.WaitForSquidDeploymentReady(ctx, clientset)
+		Expect(err).NotTo(HaveOccurred(), "Failed to wait for squid deployment")
+	} else {
+		fmt.Printf("Local dev: Configuring Squid with helm\n")
+		err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
+		Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+	}
 
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})
