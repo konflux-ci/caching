@@ -19,6 +19,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"sigs.k8s.io/yaml"
+
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -255,29 +259,33 @@ func WaitForSquidDeploymentReady(ctx context.Context, client kubernetes.Interfac
 	return nil
 }
 
+type CacheValues struct {
+	AllowList []string `json:"allowList"`
+}
+
+type TLSOutgoingOptionsValues struct {
+	CAFile string `json:"caFile,omitempty"`
+}
+
 type SquidHelmValues struct {
-	CacheAllowList    []string
-	OutgoingTLSCAFile string
+	Cache              *CacheValues              `json:"cache,omitempty"`
+	Environment        string                    `json:"environment,omitempty"`
+	ReplicaCount       int                       `json:"replicaCount,omitempty"`
+	TLSOutgoingOptions *TLSOutgoingOptionsValues `json:"tlsOutgoingOptions,omitempty"`
+	Affinity           json.RawMessage           `json:"affinity,omitempty"`
 }
 
 // ConfigureSquidWithHelm configures Squid deployment using helm values
-// This replaces the old SquidConfigManager approach for unified configuration management
-func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, customValues SquidHelmValues) error {
-	values := map[string]string{
-		"environment": "dev",
+func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
+	values.Environment = "dev"
+	valuesFile, err := writeValuesToFile(&values)
+	if err != nil {
+		return fmt.Errorf("failed to write values to file: %w", err)
 	}
+	defer os.Remove(valuesFile)
 
-	// Configure cache allow list
-	if len(customValues.CacheAllowList) > 0 {
-		values["cache.allowList"] = FormatHelmListValue(customValues.CacheAllowList)
-	}
-
-	// Configure SSL bump TLS trust
-	if customValues.OutgoingTLSCAFile != "" {
-		values["tlsOutgoingOptions.caFile"] = customValues.OutgoingTLSCAFile
-	}
-
-	err := UpgradeChart("squid", "./squid", values)
+	// Use the temporary values file with helm
+	err = UpgradeChart("squid", "./squid", valuesFile)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
@@ -290,30 +298,12 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, cu
 	return nil
 }
 
-// FormatHelmListValue formats a list of strings into a comma-separated string for helm --set
-func FormatHelmListValue(items []string) string {
-	value := "{"
-	for i, item := range items {
-		if i > 0 {
-			value += ","
-		}
-		value += item
-	}
-	value += "}"
-	return value
-}
-
-// UpgradeChart performs a helm upgrade with the specified chart and values
-func UpgradeChart(releaseName, chartName string, values map[string]string) error {
+// UpgradeChart performs a helm upgrade with the specified chart and values file
+func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
 
 	// Build helm command as a shell string
-	cmdParts := []string{"helm", "upgrade", releaseName, chartName, "-n=default", "--wait", "--timeout=120s"}
-
-	// Add --set parameters for each value in the map
-	for key, value := range values {
-		cmdParts = append(cmdParts, "--set", fmt.Sprintf("%s=%s", key, value))
-	}
+	cmdParts := []string{"helm", "upgrade", releaseName, chartName, "-n=default", "--wait", "--timeout=120s", "--values", valuesFile}
 
 	// Join into single shell command string
 	shellCmd := strings.Join(cmdParts, " ")
@@ -329,13 +319,15 @@ func UpgradeChart(releaseName, chartName string, values map[string]string) error
 }
 
 // RenderHelmTemplate renders the Helm template with the given values and returns the YAML output
-func RenderHelmTemplate(chartPath string, values map[string]string) (string, error) {
-	cmdParts := []string{"helm", "template", "test-release", chartPath}
-
-	// Add --set parameters for each value in the map
-	for key, value := range values {
-		cmdParts = append(cmdParts, "--set", fmt.Sprintf("%s=%s", key, value))
+func RenderHelmTemplate(chartPath string, values SquidHelmValues) (string, error) {
+	values.Environment = "dev"
+	valuesFile, err := writeValuesToFile(&values)
+	if err != nil {
+		return "", fmt.Errorf("failed to write values to file: %w", err)
 	}
+	defer os.Remove(valuesFile)
+
+	cmdParts := []string{"helm", "template", "test-release", chartPath, "--values", valuesFile}
 
 	cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
 	// Set working directory to chart parent directory to ensure relative paths work
@@ -352,28 +344,27 @@ func RenderHelmTemplate(chartPath string, values map[string]string) (string, err
 	return string(output), nil
 }
 
-// RenderHelmTemplateWithJSON renders the Helm template with JSON values and returns the YAML output
-func RenderHelmTemplateWithJSON(chartPath string, jsonValues map[string]string) (string, error) {
-	cmdParts := []string{"helm", "template", "test-release", chartPath}
-
-	// Add --set-json parameters for each value in the map
-	for key, value := range jsonValues {
-		cmdParts = append(cmdParts, "--set-json", fmt.Sprintf("%s=%s", key, value))
-	}
-
-	cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
-	// Set working directory to chart parent directory to ensure relative paths work
-	chartParentDir, err := FindChartDirectory()
+// writeValuesToFile writes the given values in YAML format to a temp file and returns the path to the file
+func writeValuesToFile(values *SquidHelmValues) (string, error) {
+	data, err := yaml.Marshal(values)
 	if err != nil {
-		return "", fmt.Errorf("failed to find chart directory: %w", err)
-	}
-	cmd.Dir = chartParentDir
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("helm template failed: %w\n%s", err, string(output))
+		return "", fmt.Errorf("failed to marshal values to YAML: %w", err)
 	}
 
-	return string(output), nil
+	f, err := os.CreateTemp("", "values-*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp values file: %w", err)
+	}
+
+	if _, err := f.WriteString(string(data)); err != nil {
+		f.Close()
+		return "", fmt.Errorf("failed to write temp values file: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return "", fmt.Errorf("failed to close temp values file: %w", err)
+	}
+
+	return f.Name(), nil
 }
 
 // FindChartDirectory finds the directory containing any Helm chart
@@ -467,4 +458,47 @@ func GetPodLogsSince(ctx context.Context, client kubernetes.Interface, namespace
 	}
 
 	return client.CoreV1().Pods(namespace).GetLogs(podName, logOptions).Do(ctx).Raw()
+}
+
+// PullContainerImage pulls a container image and all its layers while discarding the content
+// Note: Does NOT support image references pointing to manifest lists
+func PullContainerImage(t *http.RoundTripper, imageRef string) error {
+	ref, err := name.ParseReference(imageRef)
+	if err != nil {
+		return err
+	}
+
+	desc, err := remote.Get(ref, remote.WithTransport(*t))
+	if err != nil {
+		return err
+	}
+
+	img, err := desc.Image()
+	if err != nil {
+		return err
+	}
+	layers, err := img.Layers()
+	if err != nil {
+		return err
+	}
+	if len(layers) == 0 {
+		return fmt.Errorf("no layers found in image")
+	}
+
+	for _, layer := range layers {
+		cr, err := layer.Compressed()
+		if err != nil {
+			return err
+		}
+		defer cr.Close()
+		written, err := io.Copy(io.Discard, cr)
+		if err != nil {
+			return err
+		}
+		if written == 0 {
+			return fmt.Errorf("no bytes written")
+		}
+	}
+
+	return nil
 }
