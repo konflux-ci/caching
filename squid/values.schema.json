@@ -509,6 +509,10 @@
         },
         "resources": {
           "$ref": "#/$defs/resources"
+        },
+        "labelFilter": {
+          "type": "string",
+          "description": "Label filter for Ginkgo tests"
         }
       },
       "required": ["enabled"],

@@ -260,6 +260,20 @@ This uses mirrord to "steal" network connections from a target pod and runs
 the test locally (outside of the Kind cluster) with Ginkgo. This allows for
 local debugging without rebuilding test containers
 
+### Controlling Which Tests Are Executed
+
+Use the `GINKGO_LABEL_FILTER` environment variable to skip certain tests.
+For syntax details, see the Ginkgo documentation for the `--label-filter` argument.
+
+For example, use the following filter to skip all tests with a dependency on external services.
+```bash
+# When running via `helm test`
+GINKGO_LABEL_FILTER='!external-deps' mage all
+
+# When running locally with mirrord
+GINKGO_LABEL_FILTER='!external-deps' mage test:cluster
+```
+
 ### VS Code Integration
 
 The repository includes complete VS Code configuration for Ginkgo testing:
@@ -290,6 +304,7 @@ When adding new tests:
 3. **Add cache-busting**: Use unique URLs to prevent test interference
 4. **Verify cleanup**: Ensure tests clean up resources properly
 5. **Update VS Code config**: Add debug configurations for new test files
+
 ## Prometheus Monitoring
 
 This chart includes comprehensive Prometheus monitoring capabilities through:

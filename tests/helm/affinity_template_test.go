@@ -1,6 +1,7 @@
 package helm_test
 
 import (
+	"encoding/json"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -14,8 +15,8 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 
 	Describe("Default Configuration", func() {
 		It("should include pod anti-affinity rules by default", func() {
-			output, err := testhelpers.RenderHelmTemplate(chartPath, map[string]string{
-				"replicaCount": "2",
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				ReplicaCount: 2,
 			})
 			Expect(err).NotTo(HaveOccurred(), "Helm template rendering should succeed")
 
@@ -35,7 +36,7 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 		})
 
 		It("should not include required anti-affinity (only preferred)", func() {
-			output, err := testhelpers.RenderHelmTemplate(chartPath, map[string]string{})
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{})
 			Expect(err).NotTo(HaveOccurred())
 
 			// Should have preferred but not required anti-affinity
@@ -46,8 +47,8 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 
 	Describe("Disabled Affinity", func() {
 		It("should not include any affinity when user sets empty affinity", func() {
-			output, err := testhelpers.RenderHelmTemplateWithJSON(chartPath, map[string]string{
-				"affinity": "{}",
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Affinity: json.RawMessage("{}"),
 			})
 			Expect(err).NotTo(HaveOccurred(), "Helm template rendering should succeed")
 
@@ -77,8 +78,8 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 				}
 			}`
 
-			output, err := testhelpers.RenderHelmTemplateWithJSON(chartPath, map[string]string{
-				"affinity": customAffinity,
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Affinity: json.RawMessage(customAffinity),
 			})
 			Expect(err).NotTo(HaveOccurred(), "Helm template rendering should succeed")
 
@@ -106,8 +107,8 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 				}
 			}`
 
-			output, err := testhelpers.RenderHelmTemplateWithJSON(chartPath, map[string]string{
-				"affinity": customAffinity,
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Affinity: json.RawMessage(customAffinity),
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -127,36 +128,31 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 		It("should produce valid YAML for all configuration scenarios", func() {
 			testCases := []struct {
 				name   string
-				values map[string]string
-				json   map[string]string
+				values testhelpers.SquidHelmValues
 			}{
 				{
-					name:   "default configuration",
-					values: map[string]string{"replicaCount": "3"},
+					name: "default configuration",
+					values: testhelpers.SquidHelmValues{
+						ReplicaCount: 3,
+					},
 				},
 				{
 					name: "disabled affinity",
-					json: map[string]string{"affinity": "{}"},
+					values: testhelpers.SquidHelmValues{
+						Affinity: json.RawMessage("{}"),
+					},
 				},
 				{
 					name: "custom node affinity",
-					json: map[string]string{
-						"affinity": `{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"node-type","operator":"In","values":["proxy"]}]}]}}}`,
+					values: testhelpers.SquidHelmValues{
+						Affinity: json.RawMessage(`{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"node-type","operator":"In","values":["proxy"]}]}]}}}`),
 					},
 				},
 			}
 
 			for _, tc := range testCases {
 				By(tc.name)
-				var output string
-				var err error
-
-				if tc.json != nil {
-					output, err = testhelpers.RenderHelmTemplateWithJSON(chartPath, tc.json)
-				} else {
-					output, err = testhelpers.RenderHelmTemplate(chartPath, tc.values)
-				}
-
+				output, err := testhelpers.RenderHelmTemplate(chartPath, tc.values)
 				Expect(err).NotTo(HaveOccurred(), "Template rendering should succeed for %s", tc.name)
 				Expect(output).NotTo(BeEmpty(), "Should produce non-empty YAML output")
 
