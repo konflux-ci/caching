@@ -116,27 +116,27 @@ jobs:
 
     - name: Run unit tests
       run: |
-        podman exec -w /workspaces/caching devcontainer-test mage test:unit
+        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage test:unit
 
     - name: Deploy Kind environment
       run: |
         # Test that deploying our environment in Kind and our Helm chart works
-        podman exec -w /workspaces/caching devcontainer-test mage squidHelm:up
+        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage squidHelm:up
 
     - name: Run our test suite (via mirrord)
       run: |
         # Run the test suite via mirrord, so we can see detailed output
-        podman exec -w /workspaces/caching devcontainer-test mage test:cluster
+        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage test:cluster
 
     - name: Retest Kind environment
       run: |
         # Test that our deployment is reentrant and that `helm test` works
-        podman exec -w /workspaces/caching devcontainer-test mage all
+        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage all
 
     - name: Clean up Kind environment
       if: always()
       run: |
-        podman exec -w /workspaces/caching devcontainer-test mage clean
+        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage clean
         podman exec -w /workspaces/caching devcontainer-test kind delete cluster --name caching-ci
 
     - name: Cleanup container

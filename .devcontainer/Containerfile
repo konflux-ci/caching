@@ -1,5 +1,5 @@
 # Start from latest stable Fedora image (digest-pinned)
-FROM registry.fedoraproject.org/fedora:latest@sha256:40f5b359d76ac10a563387e9e95efaa09db979b12b0ff8ad17bde1ac89c594b4
+FROM registry.fedoraproject.org/fedora:latest@sha256:22e983fb13ebde25b02c91350be98020b2b83b32be421de6af89c62b8221502e
 
 # DNF tuning from official Podman Containerfile for build robustness
 RUN echo -e "\\n\\n# Added during image build" >> /etc/dnf/dnf.conf && \
@@ -23,7 +23,7 @@ RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64 && \
     GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest
 
 # Install mirrord binary securely from GitHub releases (specific version)
-ARG MIRRORD_VERSION=3.157.2
+ARG MIRRORD_VERSION=3.166.0
 RUN curl -fsSL "https://github.com/metalbear-co/mirrord/releases/download/${MIRRORD_VERSION}/mirrord_linux_x86_64" -o /usr/local/bin/mirrord && \
     chmod +x /usr/local/bin/mirrord
 

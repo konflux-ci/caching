@@ -57,8 +57,8 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     microdnf clean all
 
 # Install Go (version-locked)
-ARG GO_VERSION=1.24.4
-ARG GO_SHA256=77e5da33bb72aeaef1ba4418b6fe511bc4d041873cbf82e5aa6318740df98717
+ARG GO_VERSION=1.25.3
+ARG GO_SHA256=0335f314b6e7bfe08c3d0cfaa7c19db961b7b99fb20be62b0a826c992ad14e0f
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Use prefetched Go tarball from Cachi2
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
