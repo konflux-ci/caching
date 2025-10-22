@@ -6,13 +6,25 @@ RUN echo -e "\\n\\n# Added during image build" >> /etc/dnf/dnf.conf && \
     echo -e "minrate=100\\ntimeout=60\\n" >> /etc/dnf/dnf.conf
 
 # Install dependencies for the dev environment
-ARG INSTALL_RPMS="podman openssh-clients cpp git-core golang which procps-ng curl helm kubernetes1.33-client jq hadolint gh"
+ARG INSTALL_RPMS="podman openssh-clients cpp git-core gcc which procps-ng curl helm kubernetes1.33-client jq hadolint gh"
 RUN dnf -y makecache && \
     dnf -y update && \
     dnf -y install $INSTALL_RPMS --exclude container-selinux && \
     dnf -y install glibc-debuginfo gcc-debuginfo libgcc-debuginfo --enablerepo=fedora-debuginfo,updates-debuginfo && \
     dnf clean all && \
     rm -rf /var/cache /var/log/dnf* /var/log/yum.*
+
+# Install Go (version-locked)
+ARG GO_VERSION=1.25.3
+ARG GO_SHA256=0335f314b6e7bfe08c3d0cfaa7c19db961b7b99fb20be62b0a826c992ad14e0f
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz && \
+    echo "${GO_SHA256}  go.tar.gz" | sha256sum -c - && \
+    tar -C /usr/local -xzf go.tar.gz && \
+    rm go.tar.gz
+
+# Set Go environment
+ENV PATH="/usr/local/go/bin:$PATH"
 
 # Install kind, mage, ginkgo CLI, and dlv debugger 
 RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64 && \
@@ -42,6 +54,10 @@ RUN groupadd --gid $USER_GID $USERNAME && \
 # the container build.
 # hadolint ignore=SC2016
 RUN echo 'export PATH="$PATH:$HOME/go/bin"' >> /home/$USERNAME/.bashrc
+
+# Prepare GOPATH for the vscode user with correct ownership
+RUN mkdir -p /home/$USERNAME/go/bin && \
+    chown -R $USERNAME:$USERNAME /home/$USERNAME/go
 
 # Switch to the non-root user
 USER $USERNAME
