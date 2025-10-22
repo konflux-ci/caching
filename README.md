@@ -65,6 +65,12 @@ This repository includes a dev container configuration that provides a consisten
 
 Once these prerequisites are met, you can open this folder in VS Code and use the "Reopen in Container" command to launch the environment with all tools pre-configured.
 
+## Hermetic Builds
+
+This project uses hermetic (network-isolated) builds in Konflux CI to ensure reproducible, supply-chain-secure container images. Dependencies are pre-fetched and version-locked before builds run with network access disabled.
+
+Maintainers should consult [HERMETIC-BUILDS.md](./HERMETIC-BUILDS.md) for guidance on updating dependency lock files.
+
 ## Quick Start
 
 ### Using automation
