@@ -7,11 +7,145 @@ metadata:
     {{- include "squid.labels" . | nindent 4 }}
 data:
   squid.conf: |-
-    {{- .Files.Get "squid.conf" | nindent 4 }}
+    # This is a minimal squid configuration file
+    # See https://wiki.squid-cache.org/ConfigExamples
+    # and /usr/share/doc/squid/squid.conf.documented for more examples
+    #
+    # Recommended minimum configuration:
+    #
+
+    # Example rule allowing access from your local networks.
+    # Adapt to list your (internal) IP networks from where browsing
+    # should be allowed
+    acl localnet src 0.0.0.1-0.255.255.255  # RFC 1122 "this" network (LAN)
+    acl localnet src 10.0.0.0/8             # RFC 1918 local private network (LAN)
+    acl localnet src 100.64.0.0/10          # RFC 6598 shared address space (CGN)
+    acl localnet src 169.254.0.0/16         # RFC 3927 link-local (directly plugged) machines
+    acl localnet src 172.16.0.0/12          # RFC 1918 local private network (LAN)
+    acl localnet src 192.168.0.0/16         # RFC 1918 local private network (LAN)
+    acl localnet src fc00::/7               # RFC 4193 local private network range
+    acl localnet src fe80::/10              # RFC 4291 link-local (directly plugged) machines
+
+    acl SSL_ports port 443
+    acl SSL_ports port 8443
+    acl Safe_ports port 80          # http
+    acl Safe_ports port 21          # ftp
+    acl Safe_ports port 443         # https
+    acl Safe_ports port 70          # gopher
+    acl Safe_ports port 210         # wais
+    acl Safe_ports port 1025-65535  # unregistered ports
+    acl Safe_ports port 280         # http-mgmt
+    acl Safe_ports port 488         # gss-http
+    acl Safe_ports port 591         # filemaker
+    acl Safe_ports port 777         # multiling http
+
+    #
+    # Recommended minimum Access Permission configuration:
+    #
+    # Deny requests to certain unsafe ports
+    http_access deny !Safe_ports
+
+    # Deny CONNECT to other than secure SSL ports
+    http_access deny CONNECT !SSL_ports
+
+    # Only allow cachemgr access from localhost
+    http_access allow localhost manager
+    http_access deny manager
+
+    # This default configuration only allows localhost requests because a more
+    # permissive Squid installation could introduce new attack vectors into the
+    # network by proxying external TCP connections to unprotected services.
+    http_access allow localhost
+
+    # The two deny rules below are unnecessary in this default configuration
+    # because they are followed by a "deny all" rule. However, they may become
+    # critically important when you start allowing external requests below them.
+
+    # Protect web applications running on the same server as Squid. They often
+    # assume that only local users can access them at "localhost" ports.
+    http_access deny to_localhost
+
+    # Protect cloud servers that provide local users with sensitive info about
+    # their server via certain well-known link-local (a.k.a. APIPA) addresses.
+    http_access deny to_linklocal
+
+    #
+    # INSERT YOUR OWN RULE(S) HERE TO ALLOW ACCESS FROM YOUR CLIENTS
+    #
+
+    # For example, to allow access from your local networks, you may uncomment the
+    # following rule (and/or add rules that match your definition of "local"):
+    http_access allow localnet
+
+    # And finally deny all other access to this proxy
+    http_access deny all
+
+    # --- SSL BUMP CONFIGURATION for EXPLICIT PROXY ---
+    # A single port for HTTP and HTTPS (via CONNECT).
+    # The ssl-bump directive tells Squid to intercept the TLS traffic inside the CONNECT tunnel.
+    http_port {{ .Values.service.port }} ssl-bump generate-host-certificates=on dynamic_cert_mem_cache_size=4MB tls-cert=/etc/squid/certs/tls.crt tls-key=/etc/squid/certs/tls.key
+
+    # Define the steps for SSL Bumping.
+    # Step 1: Peek at the TLS handshake to get the SNI (Server Name Indication).
+    # Step 2: Bump the connection.
+    acl step1 at_step SslBump1
+    ssl_bump peek step1
+    ssl_bump bump all
+
+    # Path to the helper program that generates certificates.
+    # For RHEL/UBI based systems, the path is typically in /usr/lib64/squid/
+    sslcrtd_program /usr/lib64/squid/security_file_certgen -s /var/spool/squid/ssl/db -M 16MB
+    sslcrtd_children 8 startup=1 idle=1
 
     {{- if .Values.tlsOutgoingOptions.caFile }}
+    # TLS outgoing options - CA bundle for verifying upstream servers
     tls_outgoing_options cafile={{ .Values.tlsOutgoingOptions.caFile }}
     {{- end }}
+
+    # --- END SSL BUMP CONFIGURATION ---
+
+    # --- STORE ID CONFIGURATION ---
+    # CDN requests requiring store-id helper. Matches URLs like:
+    # - https://cdn.quay.io/foo/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+    # - https://cdn01.quay.io/foo/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+    acl cdns url_regex ^https://cdn([0-9]{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}
+    # Use the store-id helper for CDN URLs
+    store_id_access allow cdns
+    # Don't use the store-id helper for all other URLs
+    store_id_access deny all
+    # The store-id helper executable
+    store_id_program /usr/local/bin/squid-store-id
+    # Run 1 helper process upon startup and keep at least 1 spare; scale up to 20 as needed
+    store_id_children 20 startup=1 idle=1
+    # --- END STORE ID CONFIGURATION ---
+
+    # --- ICAP CONFIGURATION ---
+    # Enable ICAP for request modification before caching decisions
+    icap_enable on
+    icap_service icap_server reqmod_precache bypass=0 icap://127.0.0.1:1344/reqmod
+
+    # Only use the ICAP service for CDN requests
+    adaptation_access icap_server allow cdns
+    adaptation_access icap_server deny all
+    # --- END ICAP CONFIGURATION ---
+
+    # --- CACHING CONFIGURATION ---
+    # Disable memory cache for "hot objects" and "negative-cached objects"
+    # Disk cache is used instead (although backed by a tmpfs memory volume)
+    cache_mem 0
+
+    # Purge policy when available cache size is low: Least Frequently Used with Data Aging algorithm
+    cache_replacement_policy heap LFUDA
+
+    # Cache access control
+    # Align with the Pod's securityContext (runAsUser: 1001, runAsGroup: 0)
+    # to prevent setuid/setgid errors.
+    cache_effective_user 1001
+    cache_effective_group root
+
+    # Cache logging
+    # cache_log -> STDERR: operational/administrative messages (startup, config, errors, debug)
+    cache_log /dev/stderr
 
     {{- if .Values.cache.allowList }}
     {{- range .Values.cache.allowList }}
@@ -31,3 +165,25 @@ data:
 
     # Maximum object size to cache
     maximum_object_size {{ .Values.cache.maxObjectSize }} MB
+
+    # --- END CACHING CONFIGURATION ---
+
+    # Access log configuration
+
+    # Omit some requests from the access log
+    acl squid_internal urlpath_regex ^/squid-internal-mgr/.+$
+    acl has_request has request
+    access_log none localhost squid_internal  # Internal manager requests
+    access_log none !has_request  # TCP health check requests
+
+    # access_log -> STDOUT: HTTP request data (application logs)
+    access_log stdio:/dev/stdout squid
+
+    # Disable core dumps
+    coredump_dir none
+
+    #
+    # Add any of your own refresh_pattern entries above these.
+    #
+    refresh_pattern . 0 20% 4320
+    pid_filename none

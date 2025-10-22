@@ -465,7 +465,7 @@ curl http://squid.caching.svc.cluster.local:9302/metrics
 
 #### Metrics Access Denied
 
-If you see "access denied" errors, ensure that the squid configuration allows localhost manager access. The default configuration should work, but if you've modified `squid.conf`, make sure these lines are present:
+If you see "access denied" errors, ensure that the squid configuration allows localhost manager access. The default configuration should work, but if you've modified the configuration in `squid/templates/configmap.yaml`, make sure these lines are present:
 
 ```
 http_access allow localhost manager
@@ -1025,10 +1025,10 @@ podman rmi localhost/konflux-ci/squid-test:latest
 squid/
 ├── Chart.yaml              # Chart metadata
 ├── values.yaml             # Default configuration values
-├── squid.conf              # Squid configuration file
+├── crds/                   # Custom Resource Definitions
 └── templates/
     ├── _helpers.tpl         # Template helpers
-    ├── configmap.yaml       # ConfigMap for squid.conf
+    ├── configmap.yaml       # ConfigMap with embedded squid.conf
     ├── deployment.yaml      # Squid deployment
     ├── namespace.yaml       # Caching namespace
     ├── service.yaml         # Squid service
