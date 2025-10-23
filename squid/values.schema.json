@@ -396,7 +396,7 @@
       "properties": {
         "name": {
           "type": "string",
-          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "pattern": "caching",
           "description": "Namespace name"
         },
         "annotations": {

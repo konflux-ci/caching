@@ -1,6 +1,6 @@
 # Squid Proxy for Kubernetes
 
-This repository contains a Helm chart for deploying a Squid HTTP proxy server in Kubernetes. The chart is designed to be self-contained and deploys into a dedicated `proxy` namespace.
+This repository contains a Helm chart for deploying a Squid HTTP proxy server in Kubernetes. The chart is designed to be self-contained and deploys into a dedicated `caching` namespace.
 
 ## Deveoplment Prerequisites
 
@@ -100,7 +100,7 @@ mage kind:status      # Check cluster status
 mage kind:down        # Remove cluster
 mage kind:upClean     # Force recreate cluster
 
-# Image management  
+# Image management
 mage build:squid         # Build consolidated squid image (includes integrated squid-exporter)
 mage build:loadSquid     # Load squid image into cluster
 
@@ -165,12 +165,12 @@ kind load image-archive --name caching <(podman save localhost/konflux-ci/squid-
 helm install squid ./squid --set environment=dev
 
 # Verify deployment (or use: mage squidHelm:status)
-kubectl get pods -n proxy
-kubectl get svc -n proxy
+kubectl get pods -n caching
+kubectl get svc -n caching
 ```
 
-By default: 
-- The cert-manager and trust-manager dependencies will be deployed into the cert-manager namespace. 
+By default:
+- The cert-manager and trust-manager dependencies will be deployed into the cert-manager namespace.
 If you wish to disable these deployments, you can do so by setting the parameter `--set installCertManagerComponents=false`
 
 - The resources (issuer, certificate, bundle) are created
@@ -205,26 +205,26 @@ if you wish to disable the resources creation, you can do so by setting the para
 The Squid proxy is accessible at:
 
 - **Same namespace**: `http://squid:3128`
-- **Cross-namespace**: `http://squid.proxy.svc.cluster.local:3128`
+- **Cross-namespace**: `http://squid.caching.svc.cluster.local:3128`
 
 #### Example: Testing with a curl pod
 
 ```bash
 # Create a test pod for testing the proxy (HTTP)
 kubectl run test-client --image=curlimages/curl:latest --rm -it -- \
-    sh -c 'curl --proxy http://squid.proxy.svc.cluster.local:3128 http://httpbin.org/ip'
+    sh -c 'curl --proxy http://squid.caching.svc.cluster.local:3128 http://httpbin.org/ip'
 
 # Create a test pod for testing SSL-Bump (HTTPS)
 kubectl run test-client-ssl --image=curlimages/curl:latest --rm -it -- \
-    sh -c 'curl -k --proxy http://squid.proxy.svc.cluster.local:3128 https://httpbin.org/ip'
+    sh -c 'curl -k --proxy http://squid.caching.svc.cluster.local:3128 https://httpbin.org/ip'
 ```
 
 ### From Your Local Machine (for testing)
 
 ```bash
 # Forward the proxy port to your local machine
-export POD_NAME=$(kubectl get pods --namespace proxy -l "app.kubernetes.io/name=squid,app.kubernetes.io/instance=squid" -o jsonpath="{.items[0].metadata.name}")
-kubectl --namespace proxy port-forward $POD_NAME 3128:3128
+export POD_NAME=$(kubectl get pods --namespace caching -l "app.kubernetes.io/name=squid,app.kubernetes.io/instance=squid" -o jsonpath="{.items[0].metadata.name}")
+kubectl --namespace caching port-forward $POD_NAME 3128:3128
 
 # In another terminal, test the proxy (HTTP)
 curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
@@ -257,7 +257,7 @@ mage test:cluster
 ```
 
 This uses mirrord to "steal" network connections from a target pod and runs
-the test locally (outside of the Kind cluster) with Ginkgo. This allows for 
+the test locally (outside of the Kind cluster) with Ginkgo. This allows for
 local debugging without rebuilding test containers
 
 ### VS Code Integration
@@ -372,7 +372,7 @@ For manual Prometheus setup (if you have an existing Prometheus instance), add t
 scrape_configs:
   - job_name: 'squid-proxy'
     static_configs:
-      - targets: ['squid.proxy.svc.cluster.local:9301']
+      - targets: ['squid.caching.svc.cluster.local:9301']
     scrape_interval: 30s
     metrics_path: '/metrics'
 ```
@@ -409,7 +409,7 @@ The monitoring system provides numerous metrics including:
 
 ```bash
 # Forward the standard squid-exporter metrics port
-kubectl port-forward -n proxy svc/squid 9301:9301
+kubectl port-forward -n caching svc/squid 9301:9301
 
 # View standard metrics in your browser or with curl
 curl http://localhost:9301/metrics
@@ -419,7 +419,7 @@ Per-site exporter metrics:
 
 ```bash
 # Forward the per-site exporter metrics port
-kubectl port-forward -n proxy svc/squid 9302:9302
+kubectl port-forward -n caching svc/squid 9302:9302
 
 # View per-site metrics
 curl http://localhost:9302/metrics
@@ -431,13 +431,13 @@ The metrics are exposed on the service:
 
 ```bash
 # Standard squid-exporter metrics (from within the cluster)
-curl http://squid.proxy.svc.cluster.local:9301/metrics
+curl http://squid.caching.svc.cluster.local:9301/metrics
 ```
 
 Per-site exporter metrics (from within the cluster):
 
 ```bash
-curl http://squid.proxy.svc.cluster.local:9302/metrics
+curl http://squid.caching.svc.cluster.local:9302/metrics
 ```
 
 ### Troubleshooting Metrics
@@ -446,21 +446,21 @@ curl http://squid.proxy.svc.cluster.local:9302/metrics
 
 1. **Check if the squid container is running**:
    ```bash
-   kubectl get pods -n proxy
-   kubectl logs -n proxy deployment/squid -c squid-exporter
+   kubectl get pods -n caching
+   kubectl logs -n caching deployment/squid -c squid-exporter
    ```
 
 2. **Verify cache manager access**:
    ```bash
    # Test from within the pod
-   kubectl exec -n proxy deployment/squid -c squid-exporter -- \
+   kubectl exec -n caching deployment/squid -c squid-exporter -- \
      curl -s http://localhost:3128/squid-internal-mgr/info
    ```
 
 3. **Check ServiceMonitor (if using Prometheus Operator)**:
    ```bash
-   kubectl get servicemonitor -n proxy
-   kubectl describe servicemonitor -n proxy squid
+   kubectl get servicemonitor -n caching
+   kubectl describe servicemonitor -n caching squid
    ```
 
 #### Metrics Access Denied
@@ -489,7 +489,7 @@ ERROR: failed to create cluster: node(s) already exist for a cluster with the na
 kind export kubeconfig --name caching
 kubectl cluster-info --context kind-caching
 
-# Option 2: Delete and recreate  
+# Option 2: Delete and recreate
 kind delete cluster --name caching
 kind create cluster --name caching
 ```
@@ -535,7 +535,7 @@ kind load image-archive --name caching <(podman save localhost/konflux-ci/squid:
 
 **Solution**: This is usually resolved by the correct security context in our chart. Verify:
 ```bash
-kubectl describe pod -n proxy $(kubectl get pods -n proxy -o name | head -1)
+kubectl describe pod -n caching $(kubectl get pods -n caching -o name | head -1)
 ```
 
 Look for:
@@ -550,7 +550,7 @@ Look for:
 **Solution**: Clean up and reinstall:
 ```bash
 helm uninstall squid 2>/dev/null || true
-kubectl delete namespace proxy 2>/dev/null || true
+kubectl delete namespace caching 2>/dev/null || true
 # Wait a few seconds for cleanup
 sleep 5
 helm install squid ./squid
@@ -575,7 +575,7 @@ kubectl cluster-info dump | grep -i cidr
 
 **Solution**: Ensure downward API is configured (automatically handled by Helm chart):
 ```bash
-kubectl describe pod -n proxy <test-pod-name>
+kubectl describe pod -n caching <test-pod-name>
 ```
 
 #### 8. Mirrord Connection Issues
@@ -585,10 +585,10 @@ kubectl describe pod -n proxy <test-pod-name>
 **Solution**: Verify mirrord infrastructure is deployed and working:
 ```bash
 # Verify mirrord target pod is ready
-kubectl get pods -n proxy -l app.kubernetes.io/component=mirrord-target
+kubectl get pods -n caching -l app.kubernetes.io/component=mirrord-target
 
 # Check mirrord target pod logs
-kubectl logs -n proxy mirrord-test-target
+kubectl logs -n caching mirrord-test-target
 
 # Verify mirrord configuration
 cat .mirrord/mirrord.json
@@ -610,14 +610,14 @@ mage test:cluster  # Check output for detailed error messages
 mage squidHelm:status
 
 # Check if all pods are running
-kubectl get pods -n proxy
+kubectl get pods -n caching
 
 # Verify proxy connectivity manually
 kubectl run debug --image=curlimages/curl:latest --rm -it -- \
-  curl -v --proxy http://squid.proxy.svc.cluster.local:3128 http://httpbin.org/ip
+  curl -v --proxy http://squid.caching.svc.cluster.local:3128 http://httpbin.org/ip
 
 # View test logs from helm tests
-kubectl logs -n proxy -l app.kubernetes.io/component=test
+kubectl logs -n caching -l app.kubernetes.io/component=test
 ```
 
 #### 10. Working with Existing kind Clusters (Dev Container Users)
@@ -641,23 +641,23 @@ kind create cluster --name caching
 
 ```bash
 # Check pod status
-kubectl get pods -n proxy
+kubectl get pods -n caching
 
 # View pod logs
-kubectl logs -n proxy deployment/squid
+kubectl logs -n caching deployment/squid
 
 # Test connectivity from within cluster
-kubectl run debug --image=curlimages/curl:latest --rm -it -- curl -v --proxy http://squid.proxy.svc.cluster.local:3128 http://httpbin.org/ip
+kubectl run debug --image=curlimages/curl:latest --rm -it -- curl -v --proxy http://squid.caching.svc.cluster.local:3128 http://httpbin.org/ip
 
 # Check service endpoints
-kubectl get endpoints -n proxy
+kubectl get endpoints -n caching
 
 # Verify test infrastructure (when running tests)
-kubectl get pods -n proxy -l app.kubernetes.io/component=mirrord-target
-kubectl get pods -n proxy -l app.kubernetes.io/component=test
+kubectl get pods -n caching -l app.kubernetes.io/component=mirrord-target
+kubectl get pods -n caching -l app.kubernetes.io/component=test
 
 # View test logs from helm tests
-kubectl logs -n proxy -l app.kubernetes.io/component=test
+kubectl logs -n caching -l app.kubernetes.io/component=test
 ```
 
 ### Health Checks
@@ -701,7 +701,7 @@ kubectl get crd servicemonitors.monitoring.coreos.com
 if ! kubectl get crd servicemonitors.monitoring.coreos.com &> /dev/null; then
   echo "Installing Prometheus Operator..."
   kubectl apply --server-side -f https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/main/bundle.yaml
-  
+
   # Wait for CRDs to be established
   kubectl wait --for condition=established --timeout=60s crd/servicemonitors.monitoring.coreos.com
 fi
@@ -715,7 +715,7 @@ fi
 helm uninstall squid 2>/dev/null || true
 
 # Remove namespace
-kubectl delete namespace proxy 2>/dev/null || true
+kubectl delete namespace caching 2>/dev/null || true
 
 # Wait for cleanup
 sleep 10
@@ -740,10 +740,10 @@ helm install squid ./squid \
 ##### 2.2 Verify Pod Readiness
 ```bash
 # Wait for pods to be ready
-kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=squid -n proxy --timeout=120s
+kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=squid -n caching --timeout=120s
 
 # Check pod status
-kubectl get pods -n proxy -o wide
+kubectl get pods -n caching -o wide
 ```
 
 **Expected Result**: Pod shows `2/2 Running` (squid + squid-exporter containers).
@@ -751,10 +751,10 @@ kubectl get pods -n proxy -o wide
 ##### 2.3 Verify Service Creation
 ```bash
 # Check service
-kubectl get svc -n proxy
+kubectl get svc -n caching
 
 # Check service details
-kubectl describe svc squid -n proxy
+kubectl describe svc squid -n caching
 ```
 
 **Expected Result**: Service exposes ports 3128 (proxy) and 9301 (metrics).
@@ -762,10 +762,10 @@ kubectl describe svc squid -n proxy
 ##### 2.4 Verify ServiceMonitor (if Prometheus Operator available)
 ```bash
 # Check ServiceMonitor
-kubectl get servicemonitor -n proxy
+kubectl get servicemonitor -n caching
 
 # Check ServiceMonitor details
-kubectl describe servicemonitor squid -n proxy
+kubectl describe servicemonitor squid -n caching
 ```
 
 **Expected Result**: ServiceMonitor created with correct selector and endpoints.
@@ -775,11 +775,11 @@ kubectl describe servicemonitor squid -n proxy
 ##### 3.1 Verify Container Configuration
 ```bash
 # Get pod name
-POD_NAME=$(kubectl get pods -n proxy -l app.kubernetes.io/name=squid -o jsonpath="{.items[0].metadata.name}")
+POD_NAME=$(kubectl get pods -n caching -l app.kubernetes.io/name=squid -o jsonpath="{.items[0].metadata.name}")
 echo "Testing pod: $POD_NAME"
 
 # Check container names
-kubectl get pod $POD_NAME -n proxy -o jsonpath='{.spec.containers[*].name}'
+kubectl get pod $POD_NAME -n caching -o jsonpath='{.spec.containers[*].name}'
 ```
 
 **Expected Result**: Shows both `squid` and `squid-exporter` containers.
@@ -787,13 +787,13 @@ kubectl get pod $POD_NAME -n proxy -o jsonpath='{.spec.containers[*].name}'
 ##### 3.2 Check Container Logs
 ```bash
 # Check squid container logs
-kubectl logs -n proxy $POD_NAME -c squid --tail=10
+kubectl logs -n caching $POD_NAME -c squid --tail=10
 
 # Check squid-exporter container logs
-kubectl logs -n proxy $POD_NAME -c squid-exporter --tail=10
+kubectl logs -n caching $POD_NAME -c squid-exporter --tail=10
 ```
 
-**Expected Result**: 
+**Expected Result**:
 - Squid logs show successful startup with no permission errors
 - Squid-exporter logs show successful connection to cache manager
 
@@ -802,7 +802,7 @@ kubectl logs -n proxy $POD_NAME -c squid-exporter --tail=10
 ##### 4.1 Test Direct Metrics Access
 ```bash
 # Port forward to metrics endpoint
-kubectl port-forward -n proxy $POD_NAME 9301:9301 &
+kubectl port-forward -n caching $POD_NAME 9301:9301 &
 PF_PID=$!
 sleep 3
 
@@ -818,7 +818,7 @@ kill $PF_PID 2>/dev/null || true
 ##### 4.2 Test Service-Based Metrics Access
 ```bash
 # Port forward via service
-kubectl port-forward -n proxy svc/squid 9301:9301 &
+kubectl port-forward -n caching svc/squid 9301:9301 &
 PF_PID=$!
 sleep 3
 
@@ -834,7 +834,7 @@ kill $PF_PID 2>/dev/null || true
 ##### 4.3 Verify Specific Metrics
 ```bash
 # Port forward for detailed metrics check
-kubectl port-forward -n proxy svc/squid 9301:9301 &
+kubectl port-forward -n caching svc/squid 9301:9301 &
 PF_PID=$!
 sleep 3
 
@@ -855,7 +855,7 @@ kill $PF_PID 2>/dev/null || true
 ##### 5.1 Test Cache Manager Access
 ```bash
 # Port forward to proxy port
-kubectl port-forward -n proxy $POD_NAME 3128:3128 &
+kubectl port-forward -n caching $POD_NAME 3128:3128 &
 PF_PID=$!
 sleep 3
 
@@ -871,7 +871,7 @@ kill $PF_PID 2>/dev/null || true
 ##### 5.2 Test Cache Manager Counters
 ```bash
 # Port forward to proxy port
-kubectl port-forward -n proxy $POD_NAME 3128:3128 &
+kubectl port-forward -n caching $POD_NAME 3128:3128 &
 PF_PID=$!
 sleep 3
 
@@ -889,7 +889,7 @@ kill $PF_PID 2>/dev/null || true
 ##### 6.1 Test Basic Proxy Functionality
 ```bash
 # Port forward to proxy port
-kubectl port-forward -n proxy $POD_NAME 3128:3128 &
+kubectl port-forward -n caching $POD_NAME 3128:3128 &
 PF_PID=$!
 sleep 3
 
@@ -906,7 +906,7 @@ kill $PF_PID 2>/dev/null || true
 ```bash
 # Create test pod and test proxy
 kubectl run test-client --image=curlimages/curl:latest --rm -it -- \
-  curl --proxy http://squid.proxy.svc.cluster.local:3128 --connect-timeout 10 http://httpbin.org/ip
+  curl --proxy http://squid.caching.svc.cluster.local:3128 --connect-timeout 10 http://httpbin.org/ip
 ```
 
 **Expected Result**: JSON response showing external IP, confirming proxy works from within cluster.
@@ -916,7 +916,7 @@ kubectl run test-client --image=curlimages/curl:latest --rm -it -- \
 ##### 7.1 Test Metrics Generation After Proxy Usage
 ```bash
 # Generate some proxy traffic
-kubectl port-forward -n proxy $POD_NAME 3128:3128 &
+kubectl port-forward -n caching $POD_NAME 3128:3128 &
 PF_PROXY_PID=$!
 sleep 3
 
@@ -929,7 +929,7 @@ kill $PF_PROXY_PID 2>/dev/null || true
 sleep 2
 
 # Check if metrics reflect the traffic
-kubectl port-forward -n proxy $POD_NAME 9301:9301 &
+kubectl port-forward -n caching $POD_NAME 9301:9301 &
 PF_METRICS_PID=$!
 sleep 3
 
@@ -965,17 +965,17 @@ For rapid testing during development:
 helm install squid ./squid --set cert-manager.enabled=false --wait
 
 # Quick functionality test
-kubectl port-forward -n proxy svc/squid 3128:3128 &
+kubectl port-forward -n caching svc/squid 3128:3128 &
 curl --proxy http://localhost:3128 http://httpbin.org/ip
 pkill -f "kubectl port-forward.*3128"
 
 # Quick metrics test
-kubectl port-forward -n proxy svc/squid 9301:9301 &
+kubectl port-forward -n caching svc/squid 9301:9301 &
 curl -s http://localhost:9301/metrics | grep squid_up
 pkill -f "kubectl port-forward.*9301"
 
 # Quick cleanup
-helm uninstall squid && kubectl delete namespace proxy
+helm uninstall squid && kubectl delete namespace caching
 ```
 
 ## Cleanup
@@ -998,7 +998,7 @@ If you prefer manual control:
 helm uninstall squid
 
 # Remove the namespaces (optional, will be recreated on next install)
-kubectl delete namespace proxy
+kubectl delete namespace caching
 
 # If you used the "squid" helm chart to install cert-manager
 kubectl delete namespace cert-manager
@@ -1030,7 +1030,7 @@ squid/
     ├── _helpers.tpl         # Template helpers
     ├── configmap.yaml       # ConfigMap for squid.conf
     ├── deployment.yaml      # Squid deployment
-    ├── namespace.yaml       # Proxy namespace
+    ├── namespace.yaml       # Caching namespace
     ├── service.yaml         # Squid service
     ├── serviceaccount.yaml  # Service account
     ├── servicemonitor.yaml  # Prometheus ServiceMonitor

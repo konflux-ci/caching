@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-server
-  namespace: proxy
+  namespace: {{ .Values.namespace.name }}
   labels:
     app: test-server
 spec:
@@ -41,7 +41,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: test-server
-  namespace: proxy
+  namespace: {{ .Values.namespace.name }}
 spec:
   selector:
     app: test-server
@@ -54,12 +54,12 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: test-server-nginx-conf
-  namespace: proxy
+  namespace: {{ .Values.namespace.name }}
 data:
   default.conf: |
     server {
         listen 443 ssl;
-        server_name test-server.proxy.svc.cluster.local;
+        server_name test-server.{{ .Values.namespace.name }}.svc.cluster.local;
 
         ssl_certificate /etc/nginx/tls/tls.crt;
         ssl_certificate_key /etc/nginx/tls/tls.key;

@@ -12,7 +12,7 @@ import (
 
 var _ = Describe("Cache allow list tests", Ordered, func() {
 	var (
-		testServer *testhelpers.ProxyTestServer
+		testServer *testhelpers.CachingTestServer
 		client     *http.Client
 	)
 
@@ -26,7 +26,7 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 			testURL := testServer.URL + "?" + generateCacheBuster("disabled-allow-list")
 
 			By("Making the first request")
-			resp1, body1, err := testhelpers.MakeProxyRequest(client, testURL)
+			resp1, body1, err := testhelpers.MakeCachingRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp1.Body.Close()
 
@@ -36,7 +36,7 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 
 			By("Making the second request for the same URL")
 			time.Sleep(100 * time.Millisecond)
-			resp2, body2, err := testhelpers.MakeProxyRequest(client, testURL)
+			resp2, body2, err := testhelpers.MakeCachingRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp2.Body.Close()
 
@@ -74,7 +74,7 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 			By("Testing URL that matches allowList pattern")
 			By(fmt.Sprintf("Testing URL: %s", matchingURL))
 
-			resp1, body1, err := testhelpers.MakeProxyRequest(client, matchingURL)
+			resp1, body1, err := testhelpers.MakeCachingRequest(client, matchingURL)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp1.Body.Close()
 
@@ -84,7 +84,7 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 
 			By("Making second request to same URL")
 			time.Sleep(100 * time.Millisecond)
-			resp2, body2, err := testhelpers.MakeProxyRequest(client, matchingURL)
+			resp2, body2, err := testhelpers.MakeCachingRequest(client, matchingURL)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp2.Body.Close()
 
@@ -107,7 +107,7 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 			By("Testing URL that doesn't match allowList patterns")
 			By(fmt.Sprintf("Testing URL: %s", nonMatchingURL))
 
-			resp1, body1, err := testhelpers.MakeProxyRequest(client, nonMatchingURL)
+			resp1, body1, err := testhelpers.MakeCachingRequest(client, nonMatchingURL)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp1.Body.Close()
 
@@ -117,7 +117,7 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 
 			By("Making second request to same URL")
 			time.Sleep(100 * time.Millisecond)
-			resp2, body2, err := testhelpers.MakeProxyRequest(client, nonMatchingURL)
+			resp2, body2, err := testhelpers.MakeCachingRequest(client, nonMatchingURL)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp2.Body.Close()
 
