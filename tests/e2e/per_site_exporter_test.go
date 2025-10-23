@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -194,6 +192,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			testServer    *testhelpers.CachingTestServer
 			client        *http.Client
 			metricsClient *http.Client
+			deployment    *appsv1.Deployment
 		)
 
 		BeforeEach(func() {
@@ -208,6 +207,8 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			Expect(err2).NotTo(HaveOccurred(), "Failed to create caching client")
 
 			metricsClient = newHTTPSClient(10 * time.Second)
+			deployment, err = clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid deployment")
 		})
 
 		AfterEach(func() {
@@ -216,98 +217,79 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			}
 		})
 
-		getPerSiteMetricsValue := func(metricsContent, metricName, hostname string) (float64, error) {
-			lines := strings.Split(metricsContent, "\n")
-			// Build a regex that matches a single Prometheus text-format sample line for the
-			// specific metric and hostname label, and captures the numeric value.
-			//
-			// Example line matched:
-			//   squid_site_requests_total{hostname="example.com",job="squid"} 42
-			pattern := fmt.Sprintf(`^%s\{.*hostname="%s".*\}\s+([0-9.]+)`, regexp.QuoteMeta(metricName), regexp.QuoteMeta(hostname))
-			re := regexp.MustCompile(pattern)
-			for _, line := range lines {
-				// Match this line against the regex. FindStringSubmatch returns a slice
-				// where index 0 is the full match and index 1 is the captured numeric value.
-				// len(matches) >= 2 verifies that the metric value exists
-				if matches := re.FindStringSubmatch(line); len(matches) >= 2 {
-					value, err := strconv.ParseFloat(matches[1], 64)
-					if err == nil {
-						return value, nil
-					}
-				}
-			}
-			return 0, fmt.Errorf("metric %s for hostname %s not found", metricName, hostname)
-		}
-
-		getPerSiteMetrics := func() (string, error) {
-			metricsURL := fmt.Sprintf("https://%s.%s.svc.cluster.local:9302/metrics", serviceName, namespace)
-			resp, err := metricsClient.Get(metricsURL)
-			if err != nil {
-				return "", err
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				return "", fmt.Errorf("per-site metrics endpoint returned status %d", resp.StatusCode)
-			}
-			body, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return "", err
-			}
-			return string(body), nil
-		}
-
 		It("should track per-site request metrics when traffic flows through proxy", func() {
 			testHostname := strings.Split(strings.TrimPrefix(testServer.URL, "http://"), ":")[0]
 			testURL := testServer.URL + "?" + generateCacheBuster("per-site-metrics-test")
 
-			// Capture baseline request count for this hostname before generating traffic.
-			// If the metric doesn't exist yet, treat baseline as 0.
-			metricsContentBefore, _ := getPerSiteMetrics()
-			baselineRequests, _ := getPerSiteMetricsValue(metricsContentBefore, "squid_site_requests_total", testHostname)
+			// Get baseline aggregated metrics from all pods
+			baselineRequests, err := testhelpers.GetAggregatedMetrics(ctx, clientset, metricsClient, namespace, *deployment.Spec.Replicas, "squid_site_requests_total", testHostname)
+			Expect(err).NotTo(HaveOccurred(), "Failed to get aggregated metrics")
+			fmt.Printf("DEBUG: Baseline aggregated requests: %.0f\n", baselineRequests)
 
 			By("Making HTTP requests through the proxy")
 			for i := 0; i < 3; i++ {
 				resp, _, err := testhelpers.MakeCachingRequest(client, testURL+fmt.Sprintf("&req=%d", i))
 				Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Request %d should succeed", i))
+
+				viaHeader := resp.Header.Get("Via")
+				fmt.Printf("DEBUG: Request %d handled by pod: %s\n", i, viaHeader)
+
 				resp.Body.Close()
 			}
-
 			time.Sleep(5 * time.Second)
 
 			Eventually(func() bool {
-				metricsContent, err := getPerSiteMetrics()
+				currentRequests, err := testhelpers.GetAggregatedMetrics(ctx, clientset, metricsClient, namespace, *deployment.Spec.Replicas, "squid_site_requests_total", testHostname)
 				if err != nil {
+					fmt.Printf("DEBUG: Error getting aggregated metrics: %v\n", err)
 					return false
 				}
-				requestMetric, err := getPerSiteMetricsValue(metricsContent, "squid_site_requests_total", testHostname)
-				if err != nil {
-					return false
-				}
-				return (requestMetric - baselineRequests) >= 3
+				delta := currentRequests - baselineRequests
+				fmt.Printf("DEBUG: Current aggregated requests: %.0f, Baseline: %.0f, Delta: %.0f\n", currentRequests, baselineRequests, delta)
+				return delta >= 3
 			}, timeout*2, interval).Should(BeTrue(), "Per-site request metrics delta should reflect generated proxy traffic (>= 3)")
 		})
 
 		It("should expose bandwidth metrics per site", func() {
 			testHostname := strings.Split(strings.TrimPrefix(testServer.URL, "http://"), ":")[0]
 			testURL := testServer.URL + "?" + generateCacheBuster("per-site-bandwidth-test")
+
+			// Step 1: Get metrics from all pods before the request
+			podMetricsBefore, err := testhelpers.GetPerPodMetrics(ctx, clientset, metricsClient, namespace, *deployment.Spec.Replicas, "squid_site_bytes_total", testHostname)
+			Expect(err).NotTo(HaveOccurred(), "Failed to get per-pod metrics before request")
+			fmt.Printf("DEBUG: Pod metrics before request: %v\n", podMetricsBefore)
+
+			// Step 2: Run the request
+			By("Making HTTP request through the proxy")
 			resp, body, err := testhelpers.MakeCachingRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred(), "Request should succeed")
-			resp.Body.Close()
 			Expect(len(body)).To(BeNumerically(">", 0), "Should receive response body")
+
+			// Step 3: Extract pod name from Via header
+			viaHeader := resp.Header.Get("Via")
+			podName := testhelpers.ExtractSquidPodFromViaHeader(resp)
+			Expect(podName).NotTo(BeEmpty(), "Via header should contain pod name")
+			fmt.Printf("DEBUG: Request was processed by pod: %s\n", podName)
+			fmt.Printf("DEBUG: Via header: %s\n", viaHeader)
+
+			resp.Body.Close()
 
 			time.Sleep(5 * time.Second)
 
-			Eventually(func() bool {
-				metricsContent, err := getPerSiteMetrics()
-				if err != nil {
-					return false
-				}
-				bytesMetric, err := getPerSiteMetricsValue(metricsContent, "squid_site_bytes_total", testHostname)
-				if err != nil {
-					return false
-				}
-				return bytesMetric > 0
-			}, timeout*2, interval).Should(BeTrue(), "Per-site bandwidth metrics should be recorded")
+			// Step 4: Get metrics from all pods after the request
+			podMetricsAfter, err := testhelpers.GetPerPodMetrics(ctx, clientset, metricsClient, namespace, *deployment.Spec.Replicas, "squid_site_bytes_total", testHostname)
+			Expect(err).NotTo(HaveOccurred(), "Failed to get per-pod metrics after request")
+			fmt.Printf("DEBUG: Pod metrics after request: %v\n", podMetricsAfter)
+
+			// Step 5: Compare the metric value of the specific pod that processed the request
+			bytesBefore := podMetricsBefore[podName]
+			bytesAfter := podMetricsAfter[podName]
+
+			fmt.Printf("DEBUG: Pod %s: bytes before=%f, bytes after=%f, delta=%f\n",
+				podName, bytesBefore, bytesAfter, bytesAfter-bytesBefore)
+
+			Expect(bytesAfter).To(BeNumerically(">", bytesBefore),
+				"Bandwidth metric for the pod that processed the request should increase")
 		})
 	})
 })

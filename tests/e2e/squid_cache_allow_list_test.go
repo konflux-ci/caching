@@ -3,50 +3,58 @@ package e2e_test
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/konflux-ci/caching/tests/testhelpers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	appsv1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("Cache allow list tests", Ordered, func() {
 	var (
 		testServer *testhelpers.CachingTestServer
 		client     *http.Client
+		deployment *appsv1.Deployment
+		err        error
 	)
 
 	BeforeEach(func() {
 		testServer = setupHTTPTestServer("Cache allow list test server")
 		client = setupHTTPTestClient()
+
+		deployment, err = clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred(), "Failed to get squid deployment")
 	})
 
 	Context("When cache.allowList is empty (default behavior)", func() {
 		It("should cache all requests by default", func() {
 			testURL := testServer.URL + "?" + generateCacheBuster("disabled-allow-list")
 
-			By("Making the first request")
-			resp1, body1, err := testhelpers.MakeCachingRequest(client, testURL)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp1.Body.Close()
+			By("Making requests until we get a cache hit from any pod")
 
-			response1, err := testhelpers.ParseTestServerResponse(body1)
-			Expect(err).NotTo(HaveOccurred())
-			testhelpers.ValidateServerHit(response1, 1, testServer)
+			initialServerHits := testServer.GetRequestCount()
+			fmt.Printf("🔍 DEBUG: Initial server hits: %d\n", initialServerHits)
 
-			By("Making the second request for the same URL")
-			time.Sleep(100 * time.Millisecond)
-			resp2, body2, err := testhelpers.MakeCachingRequest(client, testURL)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp2.Body.Close()
+			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, testURL, *deployment.Spec.Replicas)
+			Expect(err).NotTo(HaveOccurred(), "Should find a cache hit from any pod")
+			Expect(cacheHitResult.CacheHitFound).To(BeTrue(), "Should find a cache hit from any pod")
+			fmt.Printf("DEBUG: Cache hit result: %+v\n", cacheHitResult)
 
-			response2, err := testhelpers.ParseTestServerResponse(body2)
-			Expect(err).NotTo(HaveOccurred())
+			By("Verifying we got a cache_hit from any pod")
+			testhelpers.ValidateCacheHitSamePod(cacheHitResult.OriginalResponse, cacheHitResult.CachedResponse, cacheHitResult.CacheHitPod, cacheHitResult.CacheHitPod)
 
-			By("Verifying the second request was served from cache")
-			testhelpers.ValidateCacheHit(response1, response2, 1)
-			Expect(testServer.GetRequestCount()).To(Equal(int32(1)),
-				"Server should have received only 1 request (second served from cache)")
+			By("Verifying server received expected number of requests")
+			expectedServerHits := initialServerHits + int32(len(cacheHitResult.PodFirstHits))
+			actualServerHits := testServer.GetRequestCount()
+			fmt.Printf("🔍 DEBUG: Server hits summary:\n")
+			fmt.Printf("  Initial: %d\n", initialServerHits)
+			fmt.Printf("  Expected: %d\n", expectedServerHits)
+			fmt.Printf("  Actual: %d\n", actualServerHits)
+			fmt.Printf("  Unique pods hit: %d\n", len(cacheHitResult.PodFirstHits))
+
+			Expect(actualServerHits).To(Equal(expectedServerHits),
+				"Server should have received one request per unique pod")
 		})
 	})
 
@@ -57,14 +65,19 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 
 		BeforeAll(func() {
 			err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
+
 				Cache: &testhelpers.CacheValues{
 					AllowList: allowedPatterns,
 				},
+				ReplicaCount: int(suiteReplicaCount),
 			})
+
 			Expect(err).NotTo(HaveOccurred(), "Failed to configure squid with cache allow list")
 
 			DeferCleanup(func() {
-				err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
+				err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
+					ReplicaCount: int(suiteReplicaCount),
+				})
 				Expect(err).NotTo(HaveOccurred(), "Failed to restore squid cache defaults")
 			})
 		})
@@ -76,27 +89,31 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 			By("Testing URL that matches allowList pattern")
 			By(fmt.Sprintf("Testing URL: %s", matchingURL))
 
-			resp1, body1, err := testhelpers.MakeCachingRequest(client, matchingURL)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp1.Body.Close()
+			By("Making requests until we get a cache hit from any pod")
+			// Track first server hit from each pod
+			initialServerHits := testServer.GetRequestCount()
+			fmt.Printf("🔍 DEBUG: Initial server hits: %d\n", initialServerHits)
 
-			response1, err := testhelpers.ParseTestServerResponse(body1)
-			Expect(err).NotTo(HaveOccurred())
-			testhelpers.ValidateServerHit(response1, 1, testServer)
+			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, matchingURL, *deployment.Spec.Replicas)
+			Expect(err).NotTo(HaveOccurred(), "Should find a cache hit from any pod")
+			Expect(cacheHitResult.CacheHitFound).To(BeTrue(), "Should find a cache hit from any pod")
+			fmt.Printf("DEBUG: Cache hit result: %+v\n", cacheHitResult)
 
-			By("Making second request to same URL")
-			time.Sleep(100 * time.Millisecond)
-			resp2, body2, err := testhelpers.MakeCachingRequest(client, matchingURL)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp2.Body.Close()
+			By("Verifying we got a cache_hit from any pod")
+			testhelpers.ValidateCacheHitSamePod(cacheHitResult.OriginalResponse, cacheHitResult.CachedResponse, cacheHitResult.CacheHitPod, cacheHitResult.CacheHitPod)
 
-			response2, err := testhelpers.ParseTestServerResponse(body2)
-			Expect(err).NotTo(HaveOccurred())
+			By("Verifying server received expected number of requests")
+			expectedServerHits := initialServerHits + int32(len(cacheHitResult.PodFirstHits))
+			actualServerHits := testServer.GetRequestCount()
+			fmt.Printf("🔍 DEBUG: Server hits summary:\n")
+			fmt.Printf("  Initial: %d\n", initialServerHits)
+			fmt.Printf("  Expected: %d\n", expectedServerHits)
+			fmt.Printf("  Actual: %d\n", actualServerHits)
+			fmt.Printf("  Unique pods hit: %d\n", len(cacheHitResult.PodFirstHits))
 
-			By("Verifying the second request was served from cache")
-			testhelpers.ValidateCacheHit(response1, response2, 1)
-			Expect(testServer.GetRequestCount()).To(Equal(int32(1)),
-				"Matching URL should be cached")
+			Expect(actualServerHits).To(Equal(expectedServerHits),
+				"Server should have received one request per unique pod")
+
 		})
 
 		It("should NOT cache requests that don't match allowList patterns", func() {
@@ -109,32 +126,15 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 			By("Testing URL that doesn't match allowList patterns")
 			By(fmt.Sprintf("Testing URL: %s", nonMatchingURL))
 
-			resp1, body1, err := testhelpers.MakeCachingRequest(client, nonMatchingURL)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp1.Body.Close()
+			By("Making requests to get a cache hit from any pod")
+			// Track first server hit from each pod
+			initialServerHits := testServer.GetRequestCount()
+			fmt.Printf("🔍 DEBUG: Initial server hits: %d\n", initialServerHits)
 
-			response1, err := testhelpers.ParseTestServerResponse(body1)
-			Expect(err).NotTo(HaveOccurred())
-			testhelpers.ValidateServerHit(response1, 1, testServer)
-
-			By("Making second request to same URL")
-			time.Sleep(100 * time.Millisecond)
-			resp2, body2, err := testhelpers.MakeCachingRequest(client, nonMatchingURL)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp2.Body.Close()
-
-			response2, err := testhelpers.ParseTestServerResponse(body2)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Verifying the second request was NOT served from cache")
-			// Both requests should have hit the server (no caching)
-			testhelpers.ValidateServerHit(response2, 2, testServer)
-			Expect(testServer.GetRequestCount()).To(Equal(int32(2)),
-				"Non-matching URL should not be cached, both requests should hit server")
-
-			// Request IDs should be different (not served from cache)
-			Expect(response1.RequestID).NotTo(Equal(response2.RequestID),
-				"Request IDs should be different (not cached)")
+			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, nonMatchingURL, *deployment.Spec.Replicas)
+			Expect(err).To(HaveOccurred(), "Failed to get a cache hit from any pod")
+			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("no cache hit found from any pod within %d attempts", *deployment.Spec.Replicas+1)), "Should not find a cache hit from any pod")
+			Expect(cacheHitResult).To(BeNil(), "Should not find a cache hit from any pod")
 		})
 	})
 })
