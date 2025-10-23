@@ -252,8 +252,11 @@ For local development and debugging, use mirrord to run tests with cluster netwo
 # Setup test environment
 mage squidHelm:up
 
-# Run tests locally with cluster network access
+# Run tests locally with cluster network access using the number of replicas defined in the values file
 mage test:cluster
+
+# Run tests locally with cluster network access using 3 replicas
+mage test:clusterMultiReplica
 ```
 
 This uses mirrord to "steal" network connections from a target pod and runs
