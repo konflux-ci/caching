@@ -93,7 +93,8 @@ func setupHTTPTestClient() *http.Client {
 var _ = BeforeSuite(func() {
 	ctx = context.Background()
 
-	// Create Kubernetes client
+	// Create Kubernetes client for test suite
+	// CI mode: Use pipeline-deployed Squid, skip helm operations
 	var config *rest.Config
 	var err error
 

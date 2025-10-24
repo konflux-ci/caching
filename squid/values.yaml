@@ -22,11 +22,11 @@ envSettings:
   release:
     squid:
       image:
-        repository: quay.io/konflux-ci/caching/squid
+        repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid
         tag: "latest"
     test:
       image:
-        repository: quay.io/konflux-ci/caching/squid-test
+        repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester
         tag: "latest"
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/

@@ -102,15 +102,17 @@ spec:
                 echo "Found squid image: $squid_image"
                 echo -n "$squid_image" > $(results.squid-image.path)
                 
-                # Extract squid-tester image
+                # Extract squid-tester image (optional)
+                # If not in SNAPSHOT, we'll use the default from values.yaml during helm install
                 tester_image=$(echo '$(params.SNAPSHOT)' | jq -r '.components[] | select(.name=="squid-tester") | .containerImage')
                 if [ -z "$tester_image" ] || [ "$tester_image" = "null" ]; then
-                  echo "ERROR: Could not find squid-tester component in SNAPSHOT"
-                  echo "Available components:"
-                  echo '$(params.SNAPSHOT)' | jq -r '.components[].name'
-                  exit 1
+                  echo "INFO: squid-tester not found in SNAPSHOT"
+                  echo "This is expected when PR only modifies squid (not tests)"
+                  echo "Will use default test image from values.yaml: quay.io/konflux-ci/caching/squid-test:latest"
+                  tester_image=""
+                else
+                  echo "Found squid-tester image in SNAPSHOT: $tester_image"
                 fi
-                echo "Found squid-tester image: $tester_image"
                 echo -n "$tester_image" > $(results.squid-tester-image.path)
         params:
           - name: SNAPSHOT
@@ -387,16 +389,22 @@ spec:
                 fi
                 
                 tester_img="$(params.tester-image)"
-                if [[ "$tester_img" == *"@"* ]]; then
-                  tester_repo="${tester_img%@*}"
-                  tester_tag="${tester_img#*@}"
+                # If tester image is not in SNAPSHOT, we'll skip setting it in Helm
+                # and let Helm use the default from values.yaml (quay.io/konflux-ci/caching/squid-test:latest)
+                if [ -n "$tester_img" ]; then
+                  if [[ "$tester_img" == *"@"* ]]; then
+                    tester_repo="${tester_img%@*}"
+                    tester_tag="${tester_img#*@}"
+                  else
+                    tester_repo="${tester_img%:*}"
+                    tester_tag="${tester_img##*:}"
+                  fi
+                  echo "Squid image: repository=$squid_repo tag=$squid_tag"
+                  echo "Tester image: repository=$tester_repo tag=$tester_tag (from SNAPSHOT)"
                 else
-                  tester_repo="${tester_img%:*}"
-                  tester_tag="${tester_img##*:}"
+                  echo "Squid image: repository=$squid_repo tag=$squid_tag"
+                  echo "Tester image: will use default from values.yaml (squid-tester not in SNAPSHOT)"
                 fi
-                
-                echo "Squid image: repository=$squid_repo tag=$squid_tag"
-                echo "Tester image: repository=$tester_repo tag=$tester_tag"
                 
                 echo "Checking if cert-manager is already installed on cluster..."
                 # Check for cert-manager CRDs which are more reliable than deployments
@@ -450,13 +458,12 @@ spec:
                 fi
                 
                 echo "Installing Squid chart (cert-manager bundled installation disabled)..."
+                # Build helm command - only set tester image if it was provided in SNAPSHOT
                 helm_cmd="helm install squid . \
                   --namespace \"$namespace\" \
                   --set namespace.name=\"$namespace\" \
                   --set envSettings.release.squid.image.repository=\"$squid_repo\" \
                   --set envSettings.release.squid.image.tag=\"$squid_tag\" \
-                  --set envSettings.release.test.image.repository=\"$tester_repo\" \
-                  --set envSettings.release.test.image.tag=\"$tester_tag\" \
                   --set mirrord.enabled=false \
                   --set installCertManagerComponents=false \
                   --set cert-manager.enabled=false \
@@ -465,6 +472,13 @@ spec:
                   --wait \
                   --timeout=5m \
                   --debug"
+                
+                # Only override test image if squid-tester was in SNAPSHOT
+                if [ -n "$tester_img" ]; then
+                  helm_cmd="$helm_cmd \
+                    --set envSettings.release.test.image.repository=\"$tester_repo\" \
+                    --set envSettings.release.test.image.tag=\"$tester_tag\""
+                fi
                 
                 echo "Running: $helm_cmd"
                 if ! eval "$helm_cmd"; then
