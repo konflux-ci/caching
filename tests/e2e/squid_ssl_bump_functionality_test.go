@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/konflux-ci/caching/tests/testhelpers"
@@ -31,12 +30,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 	const testServerURL = "https://test-server." + namespace + ".svc.cluster.local:443"
 
 	BeforeAll(func() {
-		// This test requires dynamic Squid reconfiguration via helm upgrade
-		// In CI, we can't do this (no chart files), so skip these tests
-		if os.Getenv("CI") == "true" {
-			Skip("Test requires dynamic Squid reconfiguration (helm upgrade) - only runs in local dev")
-		}
-
+		// Configure Squid for SSL bump tests with custom TLS trust
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 			OutgoingTLSCAFile: "/etc/squid/trust/test-server/ca.crt",
 		})

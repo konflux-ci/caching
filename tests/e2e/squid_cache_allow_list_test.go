@@ -3,7 +3,6 @@ package e2e_test
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/konflux-ci/caching/tests/testhelpers"
@@ -57,12 +56,7 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 		}
 
 		BeforeAll(func() {
-			// This test requires dynamic Squid reconfiguration via helm upgrade
-			// In CI, we can't do this (no chart files), so skip these tests
-			if os.Getenv("CI") == "true" {
-				Skip("Test requires dynamic Squid reconfiguration (helm upgrade) - only runs in local dev")
-			}
-
+			// Configure Squid with cache allow list for this test
 			err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 				CacheAllowList: allowedPatterns,
 			})

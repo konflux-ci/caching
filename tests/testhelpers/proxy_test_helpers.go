@@ -308,7 +308,8 @@ func UpgradeChart(releaseName, chartName string, values map[string]string) error
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
 
 	// Build helm command as a shell string
-	cmdParts := []string{"helm", "upgrade", releaseName, chartName, "-n=default", "--wait", "--timeout=120s"}
+	// Use the configured namespace instead of hardcoded "default"
+	cmdParts := []string{"helm", "upgrade", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=120s"}
 
 	// Add --set parameters for each value in the map
 	for key, value := range values {
