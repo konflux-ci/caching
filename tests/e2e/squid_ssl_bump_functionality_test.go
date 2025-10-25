@@ -30,6 +30,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 	const testServerURL = "https://test-server." + namespace + ".svc.cluster.local:443"
 
 	BeforeAll(func() {
+		// Configure Squid for SSL bump tests with custom TLS trust
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 			OutgoingTLSCAFile: "/etc/squid/trust/test-server/ca.crt",
 		})
