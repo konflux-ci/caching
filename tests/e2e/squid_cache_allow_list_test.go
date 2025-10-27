@@ -56,6 +56,7 @@ var _ = Describe("Cache allow list tests", Ordered, func() {
 		}
 
 		BeforeAll(func() {
+			// Configure Squid with cache allow list for this test
 			err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 				CacheAllowList: allowedPatterns,
 			})

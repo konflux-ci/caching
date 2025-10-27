@@ -20,10 +20,23 @@ metadata:
 spec:
   restartPolicy: Never
   serviceAccountName: {{ include "squid.fullname" . }}-test
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   containers:
   - name: ginkgo-test
     image: "{{ include "squid.test.image" . }}"
     imagePullPolicy: {{ .Values.test.image.pullPolicy | default "IfNotPresent" }}
+    # Security context for OpenShift restricted-v2 SCC compliance
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      capabilities:
+        drop:
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault
     workingDir: /app
     command:
     - /bin/bash
@@ -48,6 +61,9 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: status.podIP
+    # Mark as CI environment - tests will skip helm operations and use pipeline-deployed Squid
+    - name: CI
+      value: "true"
     resources:
       {{- toYaml .Values.test.resources | nindent 6 }}
 {{- end }}

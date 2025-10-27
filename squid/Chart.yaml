@@ -2,6 +2,7 @@ apiVersion: v2
 name: squid
 description: A Helm chart for deploying a Squid proxy server.
 # NOTE: This chart creates its own namespace - do not use --namespace with helm commands
+# Trigger rebuild to get updated SNAPSHOT with new squid-tester image
 
 # A chart can be either an 'application' or a 'library' chart.
 #
