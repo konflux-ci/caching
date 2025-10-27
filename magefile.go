@@ -335,26 +335,20 @@ func (SquidHelm) Up() error {
 		return fmt.Errorf("failed to build helm dependencies: %w", err)
 	}
 
-	// Check if release already exists
-	exists, err := internal.ReleaseExists("squid")
+	fmt.Printf("⚓ Installing/upgrading squid helm chart and waiting for readiness...\n")
+	err = sh.Run(
+		"helm",
+		"upgrade",
+		"squid",
+		"./squid",
+		"--install",
+		"--set", "environment=dev",
+		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
+		"--wait",
+		"--timeout=120s",
+	)
 	if err != nil {
-		return fmt.Errorf("failed to check release existence: %w", err)
-	}
-
-	if exists {
-		// Upgrade existing release
-		fmt.Printf("⚓ Upgrading existing squid helm release and waiting for readiness...\n")
-		err = sh.Run("helm", "upgrade", "squid", "./squid", "--set", "environment=dev", "--wait", "--timeout=120s")
-		if err != nil {
-			return fmt.Errorf("failed to upgrade helm chart: %w", err)
-		}
-	} else {
-		// Install new release
-		fmt.Printf("⚓ Installing squid helm chart and waiting for readiness...\n")
-		err = sh.Run("helm", "install", "squid", "./squid", "--set", "environment=dev", "--wait", "--timeout=120s")
-		if err != nil {
-			return fmt.Errorf("failed to install helm chart: %w", err)
-		}
+		return fmt.Errorf("failed to install/upgrade helm chart: %w", err)
 	}
 
 	// Show comprehensive deployment status
@@ -473,7 +467,7 @@ func All() error {
 	// Run helm tests to validate the deployment
 	fmt.Println()
 	fmt.Println("🧪 Running helm tests to validate deployment...")
-	err = sh.Run("helm", "test", "squid")
+	err = sh.Run("helm", "test", "squid", "--timeout=15m")
 	if err != nil {
 		return fmt.Errorf("helm tests failed: %w", err)
 	}
@@ -554,5 +548,5 @@ func (Test) Cluster() error {
 	return sh.RunWithV(map[string]string{
 		"CGO_ENABLED": "1",
 	}, "mirrord", "exec", "--config-file", ".mirrord/mirrord.json", "--",
-		"./tests/e2e/e2e.test", "-ginkgo.v")
+		"./tests/e2e/e2e.test", "-ginkgo.v", "-ginkgo.label-filter="+os.Getenv("GINKGO_LABEL_FILTER"))
 }

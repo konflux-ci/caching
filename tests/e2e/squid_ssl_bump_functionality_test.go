@@ -31,7 +31,9 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 
 	BeforeAll(func() {
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
-			OutgoingTLSCAFile: "/etc/squid/trust/test-server/ca.crt",
+			TLSOutgoingOptions: &testhelpers.TLSOutgoingOptionsValues{
+				CAFile: "/etc/squid/trust/test-server/ca.crt",
+			},
 		})
 		Expect(err).NotTo(HaveOccurred(), "Failed to configure squid for SSL bump tests")
 

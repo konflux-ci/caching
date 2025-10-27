@@ -36,14 +36,8 @@ spec:
 
       # Run the compiled test binary
       echo "Running tests..."
-      ./tests/e2e/e2e.test -ginkgo.v
+      ./tests/e2e/e2e.test -ginkgo.v -ginkgo.label-filter="{{ .Values.test.labelFilter }}"
     env:
-    - name: SQUID_NAMESPACE
-      value: "{{ .Values.namespace.name }}"
-    - name: SQUID_SERVICE_NAME
-      value: "{{ include "squid.fullname" . }}"
-    - name: SQUID_SERVICE_PORT
-      value: "{{ .Values.service.port }}"
     - name: POD_IP
       valueFrom:
         fieldRef:
