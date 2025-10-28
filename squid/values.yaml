@@ -19,7 +19,9 @@ envSettings:
       image:
         repository: localhost/konflux-ci/squid-test
         tag: "latest"
-  release:
+  # Prerelease environment for PR testing in Konflux CI
+  # Uses the Konflux workspace registry for per-PR builds
+  prerelease:
     squid:
       image:
         repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid
@@ -27,6 +29,15 @@ envSettings:
     test:
       image:
         repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester
+        tag: "latest"
+  release:
+    squid:
+      image:
+        repository: quay.io/konflux-ci/caching/squid
+        tag: "latest"
+    test:
+      image:
+        repository: quay.io/konflux-ci/caching/squid-test
         tag: "latest"
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/

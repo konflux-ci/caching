@@ -459,11 +459,13 @@ spec:
                 
                 echo "Installing Squid chart (cert-manager bundled installation disabled)..."
                 # Build helm command - only set tester image if it was provided in SNAPSHOT
+                # Use prerelease environment for PR testing - points to Konflux workspace registry
                 helm_cmd="helm install squid . \
                   --namespace \"$namespace\" \
                   --set namespace.name=\"$namespace\" \
-                  --set envSettings.release.squid.image.repository=\"$squid_repo\" \
-                  --set envSettings.release.squid.image.tag=\"$squid_tag\" \
+                  --set environment=prerelease \
+                  --set envSettings.prerelease.squid.image.repository=\"$squid_repo\" \
+                  --set envSettings.prerelease.squid.image.tag=\"$squid_tag\" \
                   --set mirrord.enabled=false \
                   --set installCertManagerComponents=false \
                   --set cert-manager.enabled=false \
@@ -476,8 +478,8 @@ spec:
                 # Only override test image if squid-tester was in SNAPSHOT
                 if [ -n "$tester_img" ]; then
                   helm_cmd="$helm_cmd \
-                    --set envSettings.release.test.image.repository=\"$tester_repo\" \
-                    --set envSettings.release.test.image.tag=\"$tester_tag\""
+                    --set envSettings.prerelease.test.image.repository=\"$tester_repo\" \
+                    --set envSettings.prerelease.test.image.tag=\"$tester_tag\""
                 fi
                 
                 echo "Running: $helm_cmd"

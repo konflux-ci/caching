@@ -61,9 +61,6 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: status.podIP
-    # Mark as CI environment - tests will skip helm operations and use pipeline-deployed Squid
-    - name: CI
-      value: "true"
     resources:
       {{- toYaml .Values.test.resources | nindent 6 }}
 {{- end }}
