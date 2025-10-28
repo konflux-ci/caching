@@ -6,6 +6,17 @@
   },
   "packageRules": [
     {
+      "description": "Group all cert-manager components",
+      "groupName": "cert-manager",
+      "automerge": true,
+      "autoApprove": true,
+      "matchPackageNames": [
+        "cert-manager",
+        "github.com/cert-manager/cert-manager",
+        "/^quay.io/jetstack/cert-manager-/"
+      ]
+    },
+    {
       "description": "Auto-merge patch updates for Konflux components",
       "matchUpdateTypes": [
         "patch",
