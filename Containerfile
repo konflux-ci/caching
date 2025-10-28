@@ -60,12 +60,14 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 ARG GO_VERSION=1.25.3
 ARG GO_SHA256=0335f314b6e7bfe08c3d0cfaa7c19db961b7b99fb20be62b0a826c992ad14e0f
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-# Use prefetched Go tarball from Cachi2
+# Use prefetched Go tarball from Cachi2 (hermetic build - no fallback)
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     if [ -f /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz ]; then \
         cp /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz go.tar.gz; \
     else \
-        curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz; \
+        echo "ERROR: Go tarball not found in Cachi2 output. Hermetic build requires all dependencies to be prefetched."; \
+        echo "Expected: /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz"; \
+        exit 1; \
     fi && \
     echo "${GO_SHA256}  go.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xzf go.tar.gz && \

@@ -31,6 +31,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
 
 	BeforeAll(func() {
 		// Configure Squid for SSL bump tests with custom TLS trust
+		// Dependencies already downloaded in BeforeSuite
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 			OutgoingTLSCAFile: "/etc/squid/trust/test-server/ca.crt",
 		})
