@@ -264,65 +264,71 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 	})
 
-	Describe("Pod", func() {
-		var pod *corev1.Pod
+	Describe("Pods", func() {
+		var pods []*corev1.Pod
 
 		BeforeEach(func() {
 			var err error
-			pod, err = testhelpers.GetSquidPod(ctx, clientset, namespace)
+			deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid deployment")
+			// GetSquidPods also checks that the all defined replicas are running and ready
+			// It returns the list of pods
+			pods, err = testhelpers.GetSquidPods(ctx, clientset, namespace, *deployment.Spec.Replicas)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pod")
 		})
 
-		It("should be running and ready", func() {
-			Eventually(func() corev1.PodPhase {
-				currentPod, err := clientset.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-				Expect(err).NotTo(HaveOccurred())
-				return currentPod.Status.Phase
-			}, timeout, interval).Should(Equal(corev1.PodRunning), fmt.Sprintf("Pod %s should be running", pod.Name))
-
-			// Check readiness
-			Eventually(func() bool {
-				currentPod, err := clientset.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
-				if err != nil {
-					return false
-				}
-
-				for _, condition := range currentPod.Status.Conditions {
-					if condition.Type == corev1.PodReady {
-						return condition.Status == corev1.ConditionTrue
-					}
-				}
-				return false
-			}, timeout, interval).Should(BeTrue(), fmt.Sprintf("Pod %s should be ready", pod.Name))
-		})
-
 		It("should have correct resource configuration", func() {
-			Expect(pod.Spec.Containers).To(HaveLen(3))
+			for _, pod := range pods {
+				fmt.Printf("[DEBUG] Checking resource configuration for pod: %s\n", pod.Name)
+				Expect(pod.Spec.Containers).To(HaveLen(3))
 
-			squidContainer := pod.Spec.Containers[0]
-			Expect(squidContainer.Name).To(Equal(deploymentName))
+				containerNames := make([]string, 0, len(pod.Spec.Containers))
+				for _, c := range pod.Spec.Containers {
+					containerNames = append(containerNames, c.Name)
+				}
+				fmt.Printf("[DEBUG] Containers: %v\n", containerNames)
 
-			// Check squid security context (should run as non-root)
-			if squidContainer.SecurityContext != nil {
-				Expect(squidContainer.SecurityContext.RunAsNonRoot).NotTo(BeNil())
-				if squidContainer.SecurityContext.RunAsNonRoot != nil {
-					Expect(*squidContainer.SecurityContext.RunAsNonRoot).To(BeTrue())
+				// Find the squid container by name instead of assuming it's first
+				squidContainer, err := testhelpers.FindContainerByName(pod, squidContainerName)
+				Expect(err).NotTo(HaveOccurred(), "Failed to find squid container in pod")
+				Expect(squidContainer).NotTo(BeNil(), "squid container should exist in pod")
+				fmt.Printf("[DEBUG] Found squid container: %s\n", squidContainer.Name)
+
+				// Check squid security context (should run as non-root)
+				if squidContainer.SecurityContext != nil {
+					fmt.Printf("[DEBUG] SecurityContext present. RunAsNonRoot: %v\n", squidContainer.SecurityContext.RunAsNonRoot)
+					Expect(squidContainer.SecurityContext.RunAsNonRoot).NotTo(BeNil())
+					if squidContainer.SecurityContext.RunAsNonRoot != nil {
+						fmt.Printf("[DEBUG] RunAsNonRoot value: %v\n", *squidContainer.SecurityContext.RunAsNonRoot)
+						Expect(*squidContainer.SecurityContext.RunAsNonRoot).To(BeTrue())
+					}
+				} else {
+					fmt.Printf("[DEBUG] No SecurityContext set for container '%s'\n", squidContainer.Name)
 				}
 			}
 		})
 
 		It("should have the squid configuration mounted", func() {
-			container := pod.Spec.Containers[0]
+			for _, pod := range pods {
+				fmt.Printf("[DEBUG] Checking config mount for pod: %s\n", pod.Name)
 
-			// Check for volume mounts
-			var foundConfigMount bool
-			for _, mount := range container.VolumeMounts {
-				if mount.Name == deploymentName+"-config" || mount.MountPath == "/etc/squid/squid.conf" {
-					foundConfigMount = true
-					break
+				// Find the squid container by name
+				squidContainer, err := testhelpers.FindContainerByName(pod, squidContainerName)
+				Expect(err).NotTo(HaveOccurred(), "Failed to find squid container in pod")
+				Expect(squidContainer).NotTo(BeNil(), "squid container should exist in pod")
+
+				// Check for volume mounts
+				var foundConfigMount bool
+				for _, mount := range squidContainer.VolumeMounts {
+					fmt.Printf("[DEBUG] Found mount: name=%s path=%s\n", mount.Name, mount.MountPath)
+					if mount.Name == "squid-config" || mount.MountPath == "/etc/squid/squid.conf" {
+						foundConfigMount = true
+						break
+					}
 				}
+				fmt.Printf("[DEBUG] Pod %s config mount present: %v\n", pod.Name, foundConfigMount)
+				Expect(foundConfigMount).To(BeTrue(), "Pod should have squid configuration mounted")
 			}
-			Expect(foundConfigMount).To(BeTrue(), "Pod should have squid configuration mounted")
 		})
 	})
 
@@ -359,207 +365,173 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			testServer = setupHTTPTestServer("HTTP caching test server")
 			client = setupHTTPTestClient()
 		})
-
 		It("should cache HTTP responses and serve subsequent requests from cache", func() {
-			// Add cache-busting parameter to ensure this test gets fresh responses
-			// and doesn't interfere with cache pollution from other tests
-			// Use multiple entropy sources for parallel test safety
 			testURL := testServer.URL + "?" + generateCacheBuster("cache-basic")
 
-			By("Making the first HTTP request through Squid proxy")
-			resp1, body1, err := testhelpers.MakeCachingRequest(client, testURL)
-			Expect(err).NotTo(HaveOccurred(), "First request should succeed")
-			defer resp1.Body.Close()
+			// Get the number of replicas from the deployment
+			deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Should get squid deployment")
+			replicaCount := *deployment.Spec.Replicas
 
-			// Debug: print the actual response for troubleshooting
-			fmt.Printf("DEBUG: Response status: %s\n", resp1.Status)
-			fmt.Printf("DEBUG: Response body: %s\n", string(body1))
-			fmt.Printf("DEBUG: Test server URL: %s\n", testURL)
+			By("Making requests until we get a cache hit from any pod")
+			// Track first server hit from each pod
+			initialServerHits := testServer.GetRequestCount()
+			fmt.Printf("🔍 DEBUG: Initial server hits: %d\n", initialServerHits)
 
-			response1, err := testhelpers.ParseTestServerResponse(body1)
-			Expect(err).NotTo(HaveOccurred(), "Should parse first response JSON")
+			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, testURL, replicaCount)
+			Expect(err).NotTo(HaveOccurred(), "Should find a cache hit from any pod")
+			Expect(cacheHitResult.CacheHitFound).To(BeTrue(), "Should find a cache hit from any pod")
 
-			// Verify first request reached the server using helpers
-			testhelpers.ValidateServerHit(response1, 1, testServer)
+			testhelpers.ValidateCacheHitSamePod(cacheHitResult.OriginalResponse, cacheHitResult.CachedResponse, cacheHitResult.CacheHitPod, cacheHitResult.CacheHitPod)
 
-			By("Making the second HTTP request for the same URL")
-			// Wait a moment to ensure any timing-related caching issues are avoided
-			time.Sleep(100 * time.Millisecond)
-
-			resp2, body2, err := testhelpers.MakeCachingRequest(client, testURL)
-			Expect(err).NotTo(HaveOccurred(), "Second request should succeed")
-			defer resp2.Body.Close()
-
-			response2, err := testhelpers.ParseTestServerResponse(body2)
-			Expect(err).NotTo(HaveOccurred(), "Should parse second response JSON")
-
-			By("Verifying the second request was served from cache")
-			// Use helper to validate cache hit
-			testhelpers.ValidateCacheHit(response1, response2, 1)
-
-			// Server should still have received only 1 request
-			Expect(testServer.GetRequestCount()).To(Equal(int32(1)), "Server should still have received only 1 request")
-
-			// Response bodies should be identical (served from cache)
-			Expect(string(body2)).To(Equal(string(body1)), "Cached response should be identical to original")
-
-			By("Verifying cache headers are present")
-			testhelpers.ValidateCacheHeaders(resp1)
-			testhelpers.ValidateCacheHeaders(resp2)
-		})
-
-		It("should handle different URLs independently", func() {
-			By("Making requests to different endpoints")
-
-			// Add cache-busting to prevent interference from other tests
-			// Use multiple entropy sources for parallel test safety
-			baseBuster := generateCacheBuster("urls")
-
-			// First URL
-			url1 := testServer.URL + "/endpoint1?" + baseBuster + "&endpoint=1"
-			resp1, _, err := testhelpers.MakeCachingRequest(client, url1)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp1.Body.Close()
-
-			initialCount := testServer.GetRequestCount()
-
-			// Second URL (different from first)
-			url2 := testServer.URL + "/endpoint2?" + baseBuster + "&endpoint=2"
-			resp2, _, err := testhelpers.MakeCachingRequest(client, url2)
-			Expect(err).NotTo(HaveOccurred())
-			defer resp2.Body.Close()
-
-			// Both requests should hit the server (different URLs)
-			Expect(testServer.GetRequestCount()).To(Equal(initialCount+1), "Different URLs should not be cached together")
-		})
-	})
-
-	Describe("Caching Verification", func() {
-		It("should verify configuration is set for disk caching", func() {
-			configMap, err := clientset.CoreV1().ConfigMaps(namespace).Get(ctx, deploymentName+"-config", metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get squid-config ConfigMap")
-
-			squidConf := configMap.Data["squid.conf"]
-
-			// Verify RAM caching configuration
-			Expect(squidConf).To(ContainSubstring("cache_mem 0"), "Should set cache_mem to 0")
-			// Verify disk cache directory is configured
-			Expect(squidConf).To(ContainSubstring("cache_dir aufs /var/spool/squid/cache 204 16 256"), "Should have disk cache configured")
-			// Verify maximum object size is configured
-			Expect(squidConf).To(ContainSubstring("maximum_object_size 192 MB"), "Should have maximum object size configured")
-			// Verify cache replacement policy
-			Expect(squidConf).To(ContainSubstring("cache_replacement_policy heap LFUDA"), "Should use LFUDA replacement policy")
-		})
-	})
-
-	Describe("Resources verification", func() {
-		It("should have the self-signed cluster issuer created", func() {
-			clusterIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, namespace+"-self-signed-cluster-issuer", metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get self-signed cluster issuer")
-			Expect(clusterIssuer).NotTo(BeNil(), "ClusterIssuer should not be nil")
-			Expect(clusterIssuer.Name).To(Equal(namespace + "-self-signed-cluster-issuer"))
-			Expect(clusterIssuer.Spec.SelfSigned).NotTo(BeNil(), "SelfSigned spec should not be nil")
-		})
-
-		It("should have the CA certificate created in cert-manager namespace", func() {
-			// Get the CA certificate from the cert-manager namespace
-			caCert, err := certManagerClient.CertmanagerV1().Certificates("cert-manager").Get(ctx, namespace+"-self-signed-ca", metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get CA certificate")
-			Expect(caCert).NotTo(BeNil(), "CA Certificate should not be nil")
-			Expect(caCert.Name).To(Equal(namespace + "-self-signed-ca"))
-
-			// Verify the certificate spec
-			Expect(caCert.Spec.SecretName).To(Equal(namespace + "-root-ca-secret"))
-			Expect(caCert.Spec.IssuerRef.Name).To(Equal(namespace + "-self-signed-cluster-issuer"))
-			Expect(caCert.Spec.IssuerRef.Kind).To(Equal("ClusterIssuer"))
-			Expect(caCert.Spec.IsCA).To(BeTrue(), "CA certificate should have isCA set to true")
-
-			// Verify the certificate status
-			Expect(caCert.Status.Conditions).NotTo(BeEmpty(), "CA certificate should have status conditions")
-			var readyCondition *certmanagerv1.CertificateCondition
-			for _, condition := range caCert.Status.Conditions {
-				if condition.Type == "Ready" {
-					readyCondition = &condition
-					break
+			By("Verifying server received expected number of requests")
+			// Server should have received one request per unique pod that was hit
+			expectedServerHits := initialServerHits + int32(len(cacheHitResult.PodFirstHits))
+			actualServerHits := testServer.GetRequestCount()
+			fmt.Printf("🔍 DEBUG: Server hits summary:\n")
+			fmt.Printf("  Initial: %d\n", initialServerHits)
+			fmt.Printf("  Expected: %d\n", expectedServerHits)
+			fmt.Printf("  Actual: %d\n", actualServerHits)
+			fmt.Printf("  Unique pods hit: %d\n", len(cacheHitResult.PodFirstHits))
+			fmt.Printf("  Pods: %v\n", func() []string {
+				pods := make([]string, 0, len(cacheHitResult.PodFirstHits))
+				for pod := range cacheHitResult.PodFirstHits {
+					pods = append(pods, pod)
 				}
-			}
-			Expect(readyCondition).NotTo(BeNil(), "CA certificate should have Ready condition")
-			Expect(string(readyCondition.Status)).To(Equal("True"), "CA certificate should be ready")
+				return pods
+			}())
+
+			Expect(actualServerHits).To(Equal(expectedServerHits),
+				"Server should have received one request per unique pod")
 		})
 
-		It("should have the CA secret created in cert-manager namespace", func() {
-			// Get the CA secret from the cert-manager namespace
-			caSecret, err := clientset.CoreV1().Secrets("cert-manager").Get(ctx, namespace+"-root-ca-secret", metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get CA secret")
-			Expect(caSecret).NotTo(BeNil(), "CA Secret should not be nil")
-			Expect(caSecret.Name).To(Equal(namespace + "-root-ca-secret"))
-			Expect(caSecret.Namespace).To(Equal("cert-manager"))
-			Expect(caSecret.Type).To(Equal(corev1.SecretTypeTLS), "CA secret should be of type TLS")
+		Describe("Caching Verification", func() {
+			It("should verify configuration is set for disk caching", func() {
+				configMap, err := clientset.CoreV1().ConfigMaps(namespace).Get(ctx, deploymentName+"-config", metav1.GetOptions{})
+				Expect(err).NotTo(HaveOccurred(), "Failed to get squid-config ConfigMap")
 
-			// Verify the secret contains the required data
-			Expect(caSecret.Data).To(HaveKey("tls.crt"), "CA secret should contain tls.crt")
-			Expect(caSecret.Data).To(HaveKey("tls.key"), "CA secret should contain tls.key")
-			Expect(caSecret.Data["tls.crt"]).NotTo(BeEmpty(), "CA certificate should not be empty")
-			Expect(caSecret.Data["tls.key"]).NotTo(BeEmpty(), "CA private key should not be empty")
+				squidConf := configMap.Data["squid.conf"]
+
+				// Verify RAM caching configuration
+				Expect(squidConf).To(ContainSubstring("cache_mem 0"), "Should set cache_mem to 0")
+				// Verify disk cache directory is configured
+				Expect(squidConf).To(ContainSubstring("cache_dir aufs /var/spool/squid/cache 204 16 256"), "Should have disk cache configured")
+				// Verify maximum object size is configured
+				Expect(squidConf).To(ContainSubstring("maximum_object_size 192 MB"), "Should have maximum object size configured")
+				// Verify cache replacement policy
+				Expect(squidConf).To(ContainSubstring("cache_replacement_policy heap LFUDA"), "Should use LFUDA replacement policy")
+			})
 		})
 
-		It("should have the CA cluster issuer created", func() {
-			// Get the CA cluster issuer
-			caIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, namespace+"-ca-issuer", metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get CA cluster issuer")
-			Expect(caIssuer).NotTo(BeNil(), "CA ClusterIssuer should not be nil")
-			Expect(caIssuer.Name).To(Equal(namespace + "-ca-issuer"))
+		Describe("Resources verification", func() {
+			It("should have the self-signed cluster issuer created", func() {
+				clusterIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, namespace+"-self-signed-cluster-issuer", metav1.GetOptions{})
+				Expect(err).NotTo(HaveOccurred(), "Failed to get self-signed cluster issuer")
+				Expect(clusterIssuer).NotTo(BeNil(), "ClusterIssuer should not be nil")
+				Expect(clusterIssuer.Name).To(Equal(namespace + "-self-signed-cluster-issuer"))
+				Expect(clusterIssuer.Spec.SelfSigned).NotTo(BeNil(), "SelfSigned spec should not be nil")
+			})
 
-			// Verify the issuer spec
-			Expect(caIssuer.Spec.CA).NotTo(BeNil(), "CA spec should not be nil")
-			Expect(caIssuer.Spec.CA.SecretName).To(Equal(namespace+"-root-ca-secret"), "CA issuer should reference the "+namespace+"-root-ca-secret")
-		})
+			It("should have the CA certificate created in cert-manager namespace", func() {
+				// Get the CA certificate from the cert-manager namespace
+				caCert, err := certManagerClient.CertmanagerV1().Certificates("cert-manager").Get(ctx, namespace+"-self-signed-ca", metav1.GetOptions{})
+				Expect(err).NotTo(HaveOccurred(), "Failed to get CA certificate")
+				Expect(caCert).NotTo(BeNil(), "CA Certificate should not be nil")
+				Expect(caCert.Name).To(Equal(namespace + "-self-signed-ca"))
 
-		It("should have the caching certificate created in caching namespace", func() {
-			// Get the caching certificate from the caching namespace
-			cachingCert, err := certManagerClient.CertmanagerV1().Certificates(namespace).Get(ctx, namespace+"-cert", metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get caching certificate")
-			Expect(cachingCert).NotTo(BeNil(), "Caching Certificate should not be nil")
-			Expect(cachingCert.Name).To(Equal(namespace + "-cert"))
+				// Verify the certificate spec
+				Expect(caCert.Spec.SecretName).To(Equal(namespace + "-root-ca-secret"))
+				Expect(caCert.Spec.IssuerRef.Name).To(Equal(namespace + "-self-signed-cluster-issuer"))
+				Expect(caCert.Spec.IssuerRef.Kind).To(Equal("ClusterIssuer"))
+				Expect(caCert.Spec.IsCA).To(BeTrue(), "CA certificate should have isCA set to true")
 
-			// Verify the certificate spec
-			Expect(cachingCert.Spec.SecretName).To(Equal(namespace + "-tls"))
-			Expect(cachingCert.Spec.IssuerRef.Name).To(Equal(namespace + "-ca-issuer"))
-			Expect(cachingCert.Spec.IssuerRef.Kind).To(Equal("ClusterIssuer"))
-			Expect(cachingCert.Spec.IsCA).To(BeTrue(), "Caching certificate should have isCA set to true")
-
-			// Verify DNS names
-			Expect(cachingCert.Spec.DNSNames).To(ContainElement("localhost"))
-			Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName))
-			Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName + "." + namespace + ".svc"))
-			Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName + "." + namespace + ".svc.cluster.local"))
-
-			// Verify the certificate status
-			Expect(cachingCert.Status.Conditions).NotTo(BeEmpty(), "Caching certificate should have status conditions")
-			var readyCondition *certmanagerv1.CertificateCondition
-			for _, condition := range cachingCert.Status.Conditions {
-				if condition.Type == "Ready" {
-					readyCondition = &condition
-					break
+				// Verify the certificate status
+				Expect(caCert.Status.Conditions).NotTo(BeEmpty(), "CA certificate should have status conditions")
+				var readyCondition *certmanagerv1.CertificateCondition
+				for _, condition := range caCert.Status.Conditions {
+					if condition.Type == "Ready" {
+						readyCondition = &condition
+						break
+					}
 				}
-			}
-			Expect(readyCondition).NotTo(BeNil(), "Caching certificate should have Ready condition")
-			Expect(string(readyCondition.Status)).To(Equal("True"), "Caching certificate should be ready")
-		})
+				Expect(readyCondition).NotTo(BeNil(), "CA certificate should have Ready condition")
+				Expect(string(readyCondition.Status)).To(Equal("True"), "CA certificate should be ready")
+			})
 
-		It("should have the TLS secret created with certificate data", func() {
-			// Get the TLS secret from the caching namespace
-			tlsSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, namespace+"-tls", metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get TLS secret")
-			Expect(tlsSecret).NotTo(BeNil(), "TLS Secret should not be nil")
-			Expect(tlsSecret.Name).To(Equal(namespace + "-tls"))
-			Expect(tlsSecret.Type).To(Equal(corev1.SecretTypeTLS), "Secret should be of type TLS")
+			It("should have the CA secret created in cert-manager namespace", func() {
+				// Get the CA secret from the cert-manager namespace
+				caSecret, err := clientset.CoreV1().Secrets("cert-manager").Get(ctx, namespace+"-root-ca-secret", metav1.GetOptions{})
+				Expect(err).NotTo(HaveOccurred(), "Failed to get CA secret")
+				Expect(caSecret).NotTo(BeNil(), "CA Secret should not be nil")
+				Expect(caSecret.Name).To(Equal(namespace + "-root-ca-secret"))
+				Expect(caSecret.Namespace).To(Equal("cert-manager"))
+				Expect(caSecret.Type).To(Equal(corev1.SecretTypeTLS), "CA secret should be of type TLS")
 
-			// Verify the secret contains the required data
-			Expect(tlsSecret.Data).To(HaveKey("tls.crt"), "TLS secret should contain tls.crt")
-			Expect(tlsSecret.Data).To(HaveKey("tls.key"), "TLS secret should contain tls.key")
-			Expect(tlsSecret.Data["tls.crt"]).NotTo(BeEmpty(), "TLS certificate should not be empty")
-			Expect(tlsSecret.Data["tls.key"]).NotTo(BeEmpty(), "TLS private key should not be empty")
+				// Verify the secret contains the required data
+				Expect(caSecret.Data).To(HaveKey("tls.crt"), "CA secret should contain tls.crt")
+				Expect(caSecret.Data).To(HaveKey("tls.key"), "CA secret should contain tls.key")
+				Expect(caSecret.Data["tls.crt"]).NotTo(BeEmpty(), "CA certificate should not be empty")
+				Expect(caSecret.Data["tls.key"]).NotTo(BeEmpty(), "CA private key should not be empty")
+			})
+
+			It("should have the CA cluster issuer created", func() {
+				// Get the CA cluster issuer
+				caIssuer, err := certManagerClient.CertmanagerV1().ClusterIssuers().Get(ctx, namespace+"-ca-issuer", metav1.GetOptions{})
+				Expect(err).NotTo(HaveOccurred(), "Failed to get CA cluster issuer")
+				Expect(caIssuer).NotTo(BeNil(), "CA ClusterIssuer should not be nil")
+				Expect(caIssuer.Name).To(Equal(namespace + "-ca-issuer"))
+
+				// Verify the issuer spec
+				Expect(caIssuer.Spec.CA).NotTo(BeNil(), "CA spec should not be nil")
+				Expect(caIssuer.Spec.CA.SecretName).To(Equal(namespace+"-root-ca-secret"), "CA issuer should reference the "+namespace+"-root-ca-secret")
+			})
+
+			It("should have the caching certificate created in caching namespace", func() {
+				// Get the caching certificate from the caching namespace
+				cachingCert, err := certManagerClient.CertmanagerV1().Certificates(namespace).Get(ctx, namespace+"-cert", metav1.GetOptions{})
+				Expect(err).NotTo(HaveOccurred(), "Failed to get caching certificate")
+				Expect(cachingCert).NotTo(BeNil(), "Caching Certificate should not be nil")
+				Expect(cachingCert.Name).To(Equal(namespace + "-cert"))
+
+				// Verify the certificate spec
+				Expect(cachingCert.Spec.SecretName).To(Equal(namespace + "-tls"))
+				Expect(cachingCert.Spec.IssuerRef.Name).To(Equal(namespace + "-ca-issuer"))
+				Expect(cachingCert.Spec.IssuerRef.Kind).To(Equal("ClusterIssuer"))
+				Expect(cachingCert.Spec.IsCA).To(BeTrue(), "Caching certificate should have isCA set to true")
+
+				// Verify DNS names
+				Expect(cachingCert.Spec.DNSNames).To(ContainElement("localhost"))
+				Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName))
+				Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName + "." + namespace + ".svc"))
+				Expect(cachingCert.Spec.DNSNames).To(ContainElement(deploymentName + "." + namespace + ".svc.cluster.local"))
+
+				// Verify the certificate status
+				Expect(cachingCert.Status.Conditions).NotTo(BeEmpty(), "Caching certificate should have status conditions")
+				var readyCondition *certmanagerv1.CertificateCondition
+				for _, condition := range cachingCert.Status.Conditions {
+					if condition.Type == "Ready" {
+						readyCondition = &condition
+						break
+					}
+				}
+				Expect(readyCondition).NotTo(BeNil(), "Caching certificate should have Ready condition")
+				Expect(string(readyCondition.Status)).To(Equal("True"), "Caching certificate should be ready")
+			})
+
+			It("should have the TLS secret created with certificate data", func() {
+				// Get the TLS secret from the caching namespace
+				tlsSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, namespace+"-tls", metav1.GetOptions{})
+				Expect(err).NotTo(HaveOccurred(), "Failed to get TLS secret")
+				Expect(tlsSecret).NotTo(BeNil(), "TLS Secret should not be nil")
+				Expect(tlsSecret.Name).To(Equal(namespace + "-tls"))
+				Expect(tlsSecret.Type).To(Equal(corev1.SecretTypeTLS), "Secret should be of type TLS")
+
+				// Verify the secret contains the required data
+				Expect(tlsSecret.Data).To(HaveKey("tls.crt"), "TLS secret should contain tls.crt")
+				Expect(tlsSecret.Data).To(HaveKey("tls.key"), "TLS secret should contain tls.key")
+				Expect(tlsSecret.Data["tls.crt"]).NotTo(BeEmpty(), "TLS certificate should not be empty")
+				Expect(tlsSecret.Data["tls.key"]).NotTo(BeEmpty(), "TLS private key should not be empty")
+			})
 		})
 	})
 })

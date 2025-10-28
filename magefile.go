@@ -512,11 +512,9 @@ func Clean() error {
 	return nil
 }
 
-// Test:Cluster runs tests with cluster network access via mirrord
-func (Test) Cluster() error {
-	// Ensure cluster and deployment are ready (includes mirrord infrastructure)
-	mg.Deps(SquidHelm{}.Up)
-
+// runClusterTests executes the e2e test suite with mirrord
+// replicaCount: if > 0, sets SQUID_REPLICA_COUNT env var for tests
+func runClusterTests(replicaCount int) error {
 	fmt.Println("🔮 Running tests with cluster network access...")
 	fmt.Println("Tests run as if inside the cluster using mirrord")
 	fmt.Println("This provides the most realistic testing environment")
@@ -543,10 +541,66 @@ func (Test) Cluster() error {
 		return fmt.Errorf("failed to build test binary with ginkgo: %w", err)
 	}
 
+	// Prepare environment variables for test execution
+	testEnv := map[string]string{
+		"CGO_ENABLED": "1",
+	}
+
+	// Add SQUID_REPLICA_COUNT if specified
+	if replicaCount > 0 {
+		testEnv["SQUID_REPLICA_COUNT"] = fmt.Sprintf("%d", replicaCount)
+		fmt.Printf("📝 Setting SQUID_REPLICA_COUNT=%d for test execution\n", replicaCount)
+	}
+
 	// Run tests with mirrord using ginkgo binary
 	fmt.Println("🚀 Running tests with mirrord connection stealing...")
 	return sh.RunWithV(map[string]string{
 		"CGO_ENABLED": "1",
 	}, "mirrord", "exec", "--config-file", ".mirrord/mirrord.json", "--",
 		"./tests/e2e/e2e.test", "-ginkgo.v", "-ginkgo.label-filter="+os.Getenv("GINKGO_LABEL_FILTER"))
+}
+
+// Test:Cluster runs tests with cluster network access via mirrord
+func (Test) Cluster() error {
+	// Ensure cluster and deployment are ready (includes mirrord infrastructure)
+	mg.Deps(SquidHelm{}.Up)
+
+	// Run with default replica count (0 = use values.yaml default)
+	return runClusterTests(0)
+}
+
+// Test:ClusterMultiReplica runs tests with 3 replicas
+func (Test) ClusterMultiReplica() error {
+	// Set environment variable FIRST, before any dependencies run
+	// This ensures BeforeSuite in the test suite can read it
+	fmt.Println("📝 Setting SQUID_REPLICA_COUNT=3 for deployment and tests...")
+	os.Setenv("SQUID_REPLICA_COUNT", "3")
+
+	// Ensure cluster and deployment are ready
+	mg.Deps(SquidHelm{}.Up)
+
+	fmt.Println("🧪 Upgrading deployment to 3 replicas...")
+
+	// Upgrade deployment to 3 replicas
+	err := sh.RunWith(map[string]string{
+		"SQUID_REPLICA_COUNT": "3",
+	}, "helm", "upgrade", "squid", "./squid",
+		"-n=default", "--wait", "--timeout=120s",
+		"--set", "replicaCount=3",
+		"--set", "environment=dev")
+	if err != nil {
+		return fmt.Errorf("failed to set replica count to 3: %w", err)
+	}
+
+	// Wait for deployment to be ready with 3 replicas
+	fmt.Println("⏳ Waiting for deployment with 3 replicas to be ready...")
+	err = sh.Run("kubectl", "wait", "--for=condition=Available",
+		"deployment/squid", "-n", "caching", "--timeout=120s")
+	if err != nil {
+		return fmt.Errorf("deployment not ready: %w", err)
+	}
+
+	// Run tests with replica count 3
+	// This will pass SQUID_REPLICA_COUNT=3 env var to the test process
+	return runClusterTests(3)
 }
