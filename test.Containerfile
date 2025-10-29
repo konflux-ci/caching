@@ -27,21 +27,22 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     tar -C /usr/local -xzf go.tar.gz && \
     rm go.tar.gz
 
-# Install Helm (version-locked)
-ARG HELM_VERSION=v3.18.6
-ARG HELM_SHA256=3f43c0aa57243852dd542493a0f54f1396c0bc8ec7296bbb2c01e802010819ce
+# Install Helm from Red Hat mirror (version-locked)
+# Using Red Hat mirror to comply with Conforma allowed package sources policy
+# Red Hat mirror tarball structure: binary at root (helm-linux-amd64), not in subdirectory
+ARG HELM_VERSION=v3.17.1
+ARG HELM_SHA256=1e2330d845b2fbaca7985d5c90c2f1583f0d4e8ec40768400870fc7d7e29de21
 # Use prefetched Helm tarball from Cachi2
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     if [ -f /cachi2/output/deps/generic/helm-${HELM_VERSION}-linux-amd64.tar.gz ]; then \
         cp /cachi2/output/deps/generic/helm-${HELM_VERSION}-linux-amd64.tar.gz helm.tar.gz; \
     else \
-        curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" -o helm.tar.gz; \
+        curl -fsSL "https://mirror.openshift.com/pub/openshift-v4/clients/helm/3.17.1/helm-linux-amd64.tar.gz" -o helm.tar.gz; \
     fi && \
     echo "${HELM_SHA256}  helm.tar.gz" | sha256sum -c - && \
-    mkdir -p /tmp/helm && \
-    tar -C /tmp/helm -xzf helm.tar.gz && \
-    mv /tmp/helm/linux-amd64/helm /usr/local/bin/helm && \
-    rm -rf /tmp/helm helm.tar.gz
+    tar --no-same-owner -xzf helm.tar.gz && \
+    mv helm-linux-amd64 /usr/local/bin/helm && \
+    rm helm.tar.gz
 
 # Set Go environment
 ENV PATH="/usr/local/go/bin:/root/go/bin:$PATH"

@@ -5,7 +5,7 @@ artifacts:
   - download_url: "https://golang.org/dl/go1.25.3.linux-amd64.tar.gz"
     checksum: "sha256:0335f314b6e7bfe08c3d0cfaa7c19db961b7b99fb20be62b0a826c992ad14e0f"
     filename: "go1.25.3.linux-amd64.tar.gz"
-  - download_url: "https://get.helm.sh/helm-v3.18.6-linux-amd64.tar.gz"
-    checksum: "sha256:3f43c0aa57243852dd542493a0f54f1396c0bc8ec7296bbb2c01e802010819ce"
-    filename: "helm-v3.18.6-linux-amd64.tar.gz"
+  - download_url: "https://mirror.openshift.com/pub/openshift-v4/clients/helm/3.17.1/helm-linux-amd64.tar.gz"
+    checksum: "sha256:1e2330d845b2fbaca7985d5c90c2f1583f0d4e8ec40768400870fc7d7e29de21"
+    filename: "helm-v3.17.1-linux-amd64.tar.gz"
 
