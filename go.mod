@@ -6,7 +6,7 @@ toolchain go1.25.3
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
-	github.com/cert-manager/cert-manager v1.19.1
+	github.com/cert-manager/cert-manager v1.18.0
 	github.com/google/go-containerregistry v0.20.6
 	github.com/intra-sh/icap v0.1.1
 	github.com/magefile/mage v1.15.0
