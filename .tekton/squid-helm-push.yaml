@@ -143,7 +143,7 @@ spec:
             - name: name
               value: git-clone-oci-ta
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-git-clone-oci-ta:0.1@sha256:bb2f8f1edec47faa08c1929f2ffc6748f3a96af9644e6c40000081c6ff3ec894
+              value: quay.io/konflux-ci/tekton-catalog/task-git-clone-oci-ta:0.1@sha256:3dc39eae48745a96097c07c577b944d6203a91c35d3f71d9ed5feab41d327a6a
             - name: kind
               value: task
           resolver: bundles
@@ -223,7 +223,7 @@ spec:
             - name: name
               value: build-helm-chart-oci-ta
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-build-helm-chart-oci-ta:0.3@sha256:5ba1f6a566e332533f1214abd750e47bf1608e8763e498c51f8600a40c4a67db
+              value: quay.io/konflux-ci/tekton-catalog/task-build-helm-chart-oci-ta:0.3@sha256:9eb8b013d573ad2b9045c41a503b63025ae631f333246c293446202b700c5ebd
             - name: kind
               value: task
           resolver: bundles
@@ -249,7 +249,7 @@ spec:
             - name: name
               value: source-build-oci-ta
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-source-build-oci-ta:0.3@sha256:5f9069a07a6dc16aae7a05adf49d2b6792815f3fabd116377578860743f4e0ec
+              value: quay.io/konflux-ci/tekton-catalog/task-source-build-oci-ta:0.3@sha256:282cb5a9119a87e88559444feff67d76d6f356d03654b4845632c049b2314735
             - name: kind
               value: task
           resolver: bundles
