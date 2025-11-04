@@ -19,6 +19,15 @@ envSettings:
       image:
         repository: localhost/konflux-ci/squid-test
         tag: "latest"
+  prerelease:
+    squid:
+      image:
+        repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid
+        tag: "latest"
+    test:
+      image:
+        repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester
+        tag: "latest"
   release:
     squid:
       image:

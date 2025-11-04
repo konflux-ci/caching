@@ -89,3 +89,4 @@ LABEL io.openshift.tags="squid-tester"
 
 # Default command runs the compiled test binary
 CMD ["./tests/e2e/e2e.test", "-ginkgo.v"] 
+# Trigger rebuild for quickcluster testing 20251104

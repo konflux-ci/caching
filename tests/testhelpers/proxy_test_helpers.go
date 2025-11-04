@@ -275,9 +275,67 @@ type SquidHelmValues struct {
 	Affinity           json.RawMessage           `json:"affinity,omitempty"`
 }
 
+// BuildHelmDependencies downloads the Helm chart dependencies (cert-manager, trust-manager)
+// This is needed because the test image doesn't include dependencies due to hermetic builds
+func BuildHelmDependencies() error {
+	fmt.Printf("=== BuildHelmDependencies: Starting ===\n")
+	
+	// Step 1: Add jetstack Helm repository (if not already added)
+	fmt.Printf("Step 1: Adding jetstack Helm repository...\n")
+	addCmd := exec.Command("helm", "repo", "add", "jetstack", "https://charts.jetstack.io")
+	addOutput, err := addCmd.CombinedOutput()
+	fmt.Printf("helm repo add output: %s\n", string(addOutput))
+	if err != nil && !strings.Contains(string(addOutput), "already exists") {
+		return fmt.Errorf("failed to add jetstack repo: %w\n%s", err, string(addOutput))
+	}
+	fmt.Printf("✓ Jetstack repo added/exists\n")
+
+	// Step 2: Update Helm repositories to fetch latest chart metadata
+	fmt.Printf("Step 2: Updating Helm repositories...\n")
+	updateCmd := exec.Command("helm", "repo", "update")
+	updateOutput, err := updateCmd.CombinedOutput()
+	fmt.Printf("helm repo update output: %s\n", string(updateOutput))
+	if err != nil {
+		return fmt.Errorf("failed to update helm repos: %w\n%s", err, string(updateOutput))
+	}
+	fmt.Printf("✓ Helm repos updated\n")
+
+	// Step 3: Build chart dependencies (downloads cert-manager and trust-manager charts)
+	fmt.Printf("Step 3: Building chart dependencies in ./squid...\n")
+	buildCmd := exec.Command("helm", "dependency", "build", "./squid")
+	buildOutput, err := buildCmd.CombinedOutput()
+	fmt.Printf("helm dependency build output: %s\n", string(buildOutput))
+	if err != nil {
+		return fmt.Errorf("failed to build helm dependencies: %w\n%s", err, string(buildOutput))
+	}
+	fmt.Printf("✓ Helm dependencies built\n")
+
+	fmt.Printf("=== BuildHelmDependencies: Complete ===\n")
+	return nil
+}
+
 // ConfigureSquidWithHelm configures Squid deployment using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
-	values.Environment = "dev"
+	// Auto-detect environment based on execution context:
+	// - If KUBERNETES_SERVICE_HOST is set -> running in-cluster (CI) -> use "prerelease"
+	// - If KUBECONFIG contains "kind" -> local Kind cluster -> use "dev"
+	// - Default -> "prerelease" (assume CI/ephemeral cluster)
+	var environment string
+	
+	// Check if running in a Kubernetes pod (CI environment)
+	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		environment = "prerelease" // Running in-cluster (CI pod)
+	} else {
+		// Check KUBECONFIG for local Kind cluster
+		kubeconfig := os.Getenv("KUBECONFIG")
+		if kubeconfig != "" && strings.Contains(kubeconfig, "kind") {
+			environment = "dev" // Local Kind cluster
+		} else {
+			environment = "prerelease" // Default to CI
+		}
+	}
+	
+	values.Environment = environment
 	valuesFile, err := writeValuesToFile(&values)
 	if err != nil {
 		return fmt.Errorf("failed to write values to file: %w", err)
@@ -303,7 +361,8 @@ func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
 
 	// Build helm command as a shell string
-	cmdParts := []string{"helm", "upgrade", releaseName, chartName, "-n=default", "--wait", "--timeout=120s", "--values", valuesFile}
+	// Use the configured namespace instead of hardcoded "default"
+	cmdParts := []string{"helm", "upgrade", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=120s", "--values", valuesFile}
 
 	// Join into single shell command string
 	shellCmd := strings.Join(cmdParts, " ")
@@ -320,7 +379,20 @@ func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 
 // RenderHelmTemplate renders the Helm template with the given values and returns the YAML output
 func RenderHelmTemplate(chartPath string, values SquidHelmValues) (string, error) {
-	values.Environment = "dev"
+	// Auto-detect environment (same logic as ConfigureSquidWithHelm)
+	var environment string
+	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		environment = "prerelease"
+	} else {
+		kubeconfig := os.Getenv("KUBECONFIG")
+		if kubeconfig != "" && strings.Contains(kubeconfig, "kind") {
+			environment = "dev"
+		} else {
+			environment = "prerelease"
+		}
+	}
+	
+	values.Environment = environment
 	valuesFile, err := writeValuesToFile(&values)
 	if err != nil {
 		return "", fmt.Errorf("failed to write values to file: %w", err)

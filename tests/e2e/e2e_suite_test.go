@@ -119,8 +119,16 @@ var _ = BeforeSuite(func() {
 	certManagerClient, err = certmanagerclient.NewForConfig(config)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create cert-manager client")
 
-	err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
-	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+	// Download Helm chart dependencies before running any tests
+	// Some tests need to reconfigure Squid via helm upgrade (SSL bump, cache allow list)
+	// This is needed because test image has squid chart but not dependencies (hermetic build)
+	err = testhelpers.BuildHelmDependencies()
+	Expect(err).NotTo(HaveOccurred(), "Failed to build helm dependencies")
+
+	// Squid is already deployed by helm install on quickcluster
+	// Just verify the deployment is ready
+	err = testhelpers.WaitForSquidDeploymentReady(ctx, clientset)
+	Expect(err).NotTo(HaveOccurred(), "Squid deployment is not ready")
 
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})
