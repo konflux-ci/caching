@@ -300,15 +300,42 @@ func BuildHelmDependencies() error {
 	}
 	fmt.Printf("✓ Helm repos updated\n")
 
-	// Step 3: Build chart dependencies (downloads cert-manager and trust-manager charts)
-	fmt.Printf("Step 3: Building chart dependencies in ./squid...\n")
-	buildCmd := exec.Command("helm", "dependency", "build", "./squid")
+	// Step 3: Copy squid chart to writable temporary directory
+	// (The image's squid directory is read-only)
+	fmt.Printf("Step 3: Copying squid chart to temporary directory...\n")
+	tmpDir, err := os.MkdirTemp("", "squid-chart-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	fmt.Printf("Created temp directory: %s\n", tmpDir)
+
+	// Copy squid chart to temp directory
+	cpCmd := exec.Command("cp", "-r", "./squid", tmpDir+"/")
+	cpOutput, err := cpCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to copy squid chart: %w\n%s", err, string(cpOutput))
+	}
+	fmt.Printf("✓ Chart copied to temp directory\n")
+
+	// Step 4: Build chart dependencies in the writable temp directory
+	fmt.Printf("Step 4: Building chart dependencies...\n")
+	buildCmd := exec.Command("helm", "dependency", "build", tmpDir+"/squid")
 	buildOutput, err := buildCmd.CombinedOutput()
 	fmt.Printf("helm dependency build output: %s\n", string(buildOutput))
 	if err != nil {
 		return fmt.Errorf("failed to build helm dependencies: %w\n%s", err, string(buildOutput))
 	}
 	fmt.Printf("✓ Helm dependencies built\n")
+
+	// Step 5: Copy the built dependencies back to the original location
+	fmt.Printf("Step 5: Copying dependencies back to squid/charts...\n")
+	cpBackCmd := exec.Command("cp", "-r", tmpDir+"/squid/charts", "./squid/")
+	cpBackOutput, err := cpBackCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to copy dependencies back: %w\n%s", err, string(cpBackOutput))
+	}
+	fmt.Printf("✓ Dependencies copied back\n")
 
 	fmt.Printf("=== BuildHelmDependencies: Complete ===\n")
 	return nil
