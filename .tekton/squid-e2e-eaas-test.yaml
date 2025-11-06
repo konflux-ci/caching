@@ -390,6 +390,50 @@ spec:
                   
                   echo "Giving trust-manager time to register CRDs..."
                   sleep 5
+                  
+                  echo "Verifying cert-manager can issue certificates..."
+                  # Create a test certificate to ensure cert-manager is fully functional
+                  cat <<EOF | oc apply -f -
+                apiVersion: cert-manager.io/v1
+                kind: Certificate
+                metadata:
+                  name: cert-manager-test
+                  namespace: cert-manager
+                spec:
+                  secretName: cert-manager-test-tls
+                  duration: 24h
+                  renewBefore: 12h
+                  isCA: false
+                  privateKey:
+                    algorithm: RSA
+                    size: 2048
+                  dnsNames:
+                    - test.example.com
+                  issuerRef:
+                    name: cert-manager-test-issuer
+                    kind: Issuer
+                ---
+                apiVersion: cert-manager.io/v1
+                kind: Issuer
+                metadata:
+                  name: cert-manager-test-issuer
+                  namespace: cert-manager
+                spec:
+                  selfSigned: {}
+                EOF
+                  
+                  echo "Waiting for test certificate to be issued (max 2 minutes)..."
+                  for i in {1..24}; do
+                    if oc get secret cert-manager-test-tls -n cert-manager 2>/dev/null; then
+                      echo "✓ Test certificate issued successfully - cert-manager is ready!"
+                      oc delete certificate cert-manager-test -n cert-manager
+                      oc delete issuer cert-manager-test-issuer -n cert-manager
+                      oc delete secret cert-manager-test-tls -n cert-manager
+                      break
+                    fi
+                    echo "Waiting for certificate... ($i/24)"
+                    sleep 5
+                  done
                 fi
                 
                 # Install squid
