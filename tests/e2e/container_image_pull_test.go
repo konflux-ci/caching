@@ -2,6 +2,9 @@ package e2e_test
 
 import (
 	"context"
+	"fmt"
+	"regexp"
+	"time"
 
 	"github.com/konflux-ci/caching/tests/testhelpers"
 	. "github.com/onsi/ginkgo/v2"
@@ -45,34 +48,61 @@ func pullAndVerifyQuayCDN(imageRef string) {
 	)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create trusted squid caching client")
 
-	pod, err := testhelpers.GetSquidPod(ctx, clientset, namespace)
-	Expect(err).NotTo(HaveOccurred(), "Failed to get squid pod")
+	deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+	Expect(err).NotTo(HaveOccurred(), "Failed to get deployment")
+	pods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *deployment.Spec.Replicas)
+	Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods")
 
-	By("Pulling the image for the first time (expect MISS)")
-	before := metav1.Now()
-	err = testhelpers.PullContainerImage(&client.Transport, imageRef)
-	Expect(err).NotTo(HaveOccurred(), "Failed to pull container image")
+	maxAttempts := int(*deployment.Spec.Replicas) + 1
+	fmt.Printf("🔍 DEBUG: Replica count: %d, pulling %d times to guarantee cache hit\n", *deployment.Spec.Replicas, maxAttempts)
 
-	By("Verifying CDN request MISS in squid logs")
-	logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, pod.Name, "squid", &before)
-	Expect(err).NotTo(HaveOccurred(), "Failed to get logs after first pull")
-	logStr := string(logs)
-	Expect(logStr).To(
-		MatchRegexp("(?m)^.*TCP_MISS.*cdn(?:[0-9]{2})?\\.quay\\.io.*$"),
-		"First pull should be a MISS from a quay CDN host",
-	)
-	Expect(logStr).To(Not(ContainSubstring("TCP_HIT")), "First pull should not produce a HIT from a quay CDN host")
+	// Get timestamp before starting pulls
+	beforeSequence := metav1.Now()
 
-	By("Pulling the image for a second time (expect HIT)")
-	before = metav1.Now()
-	err = testhelpers.PullContainerImage(&client.Transport, imageRef)
-	Expect(err).NotTo(HaveOccurred(), "Failed to pull container image")
+	By("Pulling the image multiple times to guarantee a cache hit")
+	// Pull (replicas + 1) times - pigeonhole principle guarantees at least one pod gets hit twice
+	for i := range maxAttempts {
+		fmt.Printf("🔍 DEBUG: Pull attempt %d/%d\n", i+1, maxAttempts)
+		err = testhelpers.PullContainerImage(&client.Transport, imageRef)
+		Expect(err).NotTo(HaveOccurred(), "Failed to pull container image")
+	}
 
-	By("Verifying CDN request HIT in squid logs")
-	logs, err = testhelpers.GetPodLogsSince(ctx, clientset, namespace, pod.Name, "squid", &before)
-	Expect(err).NotTo(HaveOccurred(), "Failed to get logs after second pull")
-	Expect(string(logs)).To(
-		MatchRegexp("(?m)^.*TCP_HIT.*cdn(?:[0-9]{2})?\\.quay\\.io.*$"),
-		"Second pull should be a HIT from a quay CDN host",
-	)
+	// Wait a moment to ensure all requests are logged
+	time.Sleep(1 * time.Second)
+
+	By("Verifying CDN requests in squid logs")
+	// Check logs from all pods since the beginning
+	cacheHitFound := false
+
+	for _, pod := range pods {
+		logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, pod.Name, squidContainerName, &beforeSequence)
+		if err != nil {
+			continue // Skip pods where we can't get logs
+		}
+		logStr := string(logs)
+		if logStr != "" {
+			fmt.Printf("DEBUG: === Logs from pod %s ===\n", pod.Name)
+			fmt.Printf("%s\n", logStr)
+
+			// Check if this pod has a cache HIT
+			hitRegex := regexp.MustCompile(`(?m)^.*TCP_HIT.*cdn(?:[0-9]{2})?\.quay\.io.*$`)
+			if hitRegex.MatchString(logStr) {
+				fmt.Printf("DEBUG: Found TCP_HIT in pod %s, verifying corresponding MISS\n", pod.Name)
+
+				// Verify this pod also has the corresponding MISS
+				Expect(logStr).To(
+					MatchRegexp(`(?m)^.*TCP_MISS.*cdn(?:[0-9]{2})?\.quay\.io.*$`),
+					"Pod with cache hit should also show TCP_MISS for the same image",
+				)
+
+				cacheHitFound = true
+				fmt.Printf("DEBUG: Successfully verified both MISS and HIT in pod %s!\n", pod.Name)
+				break // Found a pod with both MISS and HIT, no need to check others
+			}
+		}
+	}
+
+	Expect(cacheHitFound).To(BeTrue(), "Should find at least one cache hit from any pod")
+
+	fmt.Printf("DEBUG: Caching verification successful - found both TCP_MISS and TCP_HIT in the same pod!\n")
 }
