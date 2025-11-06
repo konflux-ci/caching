@@ -1,6 +1,6 @@
 FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:649f7ce8082531148ac5e45b61612046a21e36648ab096a77e6ba0c94428cf60
 
-# Rebuild trigger: includes BeforeSuite install fix, namespace fix, BuildHelmDependencies
+# Rebuild trigger: includes SQUID_CHART_PATH env var support for temp directory
 # Install required packages for Go and testing (version-locked)
 # Note: curl-minimal is already present in ubi10-minimal
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
@@ -69,8 +69,12 @@ COPY tests/ ./tests/
 # Copy squid chart
 COPY squid/ ./squid/
 
+# Cache buster to force Go binary rebuild when needed
+ARG CACHE_BUSTER=20251106_SQUID_CHART_PATH_fix
+
 # Compile tests and testserver at build time
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
+    echo "Cache buster: ${CACHE_BUSTER}" && \
     ginkgo build ./tests/e2e && \
     CGO_ENABLED=1 go build -o /app/testserver ./tests/testserver
 

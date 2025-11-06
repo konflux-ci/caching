@@ -34,6 +34,35 @@ spec:
       echo "Target namespace: {{ .Values.namespace.name }}"
       echo "Squid service: {{ include "squid.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}"
 
+      # Build helm chart dependencies in a writable temp directory
+      # The /app directory is read-only, so we need to copy the chart to /tmp
+      echo "Building helm chart dependencies..."
+      helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
+      helm repo update
+      
+      # Copy chart to writable temp directory
+      CHART_DIR=$(mktemp -d)
+      echo "Copying chart to temp directory: $CHART_DIR"
+      cp -r ./squid "$CHART_DIR/"
+      
+      # Build dependencies in the temp directory
+      if ! helm dependency build "$CHART_DIR/squid"; then
+        echo "ERROR: Failed to build helm dependencies"
+        exit 1
+      fi
+      
+      # Verify dependencies were downloaded
+      if [ ! -d "$CHART_DIR/squid/charts" ]; then
+        echo "ERROR: Charts directory not created"
+        exit 1
+      fi
+      
+      echo "✓ Helm dependencies ready at: $CHART_DIR/squid"
+      ls -la "$CHART_DIR/squid/charts/"
+      
+      # Export the path for tests to use
+      export SQUID_CHART_PATH="$CHART_DIR/squid"
+      
       # Run the compiled test binary
       echo "Running tests..."
       ./tests/e2e/e2e.test -ginkgo.v -ginkgo.label-filter="{{ .Values.test.labelFilter }}"

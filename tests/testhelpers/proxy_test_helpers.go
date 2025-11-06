@@ -304,7 +304,12 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	defer os.Remove(valuesFile)
 
 	// Use the temporary values file with helm
-	err = UpgradeChart("squid", "./squid", valuesFile)
+	// Check if SQUID_CHART_PATH is set (test pod sets this to writable temp dir)
+	chartPath := os.Getenv("SQUID_CHART_PATH")
+	if chartPath == "" {
+		chartPath = "./squid"
+	}
+	err = UpgradeChart("squid", chartPath, valuesFile)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
