@@ -125,10 +125,15 @@ var _ = BeforeSuite(func() {
 	err = testhelpers.BuildHelmDependencies()
 	Expect(err).NotTo(HaveOccurred(), "Failed to build helm dependencies")
 
-	// Squid is already deployed by helm install on quickcluster
-	// Just verify the deployment is ready
+	// Check if squid is already deployed (e.g., by pipeline or manual helm install)
+	// If not, install it now (for local dev/build container scenarios)
 	err = testhelpers.WaitForSquidDeploymentReady(ctx, clientset)
-	Expect(err).NotTo(HaveOccurred(), "Squid deployment is not ready")
+	if err != nil {
+		// Squid not deployed - install it with default config
+		fmt.Println("Squid not found - installing with default configuration...")
+		err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
+		Expect(err).NotTo(HaveOccurred(), "Failed to install squid")
+	}
 
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})
