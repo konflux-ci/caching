@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Cache allow list tests", Ordered, func() {
+var _ = Describe("Cache allow list tests", Ordered, Serial, func() {
 	var (
 		testServer *testhelpers.CachingTestServer
 		client     *http.Client

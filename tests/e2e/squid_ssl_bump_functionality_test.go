@@ -19,7 +19,7 @@ import (
 // NOTE: This file assumes helper functions like 'getPodIP' and 'generateCacheBuster'
 // are available from other test files in the package.
 
-var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
+var _ = Describe("Squid SSL-Bump Functionality", Ordered, Serial, func() {
 	var (
 		k8sClient     *kubernetes.Clientset
 		config        *rest.Config
