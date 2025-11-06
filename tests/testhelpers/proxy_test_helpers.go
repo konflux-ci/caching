@@ -292,6 +292,7 @@ func getChartPath() string {
 // BuildHelmDependencies downloads the Helm chart dependencies (cert-manager, trust-manager)
 // This is needed because the test image doesn't include dependencies due to hermetic builds
 // Sets writableChartDir to the temp directory path for use in helm operations
+// Used when filesystem is read-only (EaaS OpenShift cluster)
 func BuildHelmDependencies() error {
 	fmt.Println("Building Helm chart dependencies...")
 	
@@ -381,7 +382,8 @@ func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 
 	// Build helm command as a shell string
 	// Use the configured namespace instead of hardcoded "default"
-	cmdParts := []string{"helm", "upgrade", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=120s", "--values", valuesFile}
+	// --install flag allows this to work for both initial install and subsequent upgrades
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=120s", "--values", valuesFile}
 
 	// Join into single shell command string
 	shellCmd := strings.Join(cmdParts, " ")

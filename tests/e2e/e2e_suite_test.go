@@ -119,21 +119,20 @@ var _ = BeforeSuite(func() {
 	certManagerClient, err = certmanagerclient.NewForConfig(config)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create cert-manager client")
 
-	// Download Helm chart dependencies before running any tests
-	// Some tests need to reconfigure Squid via helm upgrade (SSL bump, cache allow list)
-	// This is needed because test image has squid chart but not dependencies (hermetic build)
-	err = testhelpers.BuildHelmDependencies()
-	Expect(err).NotTo(HaveOccurred(), "Failed to build helm dependencies")
-
-	// Check if squid is already deployed (e.g., by pipeline or manual helm install)
-	// If not, install it now (for local dev/build container scenarios)
+	// Check if squid is already deployed (mirrord) or not (EaaS)
 	err = testhelpers.WaitForSquidDeploymentReady(ctx, clientset)
 	if err != nil {
-		// Squid not deployed - install it with default config
-		fmt.Println("Squid not found - installing with default configuration...")
+		// Squid NOT deployed - we're in EaaS environment
+		// Need to build dependencies and install squid
+		fmt.Println("Squid not found - setting up for EaaS environment")
+		
+		err = testhelpers.BuildHelmDependencies()
+		Expect(err).NotTo(HaveOccurred(), "Failed to build helm dependencies")
+		
 		err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
 		Expect(err).NotTo(HaveOccurred(), "Failed to install squid")
 	}
+	// If squid IS deployed (mirrord), do nothing - existing code works fine
 
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})
