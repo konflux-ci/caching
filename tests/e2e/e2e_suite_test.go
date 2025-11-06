@@ -119,25 +119,6 @@ var _ = BeforeSuite(func() {
 	certManagerClient, err = certmanagerclient.NewForConfig(config)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create cert-manager client")
 
-	// Build helm chart dependencies - needed for tests that reconfigure squid
-	// The test image doesn't include dependencies (hermetic build)
-	// All containerized tests (Konflux, EaaS) have read-only filesystem → use /tmp/
-	// Only local dev (mage test:cluster) has writable filesystem, but dependencies already built by mage
-	fmt.Println("Building helm dependencies in temp directory (read-only filesystem)...")
-	err = testhelpers.BuildHelmDependencies()
-	Expect(err).NotTo(HaveOccurred(), "Failed to build helm dependencies")
-	
-	// Check if squid is already deployed
-	err = testhelpers.WaitForSquidDeploymentReady(ctx, clientset)
-	if err != nil {
-		// Squid NOT deployed - install it (EaaS scenario)
-		fmt.Println("Squid not found - installing with default configuration")
-		err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
-		Expect(err).NotTo(HaveOccurred(), "Failed to install squid")
-	} else {
-		fmt.Println("Squid already deployed - using existing deployment")
-	}
-
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})
 	Expect(err).NotTo(HaveOccurred(), "Failed to connect to Kubernetes cluster")

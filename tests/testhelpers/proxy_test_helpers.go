@@ -275,64 +275,6 @@ type SquidHelmValues struct {
 	Affinity           json.RawMessage           `json:"affinity,omitempty"`
 }
 
-// Global variable to store the writable chart directory path
-// When running in a pod (read-only filesystem), this points to a temp directory
-// When running locally (writable filesystem), this is empty and "./squid" is used
-var writableChartDir string
-
-// getChartPath returns the appropriate chart path based on environment
-// Returns writable temp directory path if set, otherwise "./squid"
-func getChartPath() string {
-	if writableChartDir != "" {
-		return writableChartDir + "/squid"
-	}
-	return "./squid"
-}
-
-// BuildHelmDependencies downloads the Helm chart dependencies (cert-manager, trust-manager)
-// This is needed because the test image doesn't include dependencies due to hermetic builds
-// Sets writableChartDir to the temp directory path for use in helm operations
-// Used when filesystem is read-only (EaaS OpenShift cluster)
-func BuildHelmDependencies() error {
-	fmt.Println("Building Helm chart dependencies...")
-	
-	// Add jetstack Helm repository
-	addCmd := exec.Command("helm", "repo", "add", "jetstack", "https://charts.jetstack.io")
-	addOutput, err := addCmd.CombinedOutput()
-	if err != nil && !strings.Contains(string(addOutput), "already exists") {
-		return fmt.Errorf("failed to add jetstack repo: %w\n%s", err, string(addOutput))
-	}
-
-	// Update Helm repositories
-	updateCmd := exec.Command("helm", "repo", "update")
-	if updateOutput, err := updateCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to update helm repos: %w\n%s", err, string(updateOutput))
-	}
-
-	// Create temp directory for writable chart copy
-	tmpDir, err := os.MkdirTemp("", "squid-chart-*")
-	if err != nil {
-		return fmt.Errorf("failed to create temp directory: %w", err)
-	}
-	writableChartDir = tmpDir // Store globally for helm operations
-
-	// Copy squid chart to temp directory
-	cpCmd := exec.Command("cp", "-r", "./squid", tmpDir+"/")
-	if cpOutput, err := cpCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to copy squid chart: %w\n%s", err, string(cpOutput))
-	}
-
-	// Build chart dependencies
-	chartPath := getChartPath()
-	buildCmd := exec.Command("helm", "dependency", "build", chartPath)
-	if buildOutput, err := buildCmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to build helm dependencies: %w\n%s", err, string(buildOutput))
-	}
-
-	fmt.Printf("✓ Helm dependencies ready at: %s\n", chartPath)
-	return nil
-}
-
 // ConfigureSquidWithHelm configures Squid deployment using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
 	// Auto-detect environment based on execution context:
@@ -362,8 +304,7 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	defer os.Remove(valuesFile)
 
 	// Use the temporary values file with helm
-	// getChartPath() returns writable temp dir if in container, or "./squid" if local
-	err = UpgradeChart("squid", getChartPath(), valuesFile)
+	err = UpgradeChart("squid", "./squid", valuesFile)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
@@ -420,10 +361,6 @@ func RenderHelmTemplate(chartPath string, values SquidHelmValues) (string, error
 	}
 	defer os.Remove(valuesFile)
 
-	// Use getChartPath() if chartPath is "./squid" to handle read-only filesystems
-	if chartPath == "./squid" {
-		chartPath = getChartPath()
-	}
 	cmdParts := []string{"helm", "template", "test-release", chartPath, "--values", valuesFile}
 
 	cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
