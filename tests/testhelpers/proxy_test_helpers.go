@@ -296,6 +296,31 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		}
 	}
 	
+	// DEBUG: Log image before reconfiguration
+	fmt.Printf("\n==========================================\n")
+	fmt.Printf("🔍 DEBUG: ConfigureSquidWithHelm called\n")
+	fmt.Printf("==========================================\n")
+	fmt.Printf("Environment detected: %s\n", environment)
+	
+	// Get current image before helm upgrade
+	deployment, err := client.AppsV1().Deployments(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
+	if err == nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
+		currentImage := deployment.Spec.Template.Spec.Containers[0].Image
+		fmt.Printf("Current squid image BEFORE reconfiguration: %s\n", currentImage)
+		
+		// Check for snapshot env vars
+		if snapshotImage := os.Getenv("SNAPSHOT_SQUID_IMAGE"); snapshotImage != "" {
+			fmt.Printf("SNAPSHOT_SQUID_IMAGE env var: %s\n", snapshotImage)
+			if currentImage != snapshotImage {
+				fmt.Printf("⚠️  WARNING: Current image doesn't match snapshot!\n")
+			}
+		} else {
+			fmt.Printf("⚠️  WARNING: SNAPSHOT_SQUID_IMAGE env var NOT SET\n")
+			fmt.Printf("   This means snapshot images won't be preserved!\n")
+		}
+	}
+	fmt.Printf("==========================================\n\n")
+	
 	values.Environment = environment
 	valuesFile, err := writeValuesToFile(&values)
 	if err != nil {
@@ -319,17 +344,41 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		return fmt.Errorf("failed to wait for squid deployment to be ready: %w", err)
 	}
 
+	// DEBUG: Log image after reconfiguration
+	deployment, err = client.AppsV1().Deployments(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
+	if err == nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
+		newImage := deployment.Spec.Template.Spec.Containers[0].Image
+		fmt.Printf("\n==========================================\n")
+		fmt.Printf("🔍 DEBUG: After ConfigureSquidWithHelm\n")
+		fmt.Printf("==========================================\n")
+		fmt.Printf("New squid image AFTER reconfiguration: %s\n", newImage)
+		
+		if snapshotImage := os.Getenv("SNAPSHOT_SQUID_IMAGE"); snapshotImage != "" {
+			if newImage == snapshotImage {
+				fmt.Printf("✅ GOOD: Image still matches snapshot\n")
+			} else {
+				fmt.Printf("❌ BUG: Image changed to :latest (lost snapshot)!\n")
+				fmt.Printf("   Expected: %s\n", snapshotImage)
+				fmt.Printf("   Actual:   %s\n", newImage)
+			}
+		}
+		fmt.Printf("==========================================\n\n")
+	}
+
 	return nil
 }
 
 // UpgradeChart performs a helm upgrade with the specified chart and values file
 func UpgradeChart(releaseName, chartName string, valuesFile string) error {
+	fmt.Printf("🔍 DEBUG: UpgradeChart called - Code Version: 20251107-NAMESPACE-FIX\n")
+	fmt.Printf("🔍 DEBUG: Namespace constant value: '%s'\n", Namespace)
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
 
 	// Build helm command as a shell string
 	// Use the configured namespace instead of hardcoded "default"
 	// --install flag allows this to work for both initial install and subsequent upgrades
-	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=120s", "--values", valuesFile}
+	// --force flag handles chart version mismatches in testing
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=120s", "--values", valuesFile, "--force"}
 
 	// Join into single shell command string
 	shellCmd := strings.Join(cmdParts, " ")

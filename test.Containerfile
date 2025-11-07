@@ -70,12 +70,14 @@ COPY tests/ ./tests/
 COPY squid/ ./squid/
 
 # Cache buster to force Go binary rebuild when needed
-ARG CACHE_BUSTER=20251106_SQUID_CHART_PATH_fix
+ARG CACHE_BUSTER=20251107_FORCE_NAMESPACE_FIX
 
 # Compile tests and testserver at build time
+# Output to NEW path to break Docker cache
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     echo "Cache buster: ${CACHE_BUSTER}" && \
-    ginkgo build ./tests/e2e && \
+    mkdir -p /app/tests/e2e-v2 && \
+    ginkgo build -o /app/tests/e2e-v2/e2e.test ./tests/e2e && \
     CGO_ENABLED=1 go build -o /app/testserver ./tests/testserver
 
 # Create a non-root user for running tests
@@ -93,5 +95,5 @@ LABEL io.openshift.expose-services="3128:squid"
 LABEL io.openshift.tags="squid-tester"
 
 # Default command runs the compiled test binary
-CMD ["./tests/e2e/e2e.test", "-ginkgo.v"] 
-# Trigger rebuild for quickcluster testing 20251104
+CMD ["./tests/e2e-v2/e2e.test", "-ginkgo.v"] 
+# Trigger rebuild for quickcluster testing 20251107-v2

@@ -60,12 +60,24 @@ spec:
       echo "✓ Helm dependencies ready at: $CHART_DIR/squid"
       ls -la "$CHART_DIR/squid/charts/"
       
-      # Export the path for tests to use
-      export SQUID_CHART_PATH="$CHART_DIR/squid"
+      # Change to the temp directory so tests use the chart with dependencies
+      cd "$CHART_DIR"
+      
+      echo "✓ Changed to temp directory: $CHART_DIR"
+      ls -la ./squid/charts/
+      
+      echo ""
+      echo "=========================================="
+      echo "🔍 DEBUG: Test Pod Image Info"
+      echo "=========================================="
+      echo "This test pod is running image: {{ include "squid.test.image" . }}"
+      echo "Expected from snapshot: {{ include "squid.test.image" . }}"
+      echo "=========================================="
+      echo ""
       
       # Run the compiled test binary
       echo "Running tests..."
-      ./tests/e2e/e2e.test -ginkgo.v -ginkgo.label-filter="{{ .Values.test.labelFilter }}"
+      /app/tests/e2e-v2/e2e.test -ginkgo.v -ginkgo.label-filter="{{ .Values.test.labelFilter }}"
     env:
     - name: POD_IP
       valueFrom:

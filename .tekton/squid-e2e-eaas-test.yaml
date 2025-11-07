@@ -469,6 +469,30 @@ spec:
                 echo "Squid deployed successfully!"
                 oc get pods -n "$namespace"
                 
+                echo ""
+                echo "=========================================="
+                echo "🔍 DEBUG: Initial Image Verification"
+                echo "=========================================="
+                echo "Expected squid image: $squid_repo@$squid_tag"
+                if [ -n "$tester_img" ]; then
+                  echo "Expected tester image: $tester_repo@$tester_tag"
+                else
+                  echo "Expected tester image: (using default from values.yaml)"
+                fi
+                echo ""
+                echo "Actual deployed squid image:"
+                oc get deployment squid -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}'
+                echo ""
+                echo ""
+                echo "Test pod will use tester image:"
+                if [ -n "$tester_img" ]; then
+                  echo "$tester_repo@$tester_tag"
+                else
+                  echo "Default from values.yaml: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester:latest"
+                fi
+                echo "=========================================="
+                echo ""
+                
                 echo "Running Helm tests..."
                 if ! helm test squid --namespace "$namespace" --timeout 90m; then
                   echo "ERROR: Helm test failed!"
