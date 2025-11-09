@@ -68,12 +68,17 @@ spec:
             value: $(context.pipelineRun.name)
 
       # Extract component images from SNAPSHOT for multi-component integration test
+      # Automatically uses PR build images for pull_request events
       - name: parse-snapshot
         runAfter:
           - test-metadata
         taskSpec:
           params:
             - name: SNAPSHOT
+              type: string
+            - name: test-event-type
+              type: string
+            - name: git-revision
               type: string
           results:
             - name: squid-image
@@ -90,30 +95,49 @@ spec:
                 echo "Parsing SNAPSHOT to extract component images..."
                 echo '$(params.SNAPSHOT)' | jq . | tee /tmp/snapshot.json
                 
-                # Extract squid image
-                squid_image=$(echo '$(params.SNAPSHOT)' | jq -r '.components[] | select(.name=="squid") | .containerImage')
-                if [ -z "$squid_image" ] || [ "$squid_image" = "null" ]; then
-                  echo "ERROR: Could not find squid component in SNAPSHOT"
-                  echo "Available components:"
-                  echo '$(params.SNAPSHOT)' | jq -r '.components[].name'
-                  exit 1
-                fi
-                echo "Found squid image: $squid_image"
-                echo -n "$squid_image" > $(results.squid-image.path)
-                
-                # Extract squid-tester image (optional)
-                tester_image=$(echo '$(params.SNAPSHOT)' | jq -r '.components[] | select(.name=="squid-tester") | .containerImage')
-                if [ -z "$tester_image" ] || [ "$tester_image" = "null" ]; then
-                  echo "INFO: squid-tester not found in SNAPSHOT"
-                  echo "Will use default test image from values.yaml"
-                  tester_image=""
+                # For PR events, construct image names from git revision
+                # This bypasses SNAPSHOT which only includes the "owning" component's PR build
+                if [ "$(params.test-event-type)" = "pull_request" ]; then
+                  git_rev="$(params.git-revision)"
+                  echo "PR event detected - using PR build images for revision: $git_rev"
+                  
+                  squid_image="quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid:on-pr-${git_rev}"
+                  echo "Using squid PR build: $squid_image"
+                  echo -n "$squid_image" > $(results.squid-image.path)
+                  
+                  tester_image="quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester:on-pr-${git_rev}"
+                  echo "Using squid-tester PR build: $tester_image"
+                  echo -n "$tester_image" > $(results.squid-tester-image.path)
                 else
-                  echo "Found squid-tester image in SNAPSHOT: $tester_image"
+                  # For non-PR events (e.g. push to main), use SNAPSHOT
+                  echo "Non-PR event - using SNAPSHOT images"
+                  
+                  squid_image=$(echo '$(params.SNAPSHOT)' | jq -r '.components[] | select(.name=="squid") | .containerImage')
+                  if [ -z "$squid_image" ] || [ "$squid_image" = "null" ]; then
+                    echo "ERROR: Could not find squid component in SNAPSHOT"
+                    echo "Available components:"
+                    echo '$(params.SNAPSHOT)' | jq -r '.components[].name'
+                    exit 1
+                  fi
+                  echo "Found squid image from SNAPSHOT: $squid_image"
+                  echo -n "$squid_image" > $(results.squid-image.path)
+                  
+                  tester_image=$(echo '$(params.SNAPSHOT)' | jq -r '.components[] | select(.name=="squid-tester") | .containerImage')
+                  if [ -z "$tester_image" ] || [ "$tester_image" = "null" ]; then
+                    echo "INFO: squid-tester not found in SNAPSHOT, will use default from values.yaml"
+                    tester_image=""
+                  else
+                    echo "Found squid-tester image from SNAPSHOT: $tester_image"
+                  fi
+                  echo -n "$tester_image" > $(results.squid-tester-image.path)
                 fi
-                echo -n "$tester_image" > $(results.squid-tester-image.path)
         params:
           - name: SNAPSHOT
             value: $(params.SNAPSHOT)
+          - name: test-event-type
+            value: $(tasks.test-metadata.results.test-event-type)
+          - name: git-revision
+            value: $(tasks.test-metadata.results.git-revision)
 
       # Provision EaaS namespace
       - name: provision-eaas-space
