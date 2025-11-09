@@ -12,6 +12,8 @@ environment: release
 envSettings:
   dev:
     squid:
+      trust-manager:
+        namespaceSelector: {}
       image:
         repository: localhost/konflux-ci/squid
         tag: "latest"
@@ -21,6 +23,10 @@ envSettings:
         tag: "latest"
   release:
     squid:
+      trust-manager:
+        namespaceSelector:
+          matchLabels:
+            "konflux-ci.dev/type": "tenant"
       image:
         repository: quay.io/konflux-ci/caching/squid
         tag: "latest"
