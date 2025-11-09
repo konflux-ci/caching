@@ -10,9 +10,10 @@ spec:
   - secret:
       name: "{{ .Values.namespace.name }}-root-ca-secret"
       key: "ca.crt"
-  - useDefaultCAs: true
   target:
     configMap:
       key: "ca-bundle.crt"
-    namespaceSelector: {}      
-{{- end }} 
+    namespaceSelector:
+      {{- $envSettings := index .Values.envSettings .Values.environment }}
+      {{- toYaml (index $envSettings.squid "trust-manager" "namespaceSelector") | nindent 6 }}
+{{- end }}
