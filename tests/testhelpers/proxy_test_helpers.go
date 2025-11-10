@@ -268,32 +268,26 @@ type TLSOutgoingOptionsValues struct {
 }
 
 type SquidHelmValues struct {
-	Cache              *CacheValues              `json:"cache,omitempty"`
-	Environment        string                    `json:"environment,omitempty"`
-	ReplicaCount       int                       `json:"replicaCount,omitempty"`
-	TLSOutgoingOptions *TLSOutgoingOptionsValues `json:"tlsOutgoingOptions,omitempty"`
-	Affinity           json.RawMessage           `json:"affinity,omitempty"`
+	Cache                         *CacheValues              `json:"cache,omitempty"`
+	Environment                   string                    `json:"environment,omitempty"`
+	ReplicaCount                  int                       `json:"replicaCount,omitempty"`
+	TLSOutgoingOptions            *TLSOutgoingOptionsValues `json:"tlsOutgoingOptions,omitempty"`
+	Affinity                      json.RawMessage           `json:"affinity,omitempty"`
+	InstallCertManagerComponents  bool                      `json:"installCertManagerComponents"`
+	CertManagerEnabled            bool                      `json:"cert-manager.enabled"`
+	TrustManagerEnabled           bool                      `json:"trust-manager.enabled"`
 }
 
 // ConfigureSquidWithHelm configures Squid deployment using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
-	// Auto-detect environment based on execution context:
-	// - If KUBERNETES_SERVICE_HOST is set -> running in-cluster (CI) -> use "prerelease"
-	// - If KUBECONFIG contains "kind" -> local Kind cluster -> use "dev"
-	// - Default -> "prerelease" (assume CI/ephemeral cluster)
-	var environment string
-	
-	// Check if running in a Kubernetes pod (CI environment)
-	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
-		environment = "prerelease" // Running in-cluster (CI pod)
-	} else {
-		// Check KUBECONFIG for local Kind cluster
-		kubeconfig := os.Getenv("KUBECONFIG")
-		if kubeconfig != "" && strings.Contains(kubeconfig, "kind") {
-			environment = "dev" // Local Kind cluster
-		} else {
-			environment = "prerelease" // Default to CI
-		}
+	// Environment is passed from test pod via SQUID_ENVIRONMENT env var
+	// This is set by test-pod.yaml from .Values.environment
+	// Default is "release", override with --set environment=X
+	environment := os.Getenv("SQUID_ENVIRONMENT")
+	if environment == "" {
+		// Fallback: use "dev" for local testing (should rarely happen)
+		environment = "dev"
+		fmt.Printf("WARNING: SQUID_ENVIRONMENT not set, defaulting to: %s\n", environment)
 	}
 	
 	// DEBUG: Log image before reconfiguration
@@ -395,17 +389,10 @@ func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 
 // RenderHelmTemplate renders the Helm template with the given values and returns the YAML output
 func RenderHelmTemplate(chartPath string, values SquidHelmValues) (string, error) {
-	// Auto-detect environment (same logic as ConfigureSquidWithHelm)
-	var environment string
-	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
-		environment = "prerelease"
-	} else {
-		kubeconfig := os.Getenv("KUBECONFIG")
-		if kubeconfig != "" && strings.Contains(kubeconfig, "kind") {
-			environment = "dev"
-		} else {
-			environment = "prerelease"
-		}
+	// Environment is passed from test pod via SQUID_ENVIRONMENT env var
+	environment := os.Getenv("SQUID_ENVIRONMENT")
+	if environment == "" {
+		environment = "dev" // Fallback for local testing
 	}
 	
 	values.Environment = environment

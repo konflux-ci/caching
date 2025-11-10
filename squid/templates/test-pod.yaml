@@ -79,6 +79,9 @@ spec:
       echo "Running tests..."
       /app/tests/e2e-v2/e2e.test -ginkgo.v -ginkgo.label-filter="{{ .Values.test.labelFilter }}"
     env:
+    # Pass environment to test binary so it knows which image repos to use
+    - name: SQUID_ENVIRONMENT
+      value: {{ .Values.environment | quote }}
     - name: POD_IP
       valueFrom:
         fieldRef:
