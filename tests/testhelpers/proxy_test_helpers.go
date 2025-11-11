@@ -268,14 +268,11 @@ type TLSOutgoingOptionsValues struct {
 }
 
 type SquidHelmValues struct {
-	Cache                         *CacheValues              `json:"cache,omitempty"`
-	Environment                   string                    `json:"environment,omitempty"`
-	ReplicaCount                  int                       `json:"replicaCount,omitempty"`
-	TLSOutgoingOptions            *TLSOutgoingOptionsValues `json:"tlsOutgoingOptions,omitempty"`
-	Affinity                      json.RawMessage           `json:"affinity,omitempty"`
-	InstallCertManagerComponents  bool                      `json:"installCertManagerComponents"`
-	CertManagerEnabled            bool                      `json:"cert-manager.enabled"`
-	TrustManagerEnabled           bool                      `json:"trust-manager.enabled"`
+	Cache              *CacheValues              `json:"cache,omitempty"`
+	Environment        string                    `json:"environment,omitempty"`
+	ReplicaCount       int                       `json:"replicaCount,omitempty"`
+	TLSOutgoingOptions *TLSOutgoingOptionsValues `json:"tlsOutgoingOptions,omitempty"`
+	Affinity           json.RawMessage           `json:"affinity,omitempty"`
 }
 
 // ConfigureSquidWithHelm configures Squid deployment using helm values
