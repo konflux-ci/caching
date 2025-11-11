@@ -381,7 +381,8 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	// Build helm command as a shell string
 	// Use the configured namespace instead of hardcoded "default"
 	// --install flag allows this to work for both initial install and subsequent upgrades
-	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=120s", "--values", valuesFile}
+	// Timeout set to 300s (5 minutes) to allow for slower pod readiness in test reconfigurations
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=500s", "--values", valuesFile}
 	
 	// Append any extra arguments (e.g., --set flags)
 	if len(extraArgs) > 0 {
