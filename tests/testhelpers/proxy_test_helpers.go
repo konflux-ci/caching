@@ -325,7 +325,14 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	if chartPath == "" {
 		chartPath = "./squid"
 	}
-	err = UpgradeChart("squid", chartPath, valuesFile)
+	// Always disable cert-manager components during upgrades
+	// These are installed externally by the E2E pipeline
+	extraArgs := []string{
+		"--set", "installCertManagerComponents=false",
+		"--set", "cert-manager.enabled=false",
+		"--set", "trust-manager.enabled=false",
+	}
+	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
@@ -361,6 +368,11 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 
 // UpgradeChart performs a helm upgrade with the specified chart and values file
 func UpgradeChart(releaseName, chartName string, valuesFile string) error {
+	return UpgradeChartWithArgs(releaseName, chartName, valuesFile, nil)
+}
+
+// UpgradeChartWithArgs performs a helm upgrade with additional --set arguments
+func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extraArgs []string) error {
 	fmt.Printf("🔍 DEBUG: UpgradeChart called - Code Version: 20251107-NAMESPACE-FIX\n")
 	fmt.Printf("🔍 DEBUG: Namespace constant value: '%s'\n", Namespace)
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
@@ -370,6 +382,11 @@ func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 	// --install flag allows this to work for both initial install and subsequent upgrades
 	// --force flag handles chart version mismatches in testing
 	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=120s", "--values", valuesFile, "--force"}
+	
+	// Append any extra arguments (e.g., --set flags)
+	if len(extraArgs) > 0 {
+		cmdParts = append(cmdParts, extraArgs...)
+	}
 
 	// Join into single shell command string
 	shellCmd := strings.Join(cmdParts, " ")
