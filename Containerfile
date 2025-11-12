@@ -10,7 +10,7 @@ ENV DESCRIPTION="\
     hot objects cached in RAM, caches DNS lookups, supports non-blocking \
     DNS lookups, and implements negative caching of failed requests."
 
-ENV SQUID_VERSION="6.10-5.el10"
+ENV SQUID_VERSION="6.10-6.el10_1.1"
 
 LABEL name="$NAME"
 LABEL summary="$SUMMARY"
@@ -31,8 +31,7 @@ EXPOSE 3130
 
 COPY LICENSE /licenses/
 
-RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    microdnf install -y "squid-${SQUID_VERSION}" && microdnf clean all
+RUN  microdnf install -y "squid-${SQUID_VERSION}" && microdnf clean all
 
 COPY --chmod=0755 container-entrypoint.sh /usr/sbin/container-entrypoint.sh
 
@@ -46,8 +45,7 @@ RUN chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /ru
 FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:649f7ce8082531148ac5e45b61612046a21e36648ab096a77e6ba0c94428cf60 AS go-builder
 
 # Install required packages for Go build
-RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    microdnf install -y \
+RUN microdnf install -y \
     tar \
     gzip \
     gcc \
@@ -60,13 +58,9 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 ARG GO_VERSION=1.25.3
 ARG GO_SHA256=0335f314b6e7bfe08c3d0cfaa7c19db961b7b99fb20be62b0a826c992ad14e0f
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-# Use prefetched Go tarball from Cachi2
-RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    if [ -f /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz ]; then \
-        cp /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz go.tar.gz; \
-    else \
-        curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz; \
-    fi && \
+
+RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz; \
+    && \
     echo "${GO_SHA256}  go.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xzf go.tar.gz && \
     rm go.tar.gz
@@ -81,28 +75,23 @@ WORKDIR /workspace
 # Build both exporters in a single stage
 # 1. Pre-fetch deps for exporters and helpers
 COPY go.mod go.sum ./
-RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    go mod download
+RUN go mod download
 
 # 2. Build external squid-exporter (using prefetched modules)
-RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    CGO_ENABLED=0 GOOS=linux go build -o /workspace/squid-exporter github.com/boynux/squid-exporter
+RUN CGO_ENABLED=0 GOOS=linux go build -o /workspace/squid-exporter github.com/boynux/squid-exporter
 
 # 3. Copy source and build the per-site exporter
 COPY ./cmd/squid-per-site-exporter ./cmd/squid-per-site-exporter
 RUN --mount=type=cache,target=/tmp/go-cache \
-    if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     CGO_ENABLED=0 GOOS=linux go build -o /workspace/per-site-exporter ./cmd/squid-per-site-exporter
 
 # 4. Copy source and build the store-id helper
 COPY ./cmd/squid-store-id ./cmd/squid-store-id
 RUN --mount=type=cache,target=/tmp/go-cache \
-    if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     CGO_ENABLED=0 GOOS=linux go build -o /workspace/squid-store-id ./cmd/squid-store-id
 
 COPY ./cmd/icap-server ./cmd/icap-server
 RUN --mount=type=cache,target=/tmp/go-cache \
-    if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     CGO_ENABLED=0 GOOS=linux go build -o /workspace/icap-server ./cmd/icap-server
 
 # ==========================================
