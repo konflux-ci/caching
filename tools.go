@@ -9,6 +9,7 @@ package tools
 import (
 	_ "github.com/boynux/squid-exporter"
 	_ "github.com/onsi/ginkgo/v2/ginkgo"
+	_ "helm.sh/helm/v3/cmd/helm"
 	// Test dependencies - imported here so Cachi2 will prefetch them
 	_ "github.com/stretchr/testify/assert"
 	_ "gopkg.in/check.v1"
