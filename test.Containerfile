@@ -8,8 +8,8 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     tar-2:1.35-7.el10 \
     gzip-1.13-3.el10 \
     which-2.21-44.el10_0 \
-    procps-ng-4.0.4-7.el10 \
-    gcc-14.2.1-7.el10 && \
+    procps-ng \
+    gcc && \
     microdnf clean all
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]

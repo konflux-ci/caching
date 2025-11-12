@@ -10,7 +10,7 @@ ENV DESCRIPTION="\
     hot objects cached in RAM, caches DNS lookups, supports non-blocking \
     DNS lookups, and implements negative caching of failed requests."
 
-ENV SQUID_VERSION="6.10-5.el10"
+ENV SQUID_VERSION="6.10"
 
 LABEL name="$NAME"
 LABEL summary="$SUMMARY"
