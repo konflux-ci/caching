@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -24,6 +25,10 @@ import (
 	"sigs.k8s.io/yaml"
 
 	. "github.com/onsi/gomega"
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -33,8 +38,9 @@ import (
 type TestServerResponse struct {
 	Message    string  `json:"message"`
 	RequestID  float64 `json:"request_id"`
-	Timestamp  int64   `json:"timestamp"`
+	Timestamp  float64 `json:"timestamp"`
 	ServerHits float64 `json:"server_hits"`
+	SquidPod   string  `json:"squid_pod"` // extracted from Via header
 }
 
 // CachingTestServer wraps an HTTP test server with request counting and caching-friendly configuration
@@ -43,6 +49,112 @@ type CachingTestServer struct {
 	RequestCount *int32
 	PodIP        string
 	URL          string
+}
+
+// ExtractSquidPodFromViaHeader extracts the Squid pod name from the Via response header
+// Via header format: "1.1 squid-<pod-name> (squid/<version>)"
+func ExtractSquidPodFromViaHeader(resp *http.Response) string {
+	viaHeader := resp.Header.Get("Via")
+	if viaHeader == "" {
+		return ""
+	}
+
+	// Parse "1.1 hostname (squid/version)" format and return the hostname (second field)
+	parts := strings.Fields(viaHeader)
+	if len(parts) >= 2 {
+		return parts[1]
+	}
+
+	return ""
+}
+
+// CacheHitResult contains the results of finding a cache hit from a pod
+type CacheHitResult struct {
+	CacheHitFound    bool
+	CachedResponse   *TestServerResponse
+	CacheHitPod      string
+	OriginalResponse *TestServerResponse
+	PodFirstHits     map[string]*TestServerResponse
+}
+
+// FindCacheHitFromAnyPod makes requests until finding a cache hit from any pod
+func FindCacheHitFromAnyPod(client *http.Client, testURL string, replicaCount int32) (*CacheHitResult, error) {
+	maxAttempts := int(replicaCount) + 1
+	fmt.Printf("🔍 DEBUG: Replica count: %d, max attempts: %d\n", replicaCount, maxAttempts)
+
+	// Maximum attempts needed: replicas + 1 (pigeonhole principle)
+	// With N pods, we need at most N+1 requests to guarantee hitting the same pod twice
+	podFirstHits := make(map[string]*TestServerResponse)
+
+	// Making requests until we get a cache hit from any pod
+	for i := range maxAttempts {
+		fmt.Printf("\n🔍 DEBUG: === REQUEST %d/%d ===\n", i+1, maxAttempts)
+
+		resp, body, err := MakeCachingRequest(client, testURL)
+		Expect(err).NotTo(HaveOccurred(), "Request should succeed")
+
+		currentPod := ExtractSquidPodFromViaHeader(resp)
+		Expect(currentPod).NotTo(BeEmpty(), "Via header should contain pod name")
+
+		response, err := ParseTestServerResponse(body)
+		Expect(err).NotTo(HaveOccurred(), "Should parse response JSON")
+
+		// Debug logging
+		fmt.Printf("🔍 DEBUG: Full response details:\n")
+		fmt.Printf("  Status: %s\n", resp.Status)
+		for key, values := range resp.Header {
+			for _, value := range values {
+				fmt.Printf("    %s: %s\n", key, value)
+			}
+		}
+
+		resp.Body.Close()
+		fmt.Printf("🔍 DEBUG: Request %d: pod=%s, request_id=%v\n", i+1, currentPod, response.RequestID)
+
+		if firstHit, seen := podFirstHits[currentPod]; seen {
+			fmt.Printf("🔍 DEBUG: Pod %s seen before (first hit: request_id=%v)\n", currentPod, firstHit.RequestID)
+			// We've hit this pod before - check if it's a cache hit
+			if response.RequestID == firstHit.RequestID {
+				fmt.Printf("✅ CACHE HIT DETECTED on request %d from pod %s!\n", i+1, currentPod)
+				fmt.Printf("🔍 DEBUG: Original request_id: %v, Cached request_id: %v\n",
+					firstHit.RequestID, response.RequestID)
+				fmt.Printf("🔍 DEBUG: Original timestamp: %f, Cached timestamp: %f\n",
+					firstHit.Timestamp, response.Timestamp)
+
+				return &CacheHitResult{
+					CacheHitFound:    true,
+					CachedResponse:   response,
+					CacheHitPod:      currentPod,
+					OriginalResponse: firstHit,
+					PodFirstHits:     podFirstHits,
+				}, nil
+
+			}
+		} else {
+			// First time seeing this pod - record its first hit
+			podFirstHits[currentPod] = response
+			fmt.Printf("🔍 DEBUG: First hit from pod %s with request_id=%v\n", currentPod, response.RequestID)
+		}
+	}
+
+	return nil, fmt.Errorf("no cache hit found from any pod within %d attempts", maxAttempts)
+
+}
+
+// ValidateCacheHitSamePod verifies that a cached response came from the same pod
+// and has the same request_id as the original
+func ValidateCacheHitSamePod(originalResponse, cachedResponse *TestServerResponse, originalPod, cachedPod string) {
+	// Verify both requests went through the same pod
+	Expect(cachedPod).To(Equal(originalPod),
+		"Cached request should be handled by the same pod as original")
+
+	// Both responses should have the same request ID (indicating cache hit)
+	Expect(cachedResponse.RequestID).To(Equal(originalResponse.RequestID),
+		"Cached response should have same request_id as original")
+
+	// Cache should preserve the original timestamp
+	Expect(cachedResponse.Timestamp).To(Equal(originalResponse.Timestamp),
+		"Cached response should preserve original timestamp")
 }
 
 // NewCachingTestServer creates a new test server configured for cross-pod communication
@@ -61,7 +173,7 @@ func NewCachingTestServer(message string, podIP string, port int) (*CachingTestS
 		response := TestServerResponse{
 			Message:    message,
 			RequestID:  float64(count),
-			Timestamp:  time.Now().Unix(),
+			Timestamp:  float64(time.Now().Unix()),
 			ServerHits: float64(count),
 		}
 
@@ -185,6 +297,7 @@ func MakeCachingRequest(client *http.Client, url string) (*http.Response, []byte
 
 // ParseTestServerResponse parses a JSON response from a test server
 func ParseTestServerResponse(body []byte) (*TestServerResponse, error) {
+	fmt.Printf("DEBUG: Raw response body: %s\n", string(body))
 	var response TestServerResponse
 	err := json.Unmarshal(body, &response)
 	if err != nil {
@@ -225,38 +338,39 @@ func ValidateServerHit(response *TestServerResponse, expectedRequestID float64, 
 		"Server should have received expected number of requests")
 }
 
-// WaitForSquidDeploymentReady waits for squid deployment to be ready and only one squid pod to be present
-func WaitForSquidDeploymentReady(ctx context.Context, client kubernetes.Interface) error {
+// WaitForSquidDeploymentReady waits for squid deployment to be ready and all replica pods to be present
+func WaitForSquidDeploymentReady(ctx context.Context, client kubernetes.Interface) (*v1.Deployment, error) {
 	fmt.Printf("Waiting for squid deployment to be ready...\n")
 
+	var expectedReplicas int32
+	var deployment *v1.Deployment
 	Eventually(func() error {
-		deployments, err := client.AppsV1().Deployments("caching").List(ctx, metav1.ListOptions{
-			LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component=squid-caching",
-		})
+		var err error
+		deployment, err = client.AppsV1().Deployments(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get deployments: %w", err)
 		}
 
-		if len(deployments.Items) != 1 {
-			return fmt.Errorf("expected 1 deployment, got %d", len(deployments.Items))
-		}
+		expectedReplicas = *deployment.Spec.Replicas
+		fmt.Printf("Deployment status: %d/%d replicas ready (expected: %d)\n",
+			deployment.Status.ReadyReplicas, expectedReplicas, expectedReplicas)
 
-		deployment := deployments.Items[0]
-		if deployment.Status.ReadyReplicas != *deployment.Spec.Replicas {
+		if deployment.Status.ReadyReplicas != expectedReplicas {
 			return fmt.Errorf("deployment not ready: %d/%d replicas ready",
-				deployment.Status.ReadyReplicas, *deployment.Spec.Replicas)
+				deployment.Status.ReadyReplicas, expectedReplicas)
 		}
 
 		return nil
 	}, 120*time.Second, 5*time.Second).Should(Succeed())
 
-	fmt.Printf("Waiting for only one squid pod to be present...\n")
-	Eventually(func() error {
-		_, err := GetSquidPod(ctx, client, "caching")
-		return err
-	}, 120*time.Second, 5*time.Second).Should(Succeed())
+	fmt.Printf("Waiting for %d squid pod(s) to be present and ready...\n", expectedReplicas)
+	pods, err := GetSquidPods(ctx, client, Namespace, expectedReplicas)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get squid pods: %w", err)
+	}
+	fmt.Printf("Successfully found %d squid pod(s) ready\n", len(pods))
 
-	return nil
+	return deployment, nil
 }
 
 type CacheValues struct {
@@ -277,42 +391,62 @@ type SquidHelmValues struct {
 
 // ConfigureSquidWithHelm configures Squid deployment using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
-	// Environment is passed from test pod via SQUID_ENVIRONMENT env var
-	// This is set by test-pod.yaml from .Values.environment
-	// Default is "release", override with --set environment=X
-	environment := os.Getenv("SQUID_ENVIRONMENT")
-	if environment == "" {
-		// Fallback: use "dev" for local testing (should rarely happen)
-		environment = "dev"
-		fmt.Printf("WARNING: SQUID_ENVIRONMENT not set, defaulting to: %s\n", environment)
-	}
+// Environment is passed from test pod via SQUID_ENVIRONMENT env var
+// This is set by test-pod.yaml from .Values.environment
+// Default is "dev" for local testing
+environment := os.Getenv("SQUID_ENVIRONMENT")
+if environment == "" {
+	// Fallback: use "dev" for local testing (should rarely happen)
+	environment = "dev"
+	fmt.Printf("WARNING: SQUID_ENVIRONMENT not set, defaulting to: %s\n", environment)
+}
+
+// DEBUG: Log image before reconfiguration
+fmt.Printf("\n==========================================\n")
+fmt.Printf("🔍 DEBUG: ConfigureSquidWithHelm called\n")
+fmt.Printf("==========================================\n")
+fmt.Printf("Environment detected: %s\n", environment)
+
+// Get current image before helm upgrade
+deployment, err := client.AppsV1().Deployments(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
+if err == nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
+	currentImage := deployment.Spec.Template.Spec.Containers[0].Image
+	fmt.Printf("Current squid image BEFORE reconfiguration: %s\n", currentImage)
 	
-	// DEBUG: Log image before reconfiguration
-	fmt.Printf("\n==========================================\n")
-	fmt.Printf("🔍 DEBUG: ConfigureSquidWithHelm called\n")
-	fmt.Printf("==========================================\n")
-	fmt.Printf("Environment detected: %s\n", environment)
-	
-	// Get current image before helm upgrade
-	deployment, err := client.AppsV1().Deployments(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
-	if err == nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
-		currentImage := deployment.Spec.Template.Spec.Containers[0].Image
-		fmt.Printf("Current squid image BEFORE reconfiguration: %s\n", currentImage)
-		
-		// Check for snapshot env vars
-		if snapshotImage := os.Getenv("SNAPSHOT_SQUID_IMAGE"); snapshotImage != "" {
-			fmt.Printf("SNAPSHOT_SQUID_IMAGE env var: %s\n", snapshotImage)
-			if currentImage != snapshotImage {
-				fmt.Printf("⚠️  WARNING: Current image doesn't match snapshot!\n")
-			}
-		} else {
-			fmt.Printf("⚠️  WARNING: SNAPSHOT_SQUID_IMAGE env var NOT SET\n")
-			fmt.Printf("   This means snapshot images won't be preserved!\n")
+	// Check for snapshot env vars
+	if snapshotImage := os.Getenv("SNAPSHOT_SQUID_IMAGE"); snapshotImage != "" {
+		fmt.Printf("SNAPSHOT_SQUID_IMAGE env var: %s\n", snapshotImage)
+		if currentImage != snapshotImage {
+			fmt.Printf("⚠️  WARNING: Current image doesn't match snapshot!\n")
 		}
+	} else {
+		fmt.Printf("⚠️  WARNING: SNAPSHOT_SQUID_IMAGE env var NOT SET\n")
+		fmt.Printf("   This means snapshot images won't be preserved!\n")
 	}
-	fmt.Printf("==========================================\n\n")
-	
-	values.Environment = environment
+}
+fmt.Printf("==========================================\n\n")
+
+values.Environment = environment
+
+// Handle replica count logic:
+// 1. If SQUID_REPLICA_COUNT env var does not exist or equals 0 -> use value from values.yaml (don't set ReplicaCount)
+// 2. If SQUID_REPLICA_COUNT exists and > 0 -> use the env var value
+envReplicas := os.Getenv("SQUID_REPLICA_COUNT")
+if envReplicas != "" {
+	if count, err := strconv.Atoi(envReplicas); err == nil && count > 0 {
+		// Case 2: Environment variable > 0 -> use the env var value
+		values.ReplicaCount = count
+		fmt.Printf("DEBUG: Using replica count from SQUID_REPLICA_COUNT env var: %d\n", count)
+	} else {
+		// Case 1: Environment variable equals 0 or invalid -> use values.yaml default
+		fmt.Printf("DEBUG: SQUID_REPLICA_COUNT=%s, using default from values.yaml\n", envReplicas)
+		// Don't set values.ReplicaCount, let Helm use the default from values.yaml
+	}
+} else {
+	// Case 1: Environment variable does not exist -> use values.yaml default
+	fmt.Printf("DEBUG: SQUID_REPLICA_COUNT not set, using default from values.yaml\n")
+	// Don't set values.ReplicaCount, let Helm use the default from values.yaml
+}
 	valuesFile, err := writeValuesToFile(&values)
 	if err != nil {
 		return fmt.Errorf("failed to write values to file: %w", err)
@@ -338,7 +472,7 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
 
-	err = WaitForSquidDeploymentReady(ctx, client)
+	_, err = WaitForSquidDeploymentReady(ctx, client)
 	if err != nil {
 		return fmt.Errorf("failed to wait for squid deployment to be ready: %w", err)
 	}
@@ -368,6 +502,7 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 }
 
 // UpgradeChart performs a helm upgrade with the specified chart and values file
+// If valuesFile is empty, uses values.yaml defaults and sets environment=dev
 func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 	return UpgradeChartWithArgs(releaseName, chartName, valuesFile, nil)
 }
@@ -381,9 +516,18 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	// Build helm command as a shell string
 	// Use the configured namespace instead of hardcoded "default"
 	// --install flag allows this to work for both initial install and subsequent upgrades
-	// Timeout set to 300s (5 minutes) to allow for slower pod readiness in test reconfigurations
-	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=500s", "--values", valuesFile}
-	
+	// Timeout set to 500s (8.3 minutes) to allow for slower pod readiness in test reconfigurations
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=500s"}
+
+	// If valuesFile is provided, use it; otherwise use values.yaml defaults with --set flags
+	if valuesFile != "" {
+		cmdParts = append(cmdParts, "--values", valuesFile)
+	} else {
+		// Use values.yaml defaults but keep environment=dev for test environment
+		// (values.yaml defaults to environment=release which uses quay.io images)
+		cmdParts = append(cmdParts, "--set", "environment=dev")
+	}
+
 	// Append any extra arguments (e.g., --set flags)
 	if len(extraArgs) > 0 {
 		cmdParts = append(cmdParts, extraArgs...)
@@ -520,24 +664,89 @@ func findChartYamlInDirectory(rootDir string) (string, error) {
 	return chartYamlPath, nil
 }
 
-// GetSquidPod queries for the active squid pod. Returns an error if no or multiple pods are found.
-func GetSquidPod(ctx context.Context, client kubernetes.Interface, namespace string) (*corev1.Pod, error) {
-	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: "app.kubernetes.io/name=squid,app.kubernetes.io/component=squid-caching",
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list squid pods: %w", err)
-	}
+// GetSquidPods queries for squid pods and verifies the count matches deployment replicas.
+// Uses Eventually pattern to keep retrying until all active pods are running and ready.
+// During rolling updates, excludes terminating pods from the count.
+func GetSquidPods(ctx context.Context, client kubernetes.Interface, namespace string, expectedReplicas int32) ([]*corev1.Pod, error) {
+	fmt.Printf("Checking for squid pods: expected %d replicas\n", expectedReplicas)
 
-	if len(pods.Items) == 0 {
-		return nil, fmt.Errorf("no squid pods found")
-	}
+	var result []*corev1.Pod
+	var err error
 
-	if len(pods.Items) > 1 {
-		return nil, fmt.Errorf("%d squid pods found", len(pods.Items))
-	}
+	Eventually(func() error {
+		pods, listErr := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=" + DeploymentName + ",app.kubernetes.io/component=" + DeploymentName + "-" + Namespace,
+		})
+		if listErr != nil {
+			fmt.Printf("Failed to list squid pods: %v\n", listErr)
+			return fmt.Errorf("failed to list squid pods: %w", listErr)
+		}
 
-	return &pods.Items[0], nil
+		fmt.Printf("Found %d squid pod(s) in namespace %s\n", len(pods.Items), namespace)
+
+		if len(pods.Items) == 0 {
+			fmt.Printf("No squid pods found, waiting...\n")
+			return fmt.Errorf("no squid pods found")
+		}
+
+		// Filter out pods that are terminating (during rolling updates)
+		activePods := make([]corev1.Pod, 0, len(pods.Items))
+		for _, pod := range pods.Items {
+			// Skip pods that are terminating (have deletion timestamp)
+			if pod.DeletionTimestamp == nil {
+				activePods = append(activePods, pod)
+			} else {
+				fmt.Printf("Pod %s is terminating, excluding from count\n", pod.Name)
+			}
+		}
+
+		fmt.Printf("Found %d active squid pod(s) (excluding terminating pods)\n", len(activePods))
+
+		if int32(len(activePods)) != expectedReplicas {
+			fmt.Printf("Active pod count mismatch: expected %d, found %d, waiting...\n", expectedReplicas, len(activePods))
+			return fmt.Errorf("expected %d active squid pods, found %d", expectedReplicas, len(activePods))
+		}
+
+		// Verify all active pods are running and ready
+		result = make([]*corev1.Pod, 0, len(activePods))
+		for i := range activePods {
+			pod := &activePods[i]
+
+			fmt.Printf("Checking pod %s: phase=%s, containers=%d\n",
+				pod.Name, pod.Status.Phase, len(pod.Status.ContainerStatuses))
+
+			// Check if pod is in Running phase using Eventually pattern
+			if pod.Status.Phase != corev1.PodRunning {
+				fmt.Printf("Pod %s is not running: phase=%s, waiting...\n", pod.Name, pod.Status.Phase)
+				return fmt.Errorf("pod %s is not running: phase=%s", pod.Name, pod.Status.Phase)
+			}
+
+			// Check if all containers in the pod are ready
+			allContainersReady := true
+			readyContainers := 0
+			for _, containerStatus := range pod.Status.ContainerStatuses {
+				if containerStatus.Ready {
+					readyContainers++
+				} else {
+					allContainersReady = false
+					fmt.Printf("Container %s in pod %s is not ready, waiting...\n", containerStatus.Name, pod.Name)
+				}
+			}
+
+			fmt.Printf("Pod %s: %d/%d containers ready\n", pod.Name, readyContainers, len(pod.Status.ContainerStatuses))
+
+			if !allContainersReady {
+				return fmt.Errorf("pod %s has containers that are not ready", pod.Name)
+			}
+
+			result = append(result, pod)
+		}
+
+		fmt.Printf("All %d squid pod(s) are running and ready\n", len(result))
+		return nil
+	}, 120*time.Second, 5*time.Second).Should(Succeed())
+
+	return result, err
 }
 
 // GetPodLogsSince retrieves logs from a pod container since a specific timestamp
@@ -591,4 +800,156 @@ func PullContainerImage(t *http.RoundTripper, imageRef string) error {
 	}
 
 	return nil
+}
+
+// GetPerSiteMetricsValue extracts a metric value from Prometheus metrics content for a specific hostname.
+// It parses the Prometheus text format and returns the numeric value for the given metric and hostname.
+//
+// Example usage:
+//
+//	metricsContent := "squid_site_requests_total{hostname=\"example.com\",job=\"squid\"} 42"
+//	value, err := GetPerSiteMetricsValue(metricsContent, "squid_site_requests_total", "example.com")
+//	// value will be 42
+func GetPerSiteMetricsValue(metricsContent, metricName, hostname string) (float64, error) {
+	// Parse the metrics using expfmt
+	parser := expfmt.NewTextParser(model.LegacyValidation)
+	metricFamilies, err := parser.TextToMetricFamilies(strings.NewReader(metricsContent))
+	if err != nil {
+		return 0, fmt.Errorf("failed to parse metrics: %w", err)
+	}
+
+	// Find the metric family with the requested name
+	metricFamily, found := metricFamilies[metricName]
+	if !found {
+		return 0, fmt.Errorf("metric %s not found", metricName)
+	}
+
+	// Iterate through metrics in the family to find the one with matching hostname label
+	for _, metric := range metricFamily.Metric {
+		// Check if this metric has the hostname label matching our target
+		for _, label := range metric.Label {
+			if label.GetName() == "hostname" && label.GetValue() == hostname {
+				// Found the metric with matching hostname, extract the value
+				switch metricFamily.GetType() {
+				case dto.MetricType_COUNTER:
+					return metric.Counter.GetValue(), nil
+				case dto.MetricType_GAUGE:
+					return metric.Gauge.GetValue(), nil
+				case dto.MetricType_UNTYPED:
+					return metric.Untyped.GetValue(), nil
+				default:
+					return 0, fmt.Errorf("unsupported metric type: %s", metricFamily.GetType())
+				}
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("metric %s for hostname %s not found", metricName, hostname)
+}
+
+// GetAggregatedMetrics retrieves and aggregates metrics from all squid pods by querying each pod's metrics endpoint.
+// It returns the total sum of the specified metric across all pods.
+//
+// Example usage:
+//
+//	totalRequests := GetAggregatedMetrics(ctx, clientset, metricsClient, namespace, 3, "squid_site_requests_total", "example.com")
+func GetAggregatedMetrics(ctx context.Context, client kubernetes.Interface, metricsHTTPClient *http.Client, namespace string, expectedReplicas int32, metricName, hostname string) (float64, error) {
+	var totalValue float64
+	pods, err := GetSquidPods(ctx, client, namespace, expectedReplicas)
+	if err != nil {
+		fmt.Printf("DEBUG: Error getting pods: %v\n", err)
+		return 0, fmt.Errorf("error getting pods: %w", err)
+	}
+
+	for _, pod := range pods {
+		podIP := pod.Status.PodIP
+		metricsURL := fmt.Sprintf("https://%s:9302/metrics", podIP)
+
+		fmt.Printf("DEBUG: Querying metrics from pod %s (%s) at %s\n", pod.Name, podIP, metricsURL)
+		resp, err := metricsHTTPClient.Get(metricsURL)
+		if err != nil {
+			fmt.Printf("DEBUG: Error querying pod %s: %v\n", pod.Name, err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("DEBUG: Error reading response from %s: %v\n", pod.Name, err)
+			continue
+		}
+
+		// Parse metrics for this pod
+		bodyString := string(bodyBytes)
+		podValue, err := GetPerSiteMetricsValue(bodyString, metricName, hostname)
+		if err != nil {
+			fmt.Printf("DEBUG: Error parsing metric %s for hostname %s from pod %s: %v\n", metricName, hostname, pod.Name, err)
+			continue
+		}
+
+		totalValue += podValue
+		fmt.Printf("DEBUG: Pod %s %s for %s: %.0f\n", pod.Name, metricName, hostname, podValue)
+	}
+
+	fmt.Printf("DEBUG: Total aggregated %s for %s: %.0f\n", metricName, hostname, totalValue)
+	return totalValue, nil
+}
+
+// GetPerPodMetrics retrieves metrics from all squid pods and returns a map of pod names to their metric values.
+// Unlike GetAggregatedMetrics, this method does NOT aggregate values - it returns individual pod metrics.
+//
+// Example usage:
+//
+//	podMetrics := GetPerPodMetrics(ctx, clientset, metricsClient, namespace, 3, "squid_site_bytes_total", "example.com")
+//	podMetrics will be: map[string]float64{"squid-xxx-pod1": 1234.5, "squid-xxx-pod2": 5678.9}
+func GetPerPodMetrics(ctx context.Context, client kubernetes.Interface, metricsHTTPClient *http.Client, namespace string, expectedReplicas int32, metricName, hostname string) (map[string]float64, error) {
+	podMetrics := make(map[string]float64)
+	pods, err := GetSquidPods(ctx, client, namespace, expectedReplicas)
+	if err != nil {
+		fmt.Printf("DEBUG: Error getting pods: %v\n", err)
+		return podMetrics, fmt.Errorf("error getting pods: %w", err)
+	}
+
+	for _, pod := range pods {
+		podIP := pod.Status.PodIP
+		metricsURL := fmt.Sprintf("https://%s:9302/metrics", podIP)
+
+		fmt.Printf("DEBUG: Querying metrics from pod %s (%s) at %s\n", pod.Name, podIP, metricsURL)
+		resp, err := metricsHTTPClient.Get(metricsURL)
+		if err != nil {
+			fmt.Printf("DEBUG: Error querying pod %s: %v\n", pod.Name, err)
+			continue
+		}
+		defer resp.Body.Close()
+
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("DEBUG: Error reading response from %s: %v\n", pod.Name, err)
+			continue
+		}
+
+		// Parse metrics for this pod
+		bodyString := string(bodyBytes)
+		podValue, err := GetPerSiteMetricsValue(bodyString, metricName, hostname)
+		if err != nil {
+			fmt.Printf("DEBUG: Error parsing metric %s for hostname %s from pod %s: %v\n", metricName, hostname, pod.Name, err)
+			continue
+		}
+
+		podMetrics[pod.Name] = podValue
+		fmt.Printf("DEBUG: Pod %s %s for %s: %.0f\n", pod.Name, metricName, hostname, podValue)
+	}
+
+	return podMetrics, nil
+}
+
+// FindContainerByName finds a container by name in a pod's container spec
+// Returns the container if found, or nil if not found
+func FindContainerByName(pod *corev1.Pod, containerName string) (*corev1.Container, error) {
+	for i := range pod.Spec.Containers {
+		if pod.Spec.Containers[i].Name == containerName {
+			return &pod.Spec.Containers[i], nil
+		}
+	}
+	return nil, fmt.Errorf("container %s not found in pod %s", containerName, pod.Name)
 }

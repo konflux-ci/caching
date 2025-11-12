@@ -83,34 +83,22 @@ data:
             set $test_id $1;
             add_header Content-Type application/json;
             add_header Cache-Control "no-cache, no-store, must-revalidate";
-            return 200 '{\
-            "message": "SSL-Bump test", \
-            "test_id": "$test_id", \
-            "timestamp": "$time_iso8601"\
-            }';
+            return 200 '{"message": "SSL-Bump test", "request_id": "$test_id", "timestamp": $msec}';
         }
 
         location /ssl-bump-test {
             add_header Content-Type application/json;
             add_header Cache-Control "no-cache, no-store, must-revalidate";
-            return 200 '{\
-            "message": "SSL-Bump test without ID", \
-            "timestamp": "$time_iso8601"\
-            }';
+            return 200 '{"message": "SSL-Bump test without ID", "timestamp": $msec}';
         }
 
-        # Handle SSL-Bump cache test paths (cacheable content for cache testing)
-        location ~ ^/ssl-bump-cache-test/(\w+)$ {
-            set $test_id $1;
-            add_header Content-Type application/json;
-            add_header Cache-Control "public, max-age=300";
-            return 200 '{\
-            "message": "SSL-Bump cache test", \
-            "test_id": "$test_id", \
-            "timestamp": "$time_iso8601", \
-            "cacheable": true\
-            }';
-        }
+            # Handle SSL-Bump cache test paths (cacheable content for cache testing)
+            location ~ ^/ssl-bump-cache-test/(\w+)$ {
+                set $test_id $1;
+                add_header Content-Type application/json;
+                add_header Cache-Control "public, max-age=300";
+                return 200 '{"message": "SSL-Bump cache test", "request_id": $test_id, "timestamp": $msec, "server_hits": $test_id}';
+            }
 
         # Default location - return a simple response for testing
         location / {

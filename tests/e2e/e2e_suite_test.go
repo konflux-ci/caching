@@ -24,14 +24,16 @@ var (
 	clientset         *kubernetes.Clientset
 	certManagerClient *certmanagerclient.Clientset
 	ctx               context.Context
+	suiteReplicaCount int32 // Will be set from env var or default to 1
 )
 
 const (
-	namespace      = testhelpers.Namespace
-	deploymentName = testhelpers.DeploymentName
-	serviceName    = testhelpers.ServiceName
-	timeout        = testhelpers.Timeout
-	interval       = testhelpers.Interval
+	namespace          = testhelpers.Namespace
+	deploymentName     = testhelpers.DeploymentName
+	serviceName        = testhelpers.ServiceName
+	timeout            = testhelpers.Timeout
+	interval           = testhelpers.Interval
+	squidContainerName = testhelpers.SquidContainerName
 )
 
 // getPodIP returns the pod IP address from downward API
@@ -90,10 +92,16 @@ func setupHTTPTestClient() *http.Client {
 	return client
 }
 
+// SetSuiteReplicaCount sets the replica count for the test suite
+// This should be called by Mage targets before running tests
+func SetSuiteReplicaCount(count int32) {
+	suiteReplicaCount = count
+}
+
 var _ = BeforeSuite(func() {
 	ctx = context.Background()
 
-	// Create Kubernetes client
+	// Create Kubernetes client first (need it to read current replica count)
 	var config *rest.Config
 	var err error
 
@@ -118,6 +126,36 @@ var _ = BeforeSuite(func() {
 	// Create cert-manager client
 	certManagerClient, err = certmanagerclient.NewForConfig(config)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create cert-manager client")
+
+	// Read replica count from environment variable or from existing deployment
+	if envReplicas := os.Getenv("SQUID_REPLICA_COUNT"); envReplicas != "" {
+		if count, parseErr := strconv.ParseInt(envReplicas, 10, 32); parseErr == nil {
+			suiteReplicaCount = int32(count)
+			fmt.Printf("DEBUG: Using replica count from SQUID_REPLICA_COUNT env var: %d\n", suiteReplicaCount)
+		} else {
+			fmt.Printf("DEBUG: Failed to parse SQUID_REPLICA_COUNT: %v\n", parseErr)
+		}
+	} else {
+		// No env var set, try to read from existing deployment
+		fmt.Printf("DEBUG: SQUID_REPLICA_COUNT not set, reading from deployment...\n")
+		deployment, err := clientset.AppsV1().Deployments(testhelpers.Namespace).Get(ctx, testhelpers.DeploymentName, metav1.GetOptions{})
+		if err == nil && deployment != nil && deployment.Spec.Replicas != nil {
+			suiteReplicaCount = *deployment.Spec.Replicas
+			fmt.Printf("DEBUG: Using replica count from existing deployment: %d\n", suiteReplicaCount)
+		} else {
+			// No existing deployment, default to 1
+			suiteReplicaCount = 1
+			fmt.Printf("DEBUG: No existing deployment found, defaulting to: %d\n", suiteReplicaCount)
+		}
+	}
+
+	err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
+		ReplicaCount: int(suiteReplicaCount),
+	})
+	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+
+	err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
+	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
 
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})

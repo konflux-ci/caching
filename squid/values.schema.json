@@ -683,11 +683,67 @@
       "required": ["image"],
       "additionalProperties": false
     },
+    "squidComponentConfig": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "$ref": "#/$defs/imageConfig"
+        },
+        "trust-manager": {
+          "type": "object",
+          "properties": {
+            "namespaceSelector": {
+              "type": "object",
+              "description": "Namespace selector for trust bundle distribution. Use {} to target all namespaces, or specify matchLabels/matchExpressions to target specific namespaces",
+              "properties": {
+                "matchLabels": {
+                  "type": "object",
+                  "description": "Label selector to match namespaces",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
+                },
+                "matchExpressions": {
+                  "type": "array",
+                  "description": "Expression-based selector to match namespaces",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "description": "Label key to match"
+                      },
+                      "operator": {
+                        "type": "string",
+                        "enum": ["In", "NotIn", "Exists", "DoesNotExist"],
+                        "description": "Operator for matching"
+                      },
+                      "values": {
+                        "type": "array",
+                        "description": "Values to match against",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": ["key", "operator"]
+                  }
+                }
+              }
+            }
+          },
+          "required": ["namespaceSelector"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["image", "trust-manager"],
+      "additionalProperties": false
+    },
     "environmentConfig": {
       "type": "object",
       "properties": {
         "squid": {
-          "$ref": "#/$defs/componentImageConfig"
+          "$ref": "#/$defs/squidComponentConfig"
         },
         "test": {
           "$ref": "#/$defs/componentImageConfig"

@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:649f7ce8082531148ac5e45b61612046a21e36648ab096a77e6ba0c94428cf60 AS squid-base
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:a129edad0158c3c5795fb7b0dd89df75f36930f636eb276683d6c2467b30c576 AS squid-base
 
 ENV NAME="konflux-ci/squid"
 ENV SUMMARY="The Squid proxy caching server for Konflux CI"
@@ -10,7 +10,7 @@ ENV DESCRIPTION="\
     hot objects cached in RAM, caches DNS lookups, supports non-blocking \
     DNS lookups, and implements negative caching of failed requests."
 
-ENV SQUID_VERSION="6.10"
+ENV SQUID_VERSION="6.10-6.el10_1.1"
 
 LABEL name="$NAME"
 LABEL summary="$SUMMARY"
@@ -43,7 +43,7 @@ RUN chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /ru
 # ==========================================
 # Stage 2: Combined Go builder (toolchain + exporters + helpers)
 # ==========================================
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:649f7ce8082531148ac5e45b61612046a21e36648ab096a77e6ba0c94428cf60 AS go-builder
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:a129edad0158c3c5795fb7b0dd89df75f36930f636eb276683d6c2467b30c576 AS go-builder
 
 # Install required packages for Go build
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \

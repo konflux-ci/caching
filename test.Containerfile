@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:649f7ce8082531148ac5e45b61612046a21e36648ab096a77e6ba0c94428cf60
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:a129edad0158c3c5795fb7b0dd89df75f36930f636eb276683d6c2467b30c576
 
 # Rebuild trigger: includes SQUID_CHART_PATH env var support for temp directory
 # Install required packages for Go and testing (version-locked)
@@ -8,8 +8,9 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     tar-2:1.35-7.el10 \
     gzip-1.13-3.el10 \
     which-2.21-44.el10_0 \
-    procps-ng \
-    gcc && \
+    procps-ng-4.0.4-8.el10 \
+    gcc-14.3.1-2.1.el10 \
+    shadow-utils-2:4.15.0-8.el10 && \
     microdnf clean all
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
