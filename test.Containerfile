@@ -15,8 +15,8 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install Go (version-locked)
-ARG GO_VERSION=1.25.3
-ARG GO_SHA256=0335f314b6e7bfe08c3d0cfaa7c19db961b7b99fb20be62b0a826c992ad14e0f
+ARG GO_VERSION=1.25.4
+ARG GO_SHA256=9fa5ffeda4170de60f67f3aa0f824e426421ba724c21e133c1e35d6159ca1bec
 # Use prefetched Go tarball from Cachi2
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     if [ -f /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz ]; then \
