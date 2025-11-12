@@ -23,6 +23,8 @@ envSettings:
         tag: "latest"
   prerelease:
     squid:
+      trust-manager:
+        namespaceSelector: {}
       image:
         repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid
         tag: "latest"
