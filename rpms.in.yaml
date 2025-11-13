@@ -2,25 +2,29 @@
 # RPM input file for both Containerfile and test.Containerfile
 # Used by Cachi2 to prefetch RPMs for hermetic builds
 # Includes packages for both main squid image and test image
+# Using generic package names - MintMaker will track latest versions automatically
+# The lockfile ensures reproducible builds while staying up-to-date
 packages:
   # Main squid image packages
-  - squid-6.10-6.el10_1.1
-  - tar
-  - gzip
-  - gcc
-  - curl
   - ca-certificates
+  - curl
+  - gcc
   - git
-  # Test image specific packages (version-locked)
-  - tar-2:1.35-7.el10
-  - gzip-1.13-3.el10
-  - which-2.21-44.el10_0
-  - procps-ng-4.0.4-8.el10
-  - gcc-14.3.1-2.1.el10
-  - shadow-utils-2:4.15.0-8.el10
+  - gzip
+  - squid
+  - tar
+  # Test image specific packages
+  - procps-ng
+  - shadow-utils
+  - which
 contentOrigin:
   repofiles:
     - ./ubi-10.repo
 arches:
   - x86_64
+context:
+  # Use test.Containerfile (single-stage) to avoid ambiguity with multi-stage Containerfile
+  # This ensures MintMaker correctly identifies the base image and excludes packages
+  # already present in the base image
+  containerfile: test.Containerfile
 
