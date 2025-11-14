@@ -459,19 +459,20 @@ if envReplicas != "" {
 	if chartPath == "" {
 		chartPath = "./squid"
 	}
-	// Always disable cert-manager components during upgrades
-	// These are managed externally by the E2E pipeline (installed separately or disabled)
-	extraArgs := []string{
-		"--set", "installCertManagerComponents=false",
-		"--set", "cert-manager.enabled=false",
-		"--set", "trust-manager.enabled=false",
-	}
+	// Build extraArgs based on environment
+	var extraArgs []string
 	
-	// Only disable mirrord in prerelease (EaaS) environment
-	// Devcontainer (dev) needs mirrord for test:cluster via mage
+	// In prerelease (EaaS), disable cert-manager, trust-manager, and mirrord
+	// These are managed externally by the E2E pipeline (installed separately or disabled)
 	if environment == "prerelease" {
-		extraArgs = append(extraArgs, "--set", "mirrord.enabled=false")
+		extraArgs = []string{
+			"--set", "installCertManagerComponents=false",
+			"--set", "cert-manager.enabled=false",
+			"--set", "trust-manager.enabled=false",
+			"--set", "mirrord.enabled=false",
+		}
 	}
+	// In dev (devcontainer), keep all components enabled for full test functionality
 	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
