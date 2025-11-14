@@ -518,7 +518,8 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	// Note: Actual Kubernetes resources are still created in "caching" namespace (from chart templates)
 	// --install flag allows this to work for both initial install and subsequent upgrades
 	// Timeout set to 500s (8.3 minutes) to allow for slower pod readiness in test reconfigurations
-	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=500s"}
+	// Add --debug for verbose output to diagnose timeout issues
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=500s", "--debug"}
 
 	// If valuesFile is provided, use it; otherwise use values.yaml defaults with --set flags
 	if valuesFile != "" {
