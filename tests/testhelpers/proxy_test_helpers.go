@@ -459,13 +459,18 @@ if envReplicas != "" {
 	if chartPath == "" {
 		chartPath = "./squid"
 	}
-	// Always disable cert-manager and mirrord components during upgrades
+	// Always disable cert-manager components during upgrades
 	// These are managed externally by the E2E pipeline (installed separately or disabled)
 	extraArgs := []string{
 		"--set", "installCertManagerComponents=false",
 		"--set", "cert-manager.enabled=false",
 		"--set", "trust-manager.enabled=false",
-		"--set", "mirrord.enabled=false",
+	}
+	
+	// Only disable mirrord in prerelease (EaaS) environment
+	// Devcontainer (dev) needs mirrord for test:cluster via mage
+	if environment == "prerelease" {
+		extraArgs = append(extraArgs, "--set", "mirrord.enabled=false")
 	}
 	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
 	if err != nil {
