@@ -514,10 +514,11 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
 
 	// Build helm command as a shell string
-	// Use the configured namespace instead of hardcoded "default"
+	// Use -n=default to match magefile.go (Helm release metadata stored in default namespace)
+	// Note: Actual Kubernetes resources are still created in "caching" namespace (from chart templates)
 	// --install flag allows this to work for both initial install and subsequent upgrades
 	// Timeout set to 500s (8.3 minutes) to allow for slower pod readiness in test reconfigurations
-	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", Namespace), "--wait", "--timeout=500s"}
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=500s"}
 
 	// If valuesFile is provided, use it; otherwise use values.yaml defaults with --set flags
 	if valuesFile != "" {

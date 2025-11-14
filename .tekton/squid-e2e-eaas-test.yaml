@@ -297,11 +297,13 @@ spec:
                 cd /workspace/source
                 git checkout $(params.git-revision)
                 
-                namespace="caching"
+                # Use default namespace for Helm release (matches magefile.go behavior)
+                # Resources will be created in "caching" namespace (from chart's values.yaml default)
+                namespace="default"
                 
-                # Check for image pull secrets
-                echo "Checking for image pull secrets in $namespace namespace..."
-                pull_secrets=$(oc get secrets -n "$namespace" -o json | \
+                # Check for image pull secrets in the resource namespace
+                echo "Checking for image pull secrets in caching namespace..."
+                pull_secrets=$(oc get secrets -n "caching" -o json | \
                   jq -r '.items[] | select(.type=="kubernetes.io/dockerconfigjson") | .metadata.name' 2>/dev/null || echo "")
                 
                 if [ -n "$pull_secrets" ]; then
@@ -410,11 +412,10 @@ spec:
                   done
                 fi
                 
-                # Install squid
+                # Install squid (matches magefile.go pattern)
                 echo "Installing Squid chart..."
                 helm install squid . \
                   --namespace "$namespace" \
-                  --set namespace.name="$namespace" \
                   --set environment=prerelease \
                   --set envSettings.prerelease.squid.image.repository="$squid_repo" \
                   --set envSettings.prerelease.squid.image.tag="$squid_tag" \
@@ -430,7 +431,7 @@ spec:
                   --debug
                 
                 echo "Squid deployed successfully!"
-                oc get pods -n "$namespace"
+                oc get pods -n "caching"
                 
                 echo ""
                 echo "=========================================="
@@ -440,7 +441,7 @@ spec:
                 echo "Tester image: $tester_repo:$tester_tag"
                 echo ""
                 echo "Actual deployed squid image:"
-                oc get deployment squid -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}'
+                oc get deployment squid -n "caching" -o jsonpath='{.spec.template.spec.containers[0].image}'
                 echo ""
                 echo "=========================================="
                 echo ""
@@ -448,7 +449,7 @@ spec:
                 echo "Running Helm tests..."
                 if ! helm test squid --namespace "$namespace" --timeout 90m; then
                   echo "ERROR: Helm test failed!"
-                  oc logs -n "$namespace" squid-test --tail=500 2>&1 || true
+                  oc logs -n "caching" squid-test --tail=500 2>&1 || true
                   exit 1
                 fi
                 
