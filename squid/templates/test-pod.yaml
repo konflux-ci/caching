@@ -82,6 +82,11 @@ spec:
     # Pass environment to test binary so it knows which image repos to use
     - name: SQUID_ENVIRONMENT
       value: {{ .Values.environment | quote }}
+    # Skip helm reconfiguration in prerelease (EaaS) - deployment already correct from pipeline
+    {{- if eq .Values.environment "prerelease" }}
+    - name: SKIP_HELM_RECONFIGURE
+      value: "true"
+    {{- end }}
     - name: POD_IP
       valueFrom:
         fieldRef:
