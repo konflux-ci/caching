@@ -30,10 +30,11 @@ spec:
     description: |-
       This pipeline automates the process of running end-to-end tests for Squid
       on an ephemeral OpenShift cluster using EaaS (Environment as a Service).
+      It runs on pull_request events and uses PR build images directly.
     params:
       - name: SNAPSHOT
-        description: 'The JSON string representing the snapshot of the application under test.'
-        default: '{"components": [{"name":"squid", "containerImage": "quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid:latest"}]}'
+        description: 'Dummy parameter for test-metadata task compatibility'
+        default: '{"components": []}'
         type: string
       - name: test-name
         description: 'The name of the test corresponding to a defined Konflux integration test.'
@@ -67,17 +68,13 @@ spec:
           - name: test-name
             value: $(context.pipelineRun.name)
 
-      # Extract component images from SNAPSHOT for multi-component integration test
-      # Automatically uses PR build images for pull_request events
-      - name: parse-snapshot
+      # Construct PR build image references from git revision
+      # This pipeline runs on pull_request events, so we use PR builds
+      - name: construct-pr-images
         runAfter:
           - test-metadata
         taskSpec:
           params:
-            - name: SNAPSHOT
-              type: string
-            - name: test-event-type
-              type: string
             - name: git-revision
               type: string
           results:
@@ -86,56 +83,23 @@ spec:
             - name: squid-tester-image
               description: Container image for the squid-tester component
           steps:
-            - name: parse
+            - name: construct
               image: quay.io/konflux-ci/konflux-test:v1.4.31@sha256:a7cae9e96663e277a3904d0c78630508ddb6cc8eebaa912a840bd20f68dcaad1
               script: |
                 #!/bin/bash
                 set -euo pipefail
                 
-                echo "Parsing SNAPSHOT to extract component images..."
-                echo '$(params.SNAPSHOT)' | jq . | tee /tmp/snapshot.json
+                git_rev="$(params.git-revision)"
+                echo "Constructing PR build image references for revision: $git_rev"
                 
-                # For PR events, construct image names from git revision
-                # This bypasses SNAPSHOT which only includes the "owning" component's PR build
-                if [ "$(params.test-event-type)" = "pull_request" ]; then
-                  git_rev="$(params.git-revision)"
-                  echo "PR event detected - using PR build images for revision: $git_rev"
-                  
-                  squid_image="quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid:on-pr-${git_rev}"
-                  echo "Using squid PR build: $squid_image"
-                  echo -n "$squid_image" > $(results.squid-image.path)
-                  
-                  tester_image="quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester:on-pr-${git_rev}"
-                  echo "Using squid-tester PR build: $tester_image"
-                  echo -n "$tester_image" > $(results.squid-tester-image.path)
-                else
-                  # For non-PR events (e.g. push to main), use SNAPSHOT
-                  echo "Non-PR event - using SNAPSHOT images"
-                  
-                  squid_image=$(echo '$(params.SNAPSHOT)' | jq -r '.components[] | select(.name=="squid") | .containerImage')
-                  if [ -z "$squid_image" ] || [ "$squid_image" = "null" ]; then
-                    echo "ERROR: Could not find squid component in SNAPSHOT"
-                    echo "Available components:"
-                    echo '$(params.SNAPSHOT)' | jq -r '.components[].name'
-                    exit 1
-                  fi
-                  echo "Found squid image from SNAPSHOT: $squid_image"
-                  echo -n "$squid_image" > $(results.squid-image.path)
-                  
-                  tester_image=$(echo '$(params.SNAPSHOT)' | jq -r '.components[] | select(.name=="squid-tester") | .containerImage')
-                  if [ -z "$tester_image" ] || [ "$tester_image" = "null" ]; then
-                    echo "INFO: squid-tester not found in SNAPSHOT, will use default from values.yaml"
-                    tester_image=""
-                  else
-                    echo "Found squid-tester image from SNAPSHOT: $tester_image"
-                  fi
-                  echo -n "$tester_image" > $(results.squid-tester-image.path)
-                fi
+                squid_image="quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid:on-pr-${git_rev}"
+                echo "Squid PR build: $squid_image"
+                echo -n "$squid_image" > $(results.squid-image.path)
+                
+                tester_image="quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester:on-pr-${git_rev}"
+                echo "Squid-tester PR build: $tester_image"
+                echo -n "$tester_image" > $(results.squid-tester-image.path)
         params:
-          - name: SNAPSHOT
-            value: $(params.SNAPSHOT)
-          - name: test-event-type
-            value: $(tasks.test-metadata.results.test-event-type)
           - name: git-revision
             value: $(tasks.test-metadata.results.git-revision)
 
@@ -230,7 +194,7 @@ spec:
             values: ["pull_request"]
         runAfter:
           - provision-cluster
-          - parse-snapshot
+          - construct-pr-images
         taskSpec:
           params:
             - name: squid-image
@@ -362,29 +326,15 @@ spec:
                 
                 # Parse image references
                 squid_img="$(params.squid-image)"
-                if [[ "$squid_img" == *"@"* ]]; then
-                  squid_repo="${squid_img%@*}"
-                  squid_tag="${squid_img#*@}"
-                else
-                  squid_repo="${squid_img%:*}"
-                  squid_tag="${squid_img##*:}"
-                fi
+                squid_repo="${squid_img%:*}"
+                squid_tag="${squid_img##*:}"
                 
                 tester_img="$(params.tester-image)"
-                if [ -n "$tester_img" ]; then
-                  if [[ "$tester_img" == *"@"* ]]; then
-                    tester_repo="${tester_img%@*}"
-                    tester_tag="${tester_img#*@}"
-                  else
-                    tester_repo="${tester_img%:*}"
-                    tester_tag="${tester_img##*:}"
-                  fi
-                  echo "Squid: $squid_repo $squid_tag"
-                  echo "Tester: $tester_repo $tester_tag (from SNAPSHOT)"
-                else
-                  echo "Squid: $squid_repo $squid_tag"
-                  echo "Tester: using default from values.yaml"
-                fi
+                tester_repo="${tester_img%:*}"
+                tester_tag="${tester_img##*:}"
+                
+                echo "Squid: $squid_repo:$squid_tag"
+                echo "Tester: $tester_repo:$tester_tag"
                 
                 # Check if cert-manager exists
                 if oc get crd certificates.cert-manager.io 2>/dev/null; then
@@ -462,12 +412,14 @@ spec:
                 
                 # Install squid
                 echo "Installing Squid chart..."
-                helm_cmd="helm install squid . \
-                  --namespace \"$namespace\" \
-                  --set namespace.name=\"$namespace\" \
+                helm install squid . \
+                  --namespace "$namespace" \
+                  --set namespace.name="$namespace" \
                   --set environment=prerelease \
-                  --set envSettings.prerelease.squid.image.repository=\"$squid_repo\" \
-                  --set envSettings.prerelease.squid.image.tag=\"$squid_tag\" \
+                  --set envSettings.prerelease.squid.image.repository="$squid_repo" \
+                  --set envSettings.prerelease.squid.image.tag="$squid_tag" \
+                  --set envSettings.prerelease.test.image.repository="$tester_repo" \
+                  --set envSettings.prerelease.test.image.tag="$tester_tag" \
                   --set mirrord.enabled=false \
                   --set installCertManagerComponents=false \
                   --set cert-manager.enabled=false \
@@ -475,45 +427,21 @@ spec:
                   $secret_args \
                   --wait \
                   --timeout=5m \
-                  --debug"
-                
-                if [ -n "$tester_img" ]; then
-                  helm_cmd="$helm_cmd \
-                    --set envSettings.prerelease.test.image.repository=\"$tester_repo\" \
-                    --set envSettings.prerelease.test.image.tag=\"$tester_tag\""
-                fi
-                
-                if ! eval "$helm_cmd"; then
-                  echo "ERROR: Squid Helm installation failed!"
-                  oc get all -n "$namespace" || true
-                  oc describe pods -n "$namespace" || true
-                  exit 1
-                fi
+                  --debug
                 
                 echo "Squid deployed successfully!"
                 oc get pods -n "$namespace"
                 
                 echo ""
                 echo "=========================================="
-                echo "🔍 DEBUG: Initial Image Verification"
+                echo "🔍 DEBUG: Deployed Images"
                 echo "=========================================="
-                echo "Expected squid image: $squid_repo@$squid_tag"
-                if [ -n "$tester_img" ]; then
-                  echo "Expected tester image: $tester_repo@$tester_tag"
-                else
-                  echo "Expected tester image: (using default from values.yaml)"
-                fi
+                echo "Squid image: $squid_repo:$squid_tag"
+                echo "Tester image: $tester_repo:$tester_tag"
                 echo ""
                 echo "Actual deployed squid image:"
                 oc get deployment squid -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}'
                 echo ""
-                echo ""
-                echo "Test pod will use tester image:"
-                if [ -n "$tester_img" ]; then
-                  echo "$tester_repo@$tester_tag"
-                else
-                  echo "Default from values.yaml: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester:latest"
-                fi
                 echo "=========================================="
                 echo ""
                 
@@ -527,9 +455,9 @@ spec:
                 echo "All E2E tests passed!"
         params:
           - name: squid-image
-            value: "$(tasks.parse-snapshot.results.squid-image)"
+            value: "$(tasks.construct-pr-images.results.squid-image)"
           - name: tester-image
-            value: "$(tasks.parse-snapshot.results.squid-tester-image)"
+            value: "$(tasks.construct-pr-images.results.squid-tester-image)"
           - name: git-url
             value: "$(tasks.test-metadata.results.git-url)"
           - name: git-revision
