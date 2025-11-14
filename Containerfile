@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:a129edad0158c3c5795fb7b0dd89df75f36930f636eb276683d6c2467b30c576 AS squid-base
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:ebc9604c67aa5daa87cd431d64754a1cb6e22372446a6e8e0d966bfc709c9f3f AS squid-base
 
 ENV NAME="konflux-ci/squid"
 ENV SUMMARY="The Squid proxy caching server for Konflux CI"
@@ -43,7 +43,7 @@ RUN chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /ru
 # ==========================================
 # Stage 2: Combined Go builder (toolchain + exporters + helpers)
 # ==========================================
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:a129edad0158c3c5795fb7b0dd89df75f36930f636eb276683d6c2467b30c576 AS go-builder
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:ebc9604c67aa5daa87cd431d64754a1cb6e22372446a6e8e0d966bfc709c9f3f AS go-builder
 
 # Install required packages for Go build
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
@@ -57,8 +57,8 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     microdnf clean all
 
 # Install Go (version-locked)
-ARG GO_VERSION=1.25.3
-ARG GO_SHA256=0335f314b6e7bfe08c3d0cfaa7c19db961b7b99fb20be62b0a826c992ad14e0f
+ARG GO_VERSION=1.25.4
+ARG GO_SHA256=9fa5ffeda4170de60f67f3aa0f824e426421ba724c21e133c1e35d6159ca1bec
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Use prefetched Go tarball from Cachi2
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \

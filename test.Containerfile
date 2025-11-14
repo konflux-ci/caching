@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:a129edad0158c3c5795fb7b0dd89df75f36930f636eb276683d6c2467b30c576
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:ebc9604c67aa5daa87cd431d64754a1cb6e22372446a6e8e0d966bfc709c9f3f
 
 # Rebuild trigger: includes SQUID_CHART_PATH env var support for temp directory
 # Install required packages for Go and testing (version-locked)
@@ -16,8 +16,8 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Install Go (version-locked)
-ARG GO_VERSION=1.25.3
-ARG GO_SHA256=0335f314b6e7bfe08c3d0cfaa7c19db961b7b99fb20be62b0a826c992ad14e0f
+ARG GO_VERSION=1.25.4
+ARG GO_SHA256=9fa5ffeda4170de60f67f3aa0f824e426421ba724c21e133c1e35d6159ca1bec
 # Use prefetched Go tarball from Cachi2
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     if [ -f /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz ]; then \
@@ -28,22 +28,6 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     echo "${GO_SHA256}  go.tar.gz" | sha256sum -c - && \
     tar -C /usr/local -xzf go.tar.gz && \
     rm go.tar.gz
-
-# Install Helm (version-locked)
-ARG HELM_VERSION=v3.18.6
-ARG HELM_SHA256=3f43c0aa57243852dd542493a0f54f1396c0bc8ec7296bbb2c01e802010819ce
-# Use prefetched Helm tarball from Cachi2
-RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    if [ -f /cachi2/output/deps/generic/helm-${HELM_VERSION}-linux-amd64.tar.gz ]; then \
-        cp /cachi2/output/deps/generic/helm-${HELM_VERSION}-linux-amd64.tar.gz helm.tar.gz; \
-    else \
-        curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" -o helm.tar.gz; \
-    fi && \
-    echo "${HELM_SHA256}  helm.tar.gz" | sha256sum -c - && \
-    mkdir -p /tmp/helm && \
-    tar -C /tmp/helm -xzf helm.tar.gz && \
-    mv /tmp/helm/linux-amd64/helm /usr/local/bin/helm && \
-    rm -rf /tmp/helm helm.tar.gz
 
 # Set Go environment
 ENV PATH="/usr/local/go/bin:/root/go/bin:$PATH"
@@ -63,6 +47,10 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 # Install Ginkgo CLI (using prefetched modules)
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     go build -o /usr/local/bin/ginkgo github.com/onsi/ginkgo/v2/ginkgo
+
+# Install Helm CLI (using prefetched modules)
+RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
+    go build -o /usr/local/bin/helm helm.sh/helm/v3/cmd/helm
 
 # Copy test source files maintaining directory structure
 COPY tests/ ./tests/
