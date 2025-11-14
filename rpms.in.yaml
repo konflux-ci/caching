@@ -23,4 +23,9 @@ contentOrigin:
     - ./ubi-10.repo
 arches:
   - x86_64
+context:
+  # Use test.Containerfile (single-stage) to avoid ambiguity with multi-stage Containerfile
+  # This ensures MintMaker correctly identifies the base image and excludes packages
+  # already present in the base image
+  containerfile: test.Containerfile
 
