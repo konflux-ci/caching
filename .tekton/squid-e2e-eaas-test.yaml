@@ -412,6 +412,14 @@ spec:
                   done
                 fi
                 
+                # Clean up any existing caching namespace to avoid ownership conflicts
+                # EaaS clusters may reuse namespaces from previous runs with wrong annotations
+                echo "Cleaning up any existing caching namespace..."
+                oc delete namespace caching --ignore-not-found=true --wait=true || true
+                
+                # Wait a moment for namespace to be fully deleted
+                sleep 5
+                
                 # Install squid (matches magefile.go pattern)
                 echo "Installing Squid chart..."
                 helm install squid . \
