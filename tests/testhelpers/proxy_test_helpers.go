@@ -528,15 +528,16 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	// Build helm command as a shell string
 	// Helm release namespace depends on environment:
 	// - dev (devcontainer): use default namespace (matches magefile.go)
-	// - prerelease (EaaS): use caching namespace (matches EaaS pipeline initial install)
+	// - prerelease (EaaS): use caching namespace (reduces duplicate pod issues)
 	// Note: Actual Kubernetes resources are always created in "caching" namespace (from chart templates)
 	helmNamespace := "default" // Default for dev/devcontainer
 	if environment == "prerelease" {
-		helmNamespace = "caching" // Match EaaS pipeline
+		helmNamespace = "caching" // Use caching for EaaS to avoid duplicate pods
 	}
 	fmt.Printf("Using Helm release namespace: %s (environment: %s)\n", helmNamespace, environment)
 	// Timeout set to 180s (3 minutes) - sufficient for rolling pod restarts with readiness probes
-	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", helmNamespace), "--wait", "--timeout=180s"}
+	// Add --skip-crds flag to avoid trying to install CRDs (already installed by pipeline in EaaS, or by subchart deps in dev)
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", helmNamespace), "--wait", "--timeout=180s", "--skip-crds"}
 
 	// If valuesFile is provided, use it; otherwise use values.yaml defaults with --set flags
 	if valuesFile != "" {
