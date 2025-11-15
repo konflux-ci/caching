@@ -519,13 +519,24 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	fmt.Printf("🔍 DEBUG: Namespace constant value: '%s'\n", Namespace)
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
 
+	// Get environment to determine correct Helm release namespace
+	environment := os.Getenv("SQUID_ENVIRONMENT")
+	if environment == "" {
+		environment = "dev" // Default for local/devcontainer
+	}
+
 	// Build helm command as a shell string
-	// Use -n=default to match magefile.go (Helm release metadata stored in default namespace)
-	// Note: Actual Kubernetes resources are still created in "caching" namespace (from chart templates)
-	// --install flag allows this to work for both initial install and subsequent upgrades
-	// Timeout set to 500s (8.3 minutes) to allow for slower pod readiness in test reconfigurations
-	// Add --debug for verbose output to diagnose timeout issues
-	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=500s", "--debug"}
+	// Helm release namespace depends on environment:
+	// - dev (devcontainer): use default namespace (matches magefile.go)
+	// - prerelease (EaaS): use caching namespace (matches EaaS pipeline initial install)
+	// Note: Actual Kubernetes resources are always created in "caching" namespace (from chart templates)
+	helmNamespace := "default" // Default for dev/devcontainer
+	if environment == "prerelease" {
+		helmNamespace = "caching" // Match EaaS pipeline
+	}
+	fmt.Printf("Using Helm release namespace: %s (environment: %s)\n", helmNamespace, environment)
+	// Timeout set to 180s (3 minutes) - sufficient for rolling pod restarts with readiness probes
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, fmt.Sprintf("-n=%s", helmNamespace), "--wait", "--timeout=180s"}
 
 	// If valuesFile is provided, use it; otherwise use values.yaml defaults with --set flags
 	if valuesFile != "" {
