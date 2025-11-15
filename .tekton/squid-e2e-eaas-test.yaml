@@ -298,7 +298,7 @@ spec:
                 git checkout $(params.git-revision)
                 
                 # Use default namespace for Helm release (matches magefile.go behavior)
-                # Resources will be created in "caching" namespace (from chart's values.yaml default)
+                # Actual Kubernetes resources will be created in "caching" namespace (from chart templates)
                 namespace="default"
                 
                 # Check for image pull secrets in the resource namespace
