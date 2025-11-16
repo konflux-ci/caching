@@ -472,6 +472,13 @@ if envReplicas != "" {
 			"--set", "mirrord.enabled=false",
 		}
 	}
+	
+	// CRITICAL: Use --reuse-values to preserve image tags set during helm install
+	// Without this, helm reverts to values.yaml defaults (:latest tag)
+	// causing ImagePullBackOff or duplicate pods with different image versions
+	extraArgs = append(extraArgs, "--reuse-values")
+	fmt.Printf("🔍 DEBUG: Using --reuse-values to preserve pipeline image configuration\n")
+	
 	// In dev (devcontainer), keep all components enabled for full test functionality
 	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
 	if err != nil {
