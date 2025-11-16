@@ -54,6 +54,11 @@ rules:
 - apiGroups: [""]
   resources: ["pods/log"]
   verbs: ["get"]
+# OpenShift: Allow use of security context constraints for pod creation
+- apiGroups: ["security.openshift.io"]
+  resources: ["securitycontextconstraints"]
+  resourceNames: ["anyuid", "restricted", "nonroot-v2"]
+  verbs: ["use"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

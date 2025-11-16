@@ -391,14 +391,6 @@ type SquidHelmValues struct {
 
 // ConfigureSquidWithHelm configures Squid deployment using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
-// Check if helm reconfiguration should be skipped (EaaS pipeline already configured correctly)
-skipReconfigure := os.Getenv("SKIP_HELM_RECONFIGURE")
-if skipReconfigure == "true" {
-	fmt.Printf("DEBUG: SKIP_HELM_RECONFIGURE=true, skipping ConfigureSquidWithHelm\n")
-	fmt.Printf("DEBUG: Using squid configuration from EaaS pipeline deployment\n")
-	return nil
-}
-
 // Environment is passed from test pod via SQUID_ENVIRONMENT env var
 // This is set by test-pod.yaml from .Values.environment
 // Default is "dev" for local testing
