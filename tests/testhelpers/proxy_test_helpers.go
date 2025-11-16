@@ -391,28 +391,62 @@ type SquidHelmValues struct {
 
 // ConfigureSquidWithHelm configures Squid deployment using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
-	values.Environment = "dev"
+// Environment is passed from test pod via SQUID_ENVIRONMENT env var
+// This is set by test-pod.yaml from .Values.environment
+// Default is "dev" for local testing
+environment := os.Getenv("SQUID_ENVIRONMENT")
+if environment == "" {
+	// Fallback: use "dev" for local testing (should rarely happen)
+	environment = "dev"
+	fmt.Printf("WARNING: SQUID_ENVIRONMENT not set, defaulting to: %s\n", environment)
+}
 
-	// Handle replica count logic:
-	// 1. If SQUID_REPLICA_COUNT env var does not exist or equals 0 -> use value from values.yaml (don't set ReplicaCount)
-	// 2. If SQUID_REPLICA_COUNT exists and > 0 -> use the env var value
-	envReplicas := os.Getenv("SQUID_REPLICA_COUNT")
-	if envReplicas != "" {
-		if count, err := strconv.Atoi(envReplicas); err == nil && count > 0 {
-			// Case 2: Environment variable > 0 -> use the env var value
-			values.ReplicaCount = count
-			fmt.Printf("DEBUG: Using replica count from SQUID_REPLICA_COUNT env var: %d\n", count)
-		} else {
-			// Case 1: Environment variable equals 0 or invalid -> use values.yaml default
-			fmt.Printf("DEBUG: SQUID_REPLICA_COUNT=%s, using default from values.yaml\n", envReplicas)
-			// Don't set values.ReplicaCount, let Helm use the default from values.yaml
+// DEBUG: Log image before reconfiguration
+fmt.Printf("\n==========================================\n")
+fmt.Printf("🔍 DEBUG: ConfigureSquidWithHelm called\n")
+fmt.Printf("==========================================\n")
+fmt.Printf("Environment detected: %s\n", environment)
+
+// Get current image before helm upgrade
+deployment, err := client.AppsV1().Deployments(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
+if err == nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
+	currentImage := deployment.Spec.Template.Spec.Containers[0].Image
+	fmt.Printf("Current squid image BEFORE reconfiguration: %s\n", currentImage)
+	
+	// Check for snapshot env vars
+	if snapshotImage := os.Getenv("SNAPSHOT_SQUID_IMAGE"); snapshotImage != "" {
+		fmt.Printf("SNAPSHOT_SQUID_IMAGE env var: %s\n", snapshotImage)
+		if currentImage != snapshotImage {
+			fmt.Printf("⚠️  WARNING: Current image doesn't match snapshot!\n")
 		}
 	} else {
-		// Case 1: Environment variable does not exist -> use values.yaml default
-		fmt.Printf("DEBUG: SQUID_REPLICA_COUNT not set, using default from values.yaml\n")
+		fmt.Printf("⚠️  WARNING: SNAPSHOT_SQUID_IMAGE env var NOT SET\n")
+		fmt.Printf("   This means snapshot images won't be preserved!\n")
+	}
+}
+fmt.Printf("==========================================\n\n")
+
+values.Environment = environment
+
+// Handle replica count logic:
+// 1. If SQUID_REPLICA_COUNT env var does not exist or equals 0 -> use value from values.yaml (don't set ReplicaCount)
+// 2. If SQUID_REPLICA_COUNT exists and > 0 -> use the env var value
+envReplicas := os.Getenv("SQUID_REPLICA_COUNT")
+if envReplicas != "" {
+	if count, err := strconv.Atoi(envReplicas); err == nil && count > 0 {
+		// Case 2: Environment variable > 0 -> use the env var value
+		values.ReplicaCount = count
+		fmt.Printf("DEBUG: Using replica count from SQUID_REPLICA_COUNT env var: %d\n", count)
+	} else {
+		// Case 1: Environment variable equals 0 or invalid -> use values.yaml default
+		fmt.Printf("DEBUG: SQUID_REPLICA_COUNT=%s, using default from values.yaml\n", envReplicas)
 		// Don't set values.ReplicaCount, let Helm use the default from values.yaml
 	}
-
+} else {
+	// Case 1: Environment variable does not exist -> use values.yaml default
+	fmt.Printf("DEBUG: SQUID_REPLICA_COUNT not set, using default from values.yaml\n")
+	// Don't set values.ReplicaCount, let Helm use the default from values.yaml
+}
 	valuesFile, err := writeValuesToFile(&values)
 	if err != nil {
 		return fmt.Errorf("failed to write values to file: %w", err)
@@ -420,7 +454,26 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	defer os.Remove(valuesFile)
 
 	// Use the temporary values file with helm
-	err = UpgradeChart("squid", "./squid", valuesFile)
+	// Check if SQUID_CHART_PATH is set (test pod sets this to writable temp dir)
+	chartPath := os.Getenv("SQUID_CHART_PATH")
+	if chartPath == "" {
+		chartPath = "./squid"
+	}
+	// Build extraArgs based on environment
+	var extraArgs []string
+	
+	// In prerelease (EaaS), disable cert-manager, trust-manager, and mirrord
+	// These are managed externally by the E2E pipeline (installed separately or disabled)
+	if environment == "prerelease" {
+		extraArgs = []string{
+			"--set", "installCertManagerComponents=false",
+			"--set", "cert-manager.enabled=false",
+			"--set", "trust-manager.enabled=false",
+			"--set", "mirrord.enabled=false",
+		}
+	}
+	// In dev (devcontainer), keep all components enabled for full test functionality
+	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
@@ -430,16 +483,46 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		return fmt.Errorf("failed to wait for squid deployment to be ready: %w", err)
 	}
 
+	// DEBUG: Log image after reconfiguration
+	deployment, err = client.AppsV1().Deployments(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
+	if err == nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
+		newImage := deployment.Spec.Template.Spec.Containers[0].Image
+		fmt.Printf("\n==========================================\n")
+		fmt.Printf("🔍 DEBUG: After ConfigureSquidWithHelm\n")
+		fmt.Printf("==========================================\n")
+		fmt.Printf("New squid image AFTER reconfiguration: %s\n", newImage)
+		
+		if snapshotImage := os.Getenv("SNAPSHOT_SQUID_IMAGE"); snapshotImage != "" {
+			if newImage == snapshotImage {
+				fmt.Printf("✅ GOOD: Image still matches snapshot\n")
+			} else {
+				fmt.Printf("❌ BUG: Image changed to :latest (lost snapshot)!\n")
+				fmt.Printf("   Expected: %s\n", snapshotImage)
+				fmt.Printf("   Actual:   %s\n", newImage)
+			}
+		}
+		fmt.Printf("==========================================\n\n")
+	}
+
 	return nil
 }
 
 // UpgradeChart performs a helm upgrade with the specified chart and values file
 // If valuesFile is empty, uses values.yaml defaults and sets environment=dev
 func UpgradeChart(releaseName, chartName string, valuesFile string) error {
+	return UpgradeChartWithArgs(releaseName, chartName, valuesFile, nil)
+}
+
+// UpgradeChartWithArgs performs a helm upgrade with additional --set arguments
+func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extraArgs []string) error {
+	fmt.Printf("🔍 DEBUG: UpgradeChart called - Code Version: 20251107-NAMESPACE-FIX\n")
+	fmt.Printf("🔍 DEBUG: Namespace constant value: '%s'\n", Namespace)
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
 
-	// Build helm command base
-	cmdParts := []string{"helm", "upgrade", releaseName, chartName, "-n=default", "--wait", "--timeout=120s"}
+	// Build helm command as a shell string
+	// Use default namespace for Helm release metadata (matches magefile.go)
+	// Resources created in caching namespace (from chart's namespace templates)
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=180s"}
 
 	// If valuesFile is provided, use it; otherwise use values.yaml defaults with --set flags
 	if valuesFile != "" {
@@ -448,6 +531,11 @@ func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 		// Use values.yaml defaults but keep environment=dev for test environment
 		// (values.yaml defaults to environment=release which uses quay.io images)
 		cmdParts = append(cmdParts, "--set", "environment=dev")
+	}
+
+	// Append any extra arguments (e.g., --set flags)
+	if len(extraArgs) > 0 {
+		cmdParts = append(cmdParts, extraArgs...)
 	}
 
 	// Join into single shell command string
@@ -465,7 +553,13 @@ func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 
 // RenderHelmTemplate renders the Helm template with the given values and returns the YAML output
 func RenderHelmTemplate(chartPath string, values SquidHelmValues) (string, error) {
-	values.Environment = "dev"
+	// Environment is passed from test pod via SQUID_ENVIRONMENT env var
+	environment := os.Getenv("SQUID_ENVIRONMENT")
+	if environment == "" {
+		environment = "dev" // Fallback for local testing
+	}
+	
+	values.Environment = environment
 	valuesFile, err := writeValuesToFile(&values)
 	if err != nil {
 		return "", fmt.Errorf("failed to write values to file: %w", err)
