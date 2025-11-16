@@ -391,6 +391,14 @@ type SquidHelmValues struct {
 
 // ConfigureSquidWithHelm configures Squid deployment using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
+// Check if helm reconfiguration should be skipped (EaaS pipeline already configured correctly)
+skipReconfigure := os.Getenv("SKIP_HELM_RECONFIGURE")
+if skipReconfigure == "true" {
+	fmt.Printf("DEBUG: SKIP_HELM_RECONFIGURE=true, skipping ConfigureSquidWithHelm\n")
+	fmt.Printf("DEBUG: Using squid configuration from EaaS pipeline deployment\n")
+	return nil
+}
+
 // Environment is passed from test pod via SQUID_ENVIRONMENT env var
 // This is set by test-pod.yaml from .Values.environment
 // Default is "dev" for local testing
@@ -520,10 +528,8 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
 
 	// Build helm command as a shell string
-	// Use -n=default for Helm release metadata (matches magefile.go and EaaS pipeline)
-	// Actual Kubernetes resources created in caching namespace (from chart templates)
-	// Timeout set to 180s (3 minutes) - much faster than previous 500s
-	// Hypothesis: duplicate pods were caused by namespace deletion, not the -n=default pattern
+	// Use default namespace for Helm release metadata (matches magefile.go)
+	// Resources created in caching namespace (from chart's namespace templates)
 	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=180s"}
 
 	// If valuesFile is provided, use it; otherwise use values.yaml defaults with --set flags
