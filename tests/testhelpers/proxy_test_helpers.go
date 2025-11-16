@@ -515,7 +515,7 @@ func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 
 // UpgradeChartWithArgs performs a helm upgrade with additional --set arguments
 func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extraArgs []string) error {
-	fmt.Printf("🔍 DEBUG: UpgradeChart called - Code Version: 20251107-NAMESPACE-FIX\n")
+	fmt.Printf("🔍 DEBUG: UpgradeChart called - Code Version: 20251116-SCC-FIX\n")
 	fmt.Printf("🔍 DEBUG: Namespace constant value: '%s'\n", Namespace)
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
 
@@ -545,6 +545,10 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
 
 	output, err := cmd.CombinedOutput()
+	// Print output for debugging (but without --debug flag which is too verbose)
+	if len(output) > 0 {
+		fmt.Printf("Helm upgrade output:\n%s\n", string(output))
+	}
 	if err != nil {
 		return fmt.Errorf("failed to run helm upgrade command: %w\n%s", err, string(output))
 	}
