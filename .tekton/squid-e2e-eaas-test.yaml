@@ -297,9 +297,10 @@ spec:
                 cd /workspace/source
                 git checkout $(params.git-revision)
                 
-                # Use default namespace for Helm release (matches magefile.go behavior)
-                # Actual Kubernetes resources will be created in "caching" namespace (from chart templates)
-                namespace="default"
+                # Use caching namespace for Helm release to match test code expectations
+                # Test code uses -n=caching to avoid duplicate pods (6 failures → 3 failures)
+                # Both Helm metadata and Kubernetes resources will be in caching namespace
+                namespace="caching"
                 
                 # Check for image pull secrets in the resource namespace
                 echo "Checking for image pull secrets in caching namespace..."
