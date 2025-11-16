@@ -244,7 +244,7 @@ spec:
                     app.kubernetes.io/managed-by: Helm
                   annotations:
                     meta.helm.sh/release-name: squid
-                    meta.helm.sh/release-namespace: caching
+                    meta.helm.sh/release-namespace: default
                 EOF
                 
                 echo "Namespace created with Helm ownership labels"
@@ -297,10 +297,9 @@ spec:
                 cd /workspace/source
                 git checkout $(params.git-revision)
                 
-                # Use caching namespace for Helm release to match test code expectations
-                # Test code uses -n=caching to avoid duplicate pods (6 failures → 3 failures)
-                # Both Helm metadata and Kubernetes resources will be in caching namespace
-                namespace="caching"
+                # Use default namespace for Helm release (matches magefile.go pattern)
+                # Actual Kubernetes resources created in caching namespace (from chart templates)
+                namespace="default"
                 
                 # Check for image pull secrets in the resource namespace
                 echo "Checking for image pull secrets in caching namespace..."
@@ -413,13 +412,9 @@ spec:
                   done
                 fi
                 
-                # Clean up any existing caching namespace to avoid ownership conflicts
-                # EaaS clusters may reuse namespaces from previous runs with wrong annotations
-                echo "Cleaning up any existing caching namespace..."
-                oc delete namespace caching --ignore-not-found=true --wait=true || true
-                
-                # Wait a moment for namespace to be fully deleted
-                sleep 5
+                # Don't delete the caching namespace - let Helm manage it through the chart
+                # The chart templates will create/update resources in caching namespace
+                # Using -n=default for Helm metadata keeps it separate from resource namespace
                 
                 # Install squid (matches magefile.go pattern)
                 echo "Installing Squid chart..."
