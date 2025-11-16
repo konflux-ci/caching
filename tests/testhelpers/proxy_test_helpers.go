@@ -473,11 +473,42 @@ if envReplicas != "" {
 		}
 	}
 	
-	// CRITICAL: Use --reuse-values to preserve image tags set during helm install
-	// Without this, helm reverts to values.yaml defaults (:latest tag)
-	// causing ImagePullBackOff or duplicate pods with different image versions
-	extraArgs = append(extraArgs, "--reuse-values")
-	fmt.Printf("🔍 DEBUG: Using --reuse-values to preserve pipeline image configuration\n")
+	// CRITICAL: In prerelease (EaaS), preserve pipeline-deployed image tags
+	// In dev/devcontainer, let helm use values.yaml defaults (:latest is correct there)
+	if environment == "prerelease" {
+		currentImage := deployment.Spec.Template.Spec.Containers[0].Image
+		fmt.Printf("🔍 DEBUG: Preserving image from deployment: %s\n", currentImage)
+		
+		var imageRepo, imageTag string
+		if strings.Contains(currentImage, "@sha256:") {
+			// Digest format: repo@sha256:xxx
+			parts := strings.SplitN(currentImage, "@", 2)
+			imageRepo = parts[0]
+			imageTag = parts[1] // e.g. "sha256:abc123"
+		} else if strings.Contains(currentImage, ":") {
+			// Tag format: repo:tag
+			lastColon := strings.LastIndex(currentImage, ":")
+			imageRepo = currentImage[:lastColon]
+			imageTag = currentImage[lastColon+1:]
+		} else {
+			imageRepo = currentImage
+			imageTag = "latest"
+		}
+		
+		// Derive test image (squid → squid-tester in prerelease)
+		testImageRepo := strings.Replace(imageRepo, "/squid", "/squid-tester", 1)
+		fmt.Printf("🔍 DEBUG: Squid: %s:%s | Test: %s:%s\n", imageRepo, imageTag, testImageRepo, imageTag)
+		
+		// Pass to helm to prevent reverting to :latest defaults
+		extraArgs = append(extraArgs,
+			"--set", fmt.Sprintf("envSettings.%s.squid.image.repository=%s", environment, imageRepo),
+			"--set", fmt.Sprintf("envSettings.%s.squid.image.tag=%s", environment, imageTag),
+			"--set", fmt.Sprintf("envSettings.%s.test.image.repository=%s", environment, testImageRepo),
+			"--set", fmt.Sprintf("envSettings.%s.test.image.tag=%s", environment, imageTag),
+		)
+	} else {
+		fmt.Printf("🔍 DEBUG: Dev environment - using values.yaml image defaults\n")
+	}
 	
 	// In dev (devcontainer), keep all components enabled for full test functionality
 	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
