@@ -480,7 +480,7 @@ if envReplicas != "" {
 	
 	// CRITICAL: In prerelease (EaaS), preserve pipeline-deployed image tags
 	// In dev/devcontainer, let helm use values.yaml defaults (:latest is correct there)
-	if environment == "prerelease" {
+	if environment == "prerelease" && deployment != nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
 		currentImage := deployment.Spec.Template.Spec.Containers[0].Image
 		fmt.Printf("🔍 DEBUG: Preserving image from deployment: %s\n", currentImage)
 		
@@ -511,6 +511,9 @@ if envReplicas != "" {
 			"--set", fmt.Sprintf("envSettings.%s.test.image.repository=%s", environment, testImageRepo),
 			"--set", fmt.Sprintf("envSettings.%s.test.image.tag=%s", environment, imageTag),
 		)
+	} else if environment == "prerelease" {
+		fmt.Printf("⚠️  WARNING: Could not preserve images - deployment not available\n")
+		fmt.Printf("   Using values.yaml defaults (may cause ImagePullBackOff if :latest doesn't exist)\n")
 	} else {
 		fmt.Printf("🔍 DEBUG: Dev environment - using values.yaml image defaults\n")
 	}
