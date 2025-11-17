@@ -451,16 +451,16 @@ spec:
                 echo ""
                 
                 echo "Running Helm tests..."
-                if ! helm test squid --namespace "$namespace" --timeout 90m --logs; then
+                if ! helm test squid --namespace "$namespace" --timeout 90m; then
                   echo "ERROR: Helm test failed!"
                   echo "=== squid-test pod logs (failure) ==="
-                  oc logs -n "$namespace" squid-test --tail=2000 2>&1 || true
+                  oc logs -n "caching" squid-test --tail=2000 2>&1 || true
                   exit 1
                 fi
 
                 echo "Helm tests succeeded, capturing squid-test logs for diagnostics..."
                 echo "=== squid-test pod logs (success) ==="
-                oc logs -n "$namespace" squid-test --tail=2000 2>&1 || true
+                oc logs -n "caching" squid-test --tail=2000 2>&1 || true
                 
                 echo "All E2E tests passed!"
         params:
