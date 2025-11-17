@@ -469,6 +469,16 @@ func All() error {
 	fmt.Println("🧪 Running helm tests to validate deployment...")
 	err = sh.Run("helm", "test", "squid", "--timeout=15m")
 	if err != nil {
+		// Test failed - capture and display logs for debugging
+		fmt.Println()
+		fmt.Println("❌ Helm tests failed! Capturing test pod logs for debugging...")
+		fmt.Println()
+		fmt.Println("=== Squid Test Pod Logs ===")
+		logsError := sh.RunV("kubectl", "logs", "-n", "caching", "squid-test")
+		if logsError != nil {
+			fmt.Printf("⚠️  Could not retrieve test pod logs: %v\n", logsError)
+		}
+		fmt.Println()
 		return fmt.Errorf("helm tests failed: %w", err)
 	}
 	fmt.Println("✅ All helm tests passed!")

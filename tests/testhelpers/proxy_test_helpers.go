@@ -738,16 +738,25 @@ func GetSquidPods(ctx context.Context, client kubernetes.Interface, namespace st
 
 		// Filter out pods that are terminating (during rolling updates)
 		activePods := make([]corev1.Pod, 0, len(pods.Items))
+		terminatingCount := 0
 		for _, pod := range pods.Items {
 			// Skip pods that are terminating (have deletion timestamp)
 			if pod.DeletionTimestamp == nil {
 				activePods = append(activePods, pod)
 			} else {
+				terminatingCount++
 				fmt.Printf("Pod %s is terminating, excluding from count\n", pod.Name)
 			}
 		}
 
 		fmt.Printf("Found %d active squid pod(s) (excluding terminating pods)\n", len(activePods))
+
+		// Wait for all terminating pods to be fully deleted before proceeding
+		// This ensures the service won't route traffic to pods with old configuration
+		if terminatingCount > 0 {
+			fmt.Printf("Found %d terminating pod(s), waiting for them to be fully deleted...\n", terminatingCount)
+			return fmt.Errorf("waiting for %d terminating pods to be deleted", terminatingCount)
+		}
 
 		if int32(len(activePods)) != expectedReplicas {
 			fmt.Printf("Active pod count mismatch: expected %d, found %d, waiting...\n", expectedReplicas, len(activePods))
