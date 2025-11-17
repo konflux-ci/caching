@@ -333,7 +333,7 @@ prometheus:
       serverName: ""
       # If you don't have a CA handy, you can point to a Secret with ca.crt
       ca:
-        secretName: "proxy-tls"
+        secretName: "caching-tls"
         # key: "ca.crt" # optional, defaults to ca.crt
       # Alternatively, reference a mounted CA file path inside Prometheus
       # caFile: "/etc/prometheus/configmaps/proxy-ca/ca.crt"
