@@ -67,38 +67,51 @@ func pullAndVerifyQuayCDN(imageRef string) {
 		Expect(err).NotTo(HaveOccurred(), "Failed to pull container image")
 	}
 
-	// Wait a moment to ensure all requests are logged
-	time.Sleep(1 * time.Second)
+	// Wait for logs to be written and available through Kubernetes API
+	// EaaS environment needs more time for log propagation than local/quickcluster
+	waitTime := 1 * time.Second
+	if testhelpers.IsEaaSEnvironment() {
+		waitTime = 5 * time.Second
+		fmt.Printf("🔍 DEBUG: EaaS detected - waiting %v for log propagation\n", waitTime)
+	}
+	time.Sleep(waitTime)
 
 	By("Verifying CDN requests in squid logs")
 	// Check logs from all pods since the beginning
 	cacheHitFound := false
 
+	fmt.Printf("🔍 DEBUG: Checking logs from %d squid pods\n", len(pods))
 	for _, pod := range pods {
+		fmt.Printf("🔍 DEBUG: Retrieving logs from pod %s (container: %s)\n", pod.Name, squidContainerName)
 		logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, pod.Name, squidContainerName, &beforeSequence)
 		if err != nil {
+			fmt.Printf("⚠️  WARNING: Failed to get logs from pod %s: %v\n", pod.Name, err)
 			continue // Skip pods where we can't get logs
 		}
 		logStr := string(logs)
-		if logStr != "" {
-			fmt.Printf("DEBUG: === Logs from pod %s ===\n", pod.Name)
-			fmt.Printf("%s\n", logStr)
+		fmt.Printf("🔍 DEBUG: Retrieved %d bytes of logs from pod %s\n", len(logStr), pod.Name)
+		if logStr == "" {
+			fmt.Printf("⚠️  WARNING: Pod %s has empty logs - might not have processed requests yet\n", pod.Name)
+			continue
+		}
+		
+		fmt.Printf("DEBUG: === Logs from pod %s ===\n", pod.Name)
+		fmt.Printf("%s\n", logStr)
 
-			// Check if this pod has a cache HIT
-			hitRegex := regexp.MustCompile(`(?m)^.*TCP_HIT.*cdn(?:[0-9]{2})?\.quay\.io.*$`)
-			if hitRegex.MatchString(logStr) {
-				fmt.Printf("DEBUG: Found TCP_HIT in pod %s, verifying corresponding MISS\n", pod.Name)
+		// Check if this pod has a cache HIT
+		hitRegex := regexp.MustCompile(`(?m)^.*TCP_HIT.*cdn(?:[0-9]{2})?\.quay\.io.*$`)
+		if hitRegex.MatchString(logStr) {
+			fmt.Printf("DEBUG: Found TCP_HIT in pod %s, verifying corresponding MISS\n", pod.Name)
 
-				// Verify this pod also has the corresponding MISS
-				Expect(logStr).To(
-					MatchRegexp(`(?m)^.*TCP_MISS.*cdn(?:[0-9]{2})?\.quay\.io.*$`),
-					"Pod with cache hit should also show TCP_MISS for the same image",
-				)
+			// Verify this pod also has the corresponding MISS
+			Expect(logStr).To(
+				MatchRegexp(`(?m)^.*TCP_MISS.*cdn(?:[0-9]{2})?\.quay\.io.*$`),
+				"Pod with cache hit should also show TCP_MISS for the same image",
+			)
 
-				cacheHitFound = true
-				fmt.Printf("DEBUG: Successfully verified both MISS and HIT in pod %s!\n", pod.Name)
-				break // Found a pod with both MISS and HIT, no need to check others
-			}
+			cacheHitFound = true
+			fmt.Printf("DEBUG: Successfully verified both MISS and HIT in pod %s!\n", pod.Name)
+			break // Found a pod with both MISS and HIT, no need to check others
 		}
 	}
 

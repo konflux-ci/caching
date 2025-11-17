@@ -389,6 +389,11 @@ type SquidHelmValues struct {
 	Affinity           json.RawMessage           `json:"affinity,omitempty"`
 }
 
+// IsEaaSEnvironment returns true if running in EaaS (prerelease) environment
+func IsEaaSEnvironment() bool {
+	return os.Getenv("SQUID_ENVIRONMENT") == "prerelease"
+}
+
 // ConfigureSquidWithHelm configures Squid deployment using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
 // Environment is passed from test pod via SQUID_ENVIRONMENT env var
