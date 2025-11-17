@@ -13,6 +13,7 @@
             "env": {
                 "CGO_ENABLED": "1"
             },
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "showLog": true
         },
@@ -24,11 +25,11 @@
             "program": "${workspaceFolder}/tests/e2e",
             "args": [
                 "-ginkgo.v",
-                "-ginkgo.focus=${input:focusSpec}"
             ],
             "env": {
                 "CGO_ENABLED": "1"
             },
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "showLog": true
         },
@@ -45,6 +46,7 @@
             "env": {
                 "CGO_ENABLED": "1"
             },
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
             "showLog": true
         }
@@ -58,4 +60,3 @@
         }
     ]
 }
- 
