@@ -19,14 +19,36 @@ They're backed by quay.io infrastructure so there's an opportunity to also solve
 
 These images may be public or private.
 
-When pulling a blob directly from quay.io, the registry returns a `302` redirect to a CDN URL
-(`cdnNN.quay.io`). Clients then request the blob from the CDN.
+When pulling a blob directly from quay.io, the registry returns a `302` redirect. The redirect target varies by region and load:
+
+1. **CDN URLs** (`cdnNN.quay.io`): Used in most regions
+2. **Direct S3 URLs**: Used in `us-east-1` region for direct blob storage access
 
 Each CDN request has the following structure:
 
 ```
 https://cdn01.quay.io/quayio-production-s3/sha256/0e/0ea0faeb23c26511e776010a311460a8e57c969b6d3f16484fa1dd29c22a613d?...
 ```
+
+In `us-east-1`, Quay may redirect directly to S3. AWS S3 supports two URL formats, and Quay may use either depending on region and configuration:
+
+**Path-style URLs** (bucket name in path):
+```
+https://s3.us-east-1.amazonaws.com/quayio-production-s3/sha256/55/551849...
+https://s3.dualstack.us-east-1.amazonaws.com/quayio-production-s3/sha256/55/551849...
+```
+
+**Virtual-hosted-style URLs** (bucket name in hostname):
+```
+https://quayio-production-s3.s3.us-east-1.amazonaws.com/sha256/55/551849...
+https://quayio-production-s3.s3.amazonaws.com/sha256/55/551849...
+```
+
+Both URL formats point to the same S3 bucket and must be supported to ensure consistent caching regardless of which format Quay returns.
+
+See the [OpenShift Container Platform firewall configuration documentation]
+(https://docs.redhat.com/en/documentation/openshift_container_platform/4.19/html/installation_configuration/configuring-firewall#configuring-firewall_configuring-firewall)
+which documents the `quayio-production-s3` S3 bucket as required to access Quay image content in AWS.
 
 There's an accompanying `Authorization` header with each request, even for public images.
 
@@ -80,10 +102,12 @@ Content Adaptation options (per [Squid Content Adaptation](https://wiki.squid-ca
 
 ## Decision
 
-We'll create a custom store ID helper program to compute IDs for only content-addressable CDN URLs
-matching `^https://cdn(\d{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}`.
+We'll create a custom store ID helper program to compute IDs for content-addressable URLs from:
+1. Quay CDN: `^https://cdn(\d{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}`
+2. Quay S3 backend (path-style): `^https://s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3/sha256/.+/[a-f0-9]{64}`
+3. Quay S3 backend (virtual-hosted): `^https://quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com/sha256/.+/[a-f0-9]{64}`
 
-It will perform a lightweight GET authorization check to the original CDN URL.
+It will perform a lightweight GET authorization check to the original URL.
 Given a `200 OK` response, it will return the same URL without query parameters to use as the stable
 cache key. For any other response, it returns the original URL to avoid cache pollution.
 
