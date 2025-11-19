@@ -66,18 +66,9 @@ spec:
       echo "✓ Changed to temp directory: $CHART_DIR"
       ls -la ./squid/charts/
       
-      echo ""
-      echo "=========================================="
-      echo "🔍 DEBUG: Test Pod Image Info"
-      echo "=========================================="
-      echo "This test pod is running image: {{ include "squid.test.image" . }}"
-      echo "Expected from snapshot: {{ include "squid.test.image" . }}"
-      echo "=========================================="
-      echo ""
-      
       # Run the compiled test binary
       echo "Running tests..."
-      /app/tests/e2e-v2/e2e.test -ginkgo.v -ginkgo.label-filter="{{ .Values.test.labelFilter }}"
+      /app/tests/e2e/e2e.test -ginkgo.v -ginkgo.label-filter="{{ .Values.test.labelFilter }}"
     env:
     # Pass environment to test binary so it knows which image repos to use
     - name: SQUID_ENVIRONMENT

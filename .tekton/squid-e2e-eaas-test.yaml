@@ -466,7 +466,7 @@ spec:
                   oc logs -n "caching" squid-test --tail=2000 2>&1 || true
                   exit 1
                 fi
-
+                
                 echo "Helm tests succeeded, capturing squid-test logs for diagnostics..."
                 echo "=== squid-test pod logs (success) ==="
                 oc logs -n "caching" squid-test --tail=2000 2>&1 || true

@@ -151,10 +151,7 @@ var _ = BeforeSuite(func() {
 
 	// Check if we should skip helm reconfiguration (e.g., in EaaS where deployment is already correct)
 	skipReconfigure := os.Getenv("SKIP_HELM_RECONFIGURE")
-	if skipReconfigure == "true" {
-		fmt.Printf("DEBUG: SKIP_HELM_RECONFIGURE=true, skipping BeforeSuite helm reconfiguration\n")
-		fmt.Printf("DEBUG: Deployment is already configured by EaaS pipeline\n")
-	} else {
+	if skipReconfigure != "true" {
 		// Local/devcontainer testing: reconfigure to ensure correct state
 		err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 			ReplicaCount: int(suiteReplicaCount),

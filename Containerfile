@@ -134,4 +134,3 @@ EXPOSE 1344
 USER 1001
 
 ENTRYPOINT ["/usr/sbin/container-entrypoint.sh"]
-# Trigger rebuild for quickcluster testing 20251104
