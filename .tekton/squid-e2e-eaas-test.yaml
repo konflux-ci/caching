@@ -7,9 +7,6 @@ metadata:
     build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" && target_branch == "main"
-    pipelinesascode.tekton.dev/on-target-branch: "[group]"
   labels:
     appstudio.openshift.io/application: caching
     appstudio.openshift.io/component: squid
@@ -34,7 +31,7 @@ spec:
       It runs on pull_request events and uses PR build images directly.
     params:
       - name: SNAPSHOT
-        description: 'Dummy parameter for test-metadata task compatibility'
+        description: 'JSON string containing the application components and their container images'
         default: '{"components": []}'
         type: string
       - name: test-name
@@ -69,14 +66,14 @@ spec:
           - name: test-name
             value: $(context.pipelineRun.name)
 
-      # Construct PR build image references from git revision
-      # This pipeline runs on pull_request events, so we use PR builds
-      - name: construct-pr-images
+      # Extract component images from the snapshot
+      # The snapshot contains all built component images for this PR
+      - name: extract-snapshot-images
         runAfter:
           - test-metadata
         taskSpec:
           params:
-            - name: git-revision
+            - name: SNAPSHOT
               type: string
           results:
             - name: squid-image
@@ -84,32 +81,43 @@ spec:
             - name: squid-tester-image
               description: Container image for the squid-tester component
           steps:
-            - name: construct
+            - name: extract
               image: quay.io/konflux-ci/konflux-test:v1.4.31@sha256:a7cae9e96663e277a3904d0c78630508ddb6cc8eebaa912a840bd20f68dcaad1
               script: |
                 #!/bin/bash
                 set -euo pipefail
                 
-                git_rev="$(params.git-revision)"
-                echo "Constructing PR build image references for revision: $git_rev"
+                echo "Extracting component images from snapshot..."
+                snapshot='$(params.SNAPSHOT)'
+                echo "Snapshot: $snapshot"
                 
-                squid_image="quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid:on-pr-${git_rev}"
-                echo "Squid PR build: $squid_image"
+                # Extract squid image
+                squid_image=$(echo "$snapshot" | jq -r '.components[] | select(.name == "squid") | .containerImage')
+                if [ -z "$squid_image" ] || [ "$squid_image" = "null" ]; then
+                  echo "ERROR: Could not find squid component in snapshot"
+                  exit 1
+                fi
+                echo "Squid image: $squid_image"
                 echo -n "$squid_image" > $(results.squid-image.path)
                 
-                tester_image="quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester:on-pr-${git_rev}"
-                echo "Squid-tester PR build: $tester_image"
+                # Extract squid-tester image
+                tester_image=$(echo "$snapshot" | jq -r '.components[] | select(.name == "squid-tester") | .containerImage')
+                if [ -z "$tester_image" ] || [ "$tester_image" = "null" ]; then
+                  echo "ERROR: Could not find squid-tester component in snapshot"
+                  exit 1
+                fi
+                echo "Tester image: $tester_image"
                 echo -n "$tester_image" > $(results.squid-tester-image.path)
         params:
-          - name: git-revision
-            value: $(tasks.test-metadata.results.git-revision)
+          - name: SNAPSHOT
+            value: $(params.SNAPSHOT)
 
       # Provision EaaS namespace
       - name: provision-eaas-space
         when:
           - input: "$(tasks.test-metadata.results.test-event-type)"
             operator: in
-            values: ["pull_request"]
+            values: ["pull_request", "push", ""]
         runAfter:
           - test-metadata
         taskRef:
@@ -132,7 +140,7 @@ spec:
         when:
           - input: "$(tasks.test-metadata.results.test-event-type)"
             operator: in
-            values: ["pull_request"]
+            values: ["pull_request", "push", ""]
         runAfter:
           - provision-eaas-space
         taskSpec:
@@ -192,10 +200,10 @@ spec:
         when:
           - input: "$(tasks.test-metadata.results.test-event-type)"
             operator: in
-            values: ["pull_request"]
+            values: ["pull_request", "push", ""]
         runAfter:
           - provision-cluster
-          - construct-pr-images
+          - extract-snapshot-images
         taskSpec:
           params:
             - name: squid-image
@@ -466,9 +474,9 @@ spec:
                 echo "All E2E tests passed!"
         params:
           - name: squid-image
-            value: "$(tasks.construct-pr-images.results.squid-image)"
+            value: "$(tasks.extract-snapshot-images.results.squid-image)"
           - name: tester-image
-            value: "$(tasks.construct-pr-images.results.squid-tester-image)"
+            value: "$(tasks.extract-snapshot-images.results.squid-tester-image)"
           - name: git-url
             value: "$(tasks.test-metadata.results.git-url)"
           - name: git-revision
