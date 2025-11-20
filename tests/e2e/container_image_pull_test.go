@@ -30,7 +30,12 @@ func pullAndVerifyQuayCDN(imageRef string) {
 	err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 		Cache: &testhelpers.CacheValues{
 			AllowList: []string{
+				// Match Quay CDN URLs (direct)
 				"^https://cdn([0-9]{2})?\\.quay\\.io/.+/sha256/.+/[a-f0-9]{64}",
+				// Match S3 backend URLs - path-style (Quay redirects to S3 for blob storage)
+				"^https://s3\\.[a-z0-9-]+\\.amazonaws\\.com/quayio-production-s3/sha256/.+/[a-f0-9]{64}",
+				// Match S3 backend URLs - virtual-hosted-style
+				"^https://quayio-production-s3\\.s3[a-z0-9.-]*\\.amazonaws\\.com/sha256/.+/[a-f0-9]{64}",
 				"dummy-" + imageRef, // Unique dummy value to ensure the pod is recreated
 			},
 		},
@@ -80,21 +85,25 @@ func pullAndVerifyQuayCDN(imageRef string) {
 			continue // Skip pods where we can't get logs
 		}
 		logStr := string(logs)
-		if logStr == "" {
-			continue
-		}
+		if logStr != "" {
+			fmt.Printf("DEBUG: === Logs from pod %s ===\n", pod.Name)
+			fmt.Printf("%s\n", logStr)
 
-		// Check if this pod has a cache HIT
-		hitRegex := regexp.MustCompile(`(?m)^.*TCP_HIT.*cdn(?:[0-9]{2})?\.quay\.io.*$`)
-		if hitRegex.MatchString(logStr) {
-			// Verify this pod also has the corresponding MISS
-			Expect(logStr).To(
-				MatchRegexp(`(?m)^.*TCP_MISS.*cdn(?:[0-9]{2})?\.quay\.io.*$`),
-				"Pod with cache hit should also show TCP_MISS for the same image",
-			)
+			// Check if this pod has a cache HIT (from either Quay CDN or S3 backend)
+			hitRegex := regexp.MustCompile(`(?m)^.*TCP_HIT.*(cdn(?:[0-9]{2})?\.quay\.io|quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com|s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3).*$`)
+			if hitRegex.MatchString(logStr) {
+				fmt.Printf("DEBUG: Found TCP_HIT in pod %s, verifying corresponding MISS\n", pod.Name)
 
-			cacheHitFound = true
-			break // Found a pod with both MISS and HIT, no need to check others
+				// Verify this pod also has the corresponding MISS
+				Expect(logStr).To(
+					MatchRegexp(`(?m)^.*TCP_MISS.*(cdn(?:[0-9]{2})?\.quay\.io|quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com|s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3).*$`),
+					"Pod with cache hit should also show TCP_MISS for the same image",
+				)
+
+				cacheHitFound = true
+				fmt.Printf("DEBUG: Successfully verified both MISS and HIT in pod %s!\n", pod.Name)
+				break // Found a pod with both MISS and HIT, no need to check others
+			}
 		}
 	}
 
