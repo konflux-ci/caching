@@ -1,5 +1,4 @@
 FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:28ec2f4662bdc4b0d4893ef0d8aebf36a5165dfb1d1dc9f46319bd8a03ed3365
-
 # Install required packages for Go and testing (version-locked)
 # Note: curl-minimal is already present in ubi10-minimal
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
@@ -77,4 +76,4 @@ LABEL io.openshift.expose-services="3128:squid"
 LABEL io.openshift.tags="squid-tester"
 
 # Default command runs the compiled test binary
-CMD ["./tests/e2e/e2e.test", "-ginkgo.v"] 
+CMD ["./tests/e2e/e2e.test", "-ginkgo.v"]
