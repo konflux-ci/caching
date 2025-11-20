@@ -15,6 +15,11 @@ import (
 
 var cdnRegex = regexp.MustCompile(`^https://cdn(\d{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}`)
 
+// S3 URL patterns - supports both path-style and virtual-hosted-style
+// Path-style: https://s3.region.amazonaws.com/quayio-production-s3/sha256/.../hash
+// Virtual-hosted: https://quayio-production-s3.s3.region.amazonaws.com/sha256/.../hash
+var s3Regex = regexp.MustCompile(`^https://(?:quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com/sha256/.+/[a-f0-9]{64}|s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3/sha256/.+/[a-f0-9]{64})`)
+
 // HTTPClient interface for making HTTP requests (allows mocking)
 type HTTPClient interface {
 	Get(url string) (*http.Response, error)
@@ -26,14 +31,15 @@ func isChannelID(s string) bool {
 	return err == nil && val >= 0
 }
 
-// normalizeStoreID normalizes the store-id for caching by removing query parameters from CDN URLs.
+// normalizeStoreID normalizes the store-id for caching by removing query parameters from CDN and S3 URLs.
 // The request URL must return a 200 status code to ensure the request is authorized.
 func normalizeStoreID(client HTTPClient, requestURL string) string {
-	if !cdnRegex.MatchString(requestURL) {
+	// Check if URL matches either CDN or S3 patterns
+	if !cdnRegex.MatchString(requestURL) && !s3Regex.MatchString(requestURL) {
 		return requestURL
 	}
 
-	// Issue the request to the CDN to check authorization but don't read the body
+	// Issue the request to the CDN/S3 to check authorization but don't read the body
 	resp, err := client.Get(requestURL)
 	if err != nil {
 		// Don't log the request URL to avoid leaking sensitive information
