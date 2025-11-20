@@ -30,10 +30,7 @@ func pullAndVerifyQuayCDN(imageRef string) {
 	err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 		Cache: &testhelpers.CacheValues{
 			AllowList: []string{
-				// Match Quay CDN URLs (direct)
 				"^https://cdn([0-9]{2})?\\.quay\\.io/.+/sha256/.+/[a-f0-9]{64}",
-				// Match S3 backend URLs (Quay redirects to S3 for blob storage)
-				"^https://s3\\.[a-z0-9-]+\\.amazonaws\\.com/quayio-production-s3/sha256/.+",
 				"dummy-" + imageRef, // Unique dummy value to ensure the pod is recreated
 			},
 		},
@@ -87,12 +84,12 @@ func pullAndVerifyQuayCDN(imageRef string) {
 			continue
 		}
 
-		// Check if this pod has a cache HIT (from either Quay CDN or S3 backend)
-		hitRegex := regexp.MustCompile(`(?m)^.*TCP_HIT.*(cdn(?:[0-9]{2})?\.quay\.io|s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3).*$`)
+		// Check if this pod has a cache HIT
+		hitRegex := regexp.MustCompile(`(?m)^.*TCP_HIT.*cdn(?:[0-9]{2})?\.quay\.io.*$`)
 		if hitRegex.MatchString(logStr) {
 			// Verify this pod also has the corresponding MISS
 			Expect(logStr).To(
-				MatchRegexp(`(?m)^.*TCP_MISS.*(cdn(?:[0-9]{2})?\.quay\.io|s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3).*$`),
+				MatchRegexp(`(?m)^.*TCP_MISS.*cdn(?:[0-9]{2})?\.quay\.io.*$`),
 				"Pod with cache hit should also show TCP_MISS for the same image",
 			)
 
