@@ -62,7 +62,11 @@ Get squid image for current environment
 {{- define "squid.image" -}}
 {{- $env := include "squid.environment" . -}}
 {{- $envSettings := index .Values.envSettings $env -}}
-{{- printf "%s:%s" $envSettings.squid.image.repository $envSettings.squid.image.tag -}}
+{{- if hasPrefix "sha256:" $envSettings.squid.image.tag -}}
+  {{- printf "%s@%s" $envSettings.squid.image.repository $envSettings.squid.image.tag -}}
+{{- else -}}
+  {{- printf "%s:%s" $envSettings.squid.image.repository $envSettings.squid.image.tag -}}
+{{- end -}}
 {{- end }}
 
 {{/*
@@ -71,7 +75,11 @@ Get test image for current environment
 {{- define "squid.test.image" -}}
 {{- $env := include "squid.environment" . -}}
 {{- $envSettings := index .Values.envSettings $env -}}
-{{- printf "%s:%s" $envSettings.test.image.repository $envSettings.test.image.tag -}}
+{{- if hasPrefix "sha256:" $envSettings.test.image.tag -}}
+  {{- printf "%s@%s" $envSettings.test.image.repository $envSettings.test.image.tag -}}
+{{- else -}}
+  {{- printf "%s:%s" $envSettings.test.image.repository $envSettings.test.image.tag -}}
+{{- end -}}
 {{- end }}
 
 {{/*

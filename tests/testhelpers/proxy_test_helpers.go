@@ -393,7 +393,18 @@ type SquidHelmValues struct {
 
 // ConfigureSquidWithHelm configures Squid deployment using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
-	values.Environment = "dev"
+	// Environment is passed from test pod via SQUID_ENVIRONMENT env var
+	// This is set by test-pod.yaml from .Values.environment
+	// Default is "dev" for local testing
+	environment := os.Getenv("SQUID_ENVIRONMENT")
+	if environment == "" {
+		environment = "dev"
+	}
+
+	values.Environment = environment
+
+	// Get current deployment for image preservation logic
+	deployment, err := client.AppsV1().Deployments(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
 
 	// Handle replica count logic:
 	// 1. If SQUID_REPLICA_COUNT env var does not exist or equals 0 -> use value from values.yaml (don't set ReplicaCount)
@@ -422,7 +433,61 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	defer os.Remove(valuesFile)
 
 	// Use the temporary values file with helm
-	err = UpgradeChart("squid", "./squid", valuesFile)
+	// Allow overriding chart path via SQUID_CHART_PATH env var (defaults to ./squid)
+	chartPath := os.Getenv("SQUID_CHART_PATH")
+	if chartPath == "" {
+		chartPath = "./squid"
+	}
+
+	// Build extraArgs based on environment
+	var extraArgs []string
+
+	// In prerelease (EaaS), disable cert-manager, trust-manager, and mirrord
+	// These are managed externally by the E2E pipeline (installed separately or disabled)
+	if environment == "prerelease" {
+		extraArgs = []string{
+			"--set", "installCertManagerComponents=false",
+			"--set", "cert-manager.enabled=false",
+			"--set", "trust-manager.enabled=false",
+			"--set", "mirrord.enabled=false",
+		}
+	}
+
+	// CRITICAL: In prerelease (EaaS), preserve pipeline-deployed image tags
+	// In dev/devcontainer, let helm use values.yaml defaults (:latest is correct there)
+	if environment == "prerelease" && deployment != nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
+		currentImage := deployment.Spec.Template.Spec.Containers[0].Image
+
+		var imageRepo, imageTag string
+		if strings.Contains(currentImage, "@sha256:") {
+			// Digest format: repo@sha256:xxx
+			parts := strings.SplitN(currentImage, "@", 2)
+			imageRepo = parts[0]
+			imageTag = parts[1]
+		} else if strings.Contains(currentImage, ":") {
+			// Tag format: repo:tag
+			lastColon := strings.LastIndex(currentImage, ":")
+			imageRepo = currentImage[:lastColon]
+			imageTag = currentImage[lastColon+1:]
+		} else {
+			imageRepo = currentImage
+			imageTag = "latest"
+		}
+
+		// Derive test image (squid → squid-tester in prerelease)
+		testImageRepo := strings.Replace(imageRepo, "/squid", "/squid-tester", 1)
+
+		// Pass to helm to prevent reverting to :latest defaults
+		extraArgs = append(extraArgs,
+			"--set", fmt.Sprintf("envSettings.%s.squid.image.repository=%s", environment, imageRepo),
+			"--set", fmt.Sprintf("envSettings.%s.squid.image.tag=%s", environment, imageTag),
+			"--set", fmt.Sprintf("envSettings.%s.test.image.repository=%s", environment, testImageRepo),
+			"--set", fmt.Sprintf("envSettings.%s.test.image.tag=%s", environment, imageTag),
+		)
+	}
+
+	// In dev (devcontainer), keep all components enabled for full test functionality
+	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
@@ -436,20 +501,25 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 }
 
 // UpgradeChart performs a helm upgrade with the specified chart and values file
-// If valuesFile is empty, uses values.yaml defaults and sets environment=dev
 func UpgradeChart(releaseName, chartName string, valuesFile string) error {
+	return UpgradeChartWithArgs(releaseName, chartName, valuesFile, nil)
+}
+
+// UpgradeChartWithArgs performs a helm upgrade with additional --set arguments
+func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extraArgs []string) error {
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
 
-	// Build helm command base
-	cmdParts := []string{"helm", "upgrade", releaseName, chartName, "-n=default", "--wait", "--timeout=120s"}
+	// Build helm command as a shell string
+	// Use default namespace for Helm release metadata (matches magefile.go)
+	// Resources created in caching namespace (from chart's namespace templates)
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=180s"}
 
-	// If valuesFile is provided, use it; otherwise use values.yaml defaults with --set flags
-	if valuesFile != "" {
-		cmdParts = append(cmdParts, "--values", valuesFile)
-	} else {
-		// Use values.yaml defaults but keep environment=dev for test environment
-		// (values.yaml defaults to environment=release which uses quay.io images)
-		cmdParts = append(cmdParts, "--set", "environment=dev")
+	// Values file is provided by callers
+	cmdParts = append(cmdParts, "--values", valuesFile)
+
+	// Append any extra arguments (e.g., --set flags)
+	if len(extraArgs) > 0 {
+		cmdParts = append(cmdParts, extraArgs...)
 	}
 
 	// Join into single shell command string
@@ -467,7 +537,13 @@ func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 
 // RenderHelmTemplate renders the Helm template with the given values and returns the YAML output
 func RenderHelmTemplate(chartPath string, values SquidHelmValues) (string, error) {
-	values.Environment = "dev"
+	// Environment is passed from test pod via SQUID_ENVIRONMENT env var
+	environment := os.Getenv("SQUID_ENVIRONMENT")
+	if environment == "" {
+		environment = "dev" // Fallback for local testing
+	}
+
+	values.Environment = environment
 	valuesFile, err := writeValuesToFile(&values)
 	if err != nil {
 		return "", fmt.Errorf("failed to write values to file: %w", err)
