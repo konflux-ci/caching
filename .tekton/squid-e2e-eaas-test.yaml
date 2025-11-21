@@ -1,0 +1,494 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/konflux-ci/caching?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+  labels:
+    appstudio.openshift.io/application: caching
+    appstudio.openshift.io/component: squid
+    pipelines.appstudio.openshift.io/type: test
+  name: squid-e2e-eaas-test
+  namespace: konflux-vanguard-tenant
+spec:
+  params:
+    - name: test-name
+      value: squid-openshift-e2e
+    - name: ocp-version
+      value: "4.17"
+    - name: test-event-type
+      value: pull_request
+    - name: machine-type
+      value: m5.xlarge
+
+  pipelineSpec:
+    description: |-
+      This pipeline automates the process of running end-to-end tests for Squid
+      on an ephemeral OpenShift cluster using EaaS (Environment as a Service).
+      It runs on pull_request events and uses PR build images directly.
+    params:
+      - name: SNAPSHOT
+        description: 'JSON string containing the application components and their container images'
+        default: '{"components": []}'
+        type: string
+      - name: test-name
+        description: 'The name of the test corresponding to a defined Konflux integration test.'
+        default: 'squid-e2e'
+      - name: ocp-version
+        description: 'The OpenShift version to use for the ephemeral cluster deployment.'
+        type: string
+        default: "4.17"
+      - name: test-event-type
+        description: 'Indicates if the test is triggered by a Pull Request or Push event.'
+        default: 'pull_request'
+      - name: machine-type
+        description: 'The EC2 instance type for cluster worker nodes (amd64 or arm64).'
+        type: string
+        default: "m5.xlarge"
+
+    tasks:
+      - name: test-metadata
+        taskRef:
+          resolver: git
+          params:
+            - name: url
+              value: https://github.com/konflux-ci/tekton-integration-catalog.git
+            - name: revision
+              value: main
+            - name: pathInRepo
+              value: tasks/test-metadata/0.1/test-metadata.yaml
+        params:
+          - name: SNAPSHOT
+            value: $(params.SNAPSHOT)
+          - name: test-name
+            value: $(context.pipelineRun.name)
+
+      # Extract component images from the snapshot
+      # The snapshot contains all built component images for this PR
+      - name: extract-snapshot-images
+        runAfter:
+          - test-metadata
+        taskSpec:
+          params:
+            - name: SNAPSHOT
+              type: string
+          results:
+            - name: squid-image
+              description: Container image for the squid component
+            - name: squid-tester-image
+              description: Container image for the squid-tester component
+          steps:
+            - name: extract
+              image: quay.io/konflux-ci/konflux-test:v1.4.31@sha256:a7cae9e96663e277a3904d0c78630508ddb6cc8eebaa912a840bd20f68dcaad1
+              script: |
+                #!/bin/bash
+                set -euo pipefail
+                
+                echo "Extracting component images from snapshot..."
+                snapshot='$(params.SNAPSHOT)'
+                echo "Snapshot: $snapshot"
+                
+                # Extract squid image
+                squid_image=$(echo "$snapshot" | jq -r '.components[] | select(.name == "squid") | .containerImage')
+                if [ -z "$squid_image" ] || [ "$squid_image" = "null" ]; then
+                  echo "ERROR: Could not find squid component in snapshot"
+                  exit 1
+                fi
+                echo "Squid image: $squid_image"
+                echo -n "$squid_image" > $(results.squid-image.path)
+                
+                # Extract squid-tester image
+                tester_image=$(echo "$snapshot" | jq -r '.components[] | select(.name == "squid-tester") | .containerImage')
+                if [ -z "$tester_image" ] || [ "$tester_image" = "null" ]; then
+                  echo "ERROR: Could not find squid-tester component in snapshot"
+                  exit 1
+                fi
+                echo "Tester image: $tester_image"
+                echo -n "$tester_image" > $(results.squid-tester-image.path)
+        params:
+          - name: SNAPSHOT
+            value: $(params.SNAPSHOT)
+
+      # Provision EaaS namespace
+      - name: provision-eaas-space
+        when:
+          - input: "$(tasks.test-metadata.results.test-event-type)"
+            operator: in
+            values: ["pull_request", "push", ""]
+        runAfter:
+          - test-metadata
+        taskRef:
+          resolver: git
+          params:
+            - name: url
+              value: https://github.com/konflux-ci/build-definitions.git
+            - name: revision
+              value: main
+            - name: pathInRepo
+              value: task/eaas-provision-space/0.1/eaas-provision-space.yaml
+        params:
+          - name: ownerName
+            value: $(context.pipelineRun.name)
+          - name: ownerUid
+            value: $(context.pipelineRun.uid)
+
+      # Provision ephemeral cluster
+      - name: provision-cluster
+        when:
+          - input: "$(tasks.test-metadata.results.test-event-type)"
+            operator: in
+            values: ["pull_request", "push", ""]
+        runAfter:
+          - provision-eaas-space
+        taskSpec:
+          results:
+            - name: clusterName
+              value: "$(steps.create-cluster.results.clusterName)"
+          steps:
+            - name: get-supported-versions
+              ref:
+                resolver: git
+                params:
+                  - name: url
+                    value: https://github.com/konflux-ci/build-definitions.git
+                  - name: revision
+                    value: main
+                  - name: pathInRepo
+                    value: stepactions/eaas-get-supported-ephemeral-cluster-versions/0.1/eaas-get-supported-ephemeral-cluster-versions.yaml
+              params:
+                - name: eaasSpaceSecretRef
+                  value: $(tasks.provision-eaas-space.results.secretRef)
+            - name: get-latest-version
+              ref:
+                resolver: git
+                params:
+                  - name: url
+                    value: https://github.com/konflux-ci/build-definitions.git
+                  - name: revision
+                    value: main
+                  - name: pathInRepo
+                    value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
+              params:
+                - name: prefix
+                  value: "$(steps.get-supported-versions.results.versions[0])."
+            - name: create-cluster
+              ref:
+                resolver: git
+                params:
+                  - name: url
+                    value: https://github.com/konflux-ci/build-definitions.git
+                  - name: revision
+                    value: main
+                  - name: pathInRepo
+                    value: stepactions/eaas-create-ephemeral-cluster-hypershift-aws/0.1/eaas-create-ephemeral-cluster-hypershift-aws.yaml
+              params:
+                - name: eaasSpaceSecretRef
+                  value: $(tasks.provision-eaas-space.results.secretRef)
+                - name: version
+                  value: "$(steps.get-latest-version.results.version)"
+                - name: instanceType
+                  value: $(params.machine-type)
+                - name: timeout
+                  value: "45m"
+
+      # Run E2E tests
+      - name: squid-e2e-tests
+        timeout: 2h
+        when:
+          - input: "$(tasks.test-metadata.results.test-event-type)"
+            operator: in
+            values: ["pull_request", "push", ""]
+        runAfter:
+          - provision-cluster
+          - extract-snapshot-images
+        taskSpec:
+          params:
+            - name: squid-image
+            - name: tester-image
+            - name: git-url
+            - name: git-revision
+          volumes:
+            - name: credentials
+              emptyDir: {}
+          steps:
+            - name: get-kubeconfig
+              ref:
+                resolver: git
+                params:
+                  - name: url
+                    value: https://github.com/konflux-ci/build-definitions.git
+                  - name: revision
+                    value: main
+                  - name: pathInRepo
+                    value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
+              params:
+                - name: eaasSpaceSecretRef
+                  value: $(tasks.provision-eaas-space.results.secretRef)
+                - name: clusterName
+                  value: "$(tasks.provision-cluster.results.clusterName)"
+                - name: credentials
+                  value: credentials
+            - name: create-namespace
+              image: quay.io/konflux-ci/konflux-test:v1.4.31@sha256:a7cae9e96663e277a3904d0c78630508ddb6cc8eebaa912a840bd20f68dcaad1
+              env:
+                - name: KUBECONFIG
+                  value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+              volumeMounts:
+                - name: credentials
+                  mountPath: /credentials
+              script: |
+                #!/bin/bash
+                set -euo pipefail
+                echo "Creating caching namespace on ephemeral cluster..."
+                
+                cat <<EOF | oc apply -f -
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: caching
+                  labels:
+                    app.kubernetes.io/managed-by: Helm
+                  annotations:
+                    meta.helm.sh/release-name: squid
+                    meta.helm.sh/release-namespace: default
+                EOF
+                
+                echo "Namespace created with Helm ownership labels"
+            - name: copy-secrets
+              ref:
+                resolver: git
+                params:
+                  - name: url
+                    value: https://github.com/konflux-ci/build-definitions.git
+                  - name: revision
+                    value: main
+                  - name: pathInRepo
+                    value: stepactions/eaas-copy-secrets-to-ephemeral-cluster/0.1/eaas-copy-secrets-to-ephemeral-cluster.yaml
+              params:
+                - name: credentials
+                  value: credentials
+                - name: kubeconfig
+                  value: "$(steps.get-kubeconfig.results.kubeconfig)"
+                - name: namespace
+                  value: "caching"
+                - name: labelSelector
+                  value: "appstudio.redhat.com/internal=true"
+            - name: deploy-and-test
+              image: quay.io/konflux-ci/konflux-test:v1.4.31@sha256:a7cae9e96663e277a3904d0c78630508ddb6cc8eebaa912a840bd20f68dcaad1
+              env:
+                - name: KUBECONFIG
+                  value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
+              volumeMounts:
+                - name: credentials
+                  mountPath: /credentials
+              script: |
+                #!/bin/bash
+                set -euo pipefail
+                
+                echo "Using kubeconfig at: $KUBECONFIG"
+                
+                # Install helm
+                echo "Installing Helm..."
+                curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+                helm version
+                
+                # Verify cluster access
+                echo "Verifying OpenShift cluster..."
+                oc version
+                oc auth can-i create customresourcedefinitions || echo "WARNING: No CRD permissions"
+                oc auth can-i '*' '*' --all-namespaces && echo "Confirmed: cluster-admin access" || echo "WARNING: Limited permissions"
+                
+                echo "Cloning repository..."
+                git clone $(params.git-url) /workspace/source
+                cd /workspace/source
+                git checkout $(params.git-revision)
+                
+                # Use default namespace for Helm release (matches magefile.go behavior)
+                # Resources will be created in "caching" namespace (from chart's values.yaml default)
+                namespace="default"
+                
+                # Check for image pull secrets in the resource namespace
+                echo "Checking for image pull secrets in caching namespace..."
+                pull_secrets=$(oc get secrets -n "caching" -o json | \
+                  jq -r '.items[] | select(.type=="kubernetes.io/dockerconfigjson") | .metadata.name' 2>/dev/null || echo "")
+                
+                if [ -n "$pull_secrets" ]; then
+                  echo "Found $(echo "$pull_secrets" | wc -w) image pull secret(s)"
+                  secret_args=""
+                  idx=0
+                  for secret in $pull_secrets; do
+                    secret_args="$secret_args --set imagePullSecrets[$idx].name=$secret"
+                    idx=$((idx + 1))
+                  done
+                else
+                  echo "WARNING: No image pull secrets found"
+                  secret_args=""
+                fi
+                
+                # Install cert-manager
+                echo "Adding jetstack Helm repository..."
+                helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
+                helm repo update
+                cd squid
+                helm dependency build
+                
+                # Parse image references
+                squid_img="$(params.squid-image)"
+                squid_repo="${squid_img%:*}"
+                squid_tag="${squid_img##*:}"
+                
+                tester_img="$(params.tester-image)"
+                tester_repo="${tester_img%:*}"
+                tester_tag="${tester_img##*:}"
+                
+                echo "Squid: $squid_repo:$squid_tag"
+                echo "Tester: $tester_repo:$tester_tag"
+                
+                # Check if cert-manager exists
+                if oc get crd certificates.cert-manager.io 2>/dev/null; then
+                  echo "cert-manager already installed"
+                else
+                  echo "Installing cert-manager v1.19.1..."
+                  helm install cert-manager jetstack/cert-manager \
+                    --namespace cert-manager \
+                    --create-namespace \
+                    --version v1.19.1 \
+                    --set installCRDs=true \
+                    --set startupapicheck.enabled=false \
+                    --wait \
+                    --timeout=15m \
+                    --debug
+                  
+                  echo "Giving cert-manager webhook time to register with API server..."
+                  sleep 10
+                  
+                  echo "Installing trust-manager v0.20.2..."
+                  helm install trust-manager jetstack/trust-manager \
+                    --namespace cert-manager \
+                    --version v0.20.2 \
+                    --wait \
+                    --timeout=10m \
+                    --debug
+                  
+                  echo "Giving trust-manager time to register CRDs..."
+                  sleep 5
+                  
+                  echo "Verifying cert-manager can issue certificates..."
+                  # Create a test certificate to ensure cert-manager is fully functional
+                  cat <<EOF | oc apply -f -
+                apiVersion: cert-manager.io/v1
+                kind: Certificate
+                metadata:
+                  name: cert-manager-test
+                  namespace: cert-manager
+                spec:
+                  secretName: cert-manager-test-tls
+                  duration: 24h
+                  renewBefore: 12h
+                  isCA: false
+                  privateKey:
+                    algorithm: RSA
+                    size: 2048
+                  dnsNames:
+                    - test.example.com
+                  issuerRef:
+                    name: cert-manager-test-issuer
+                    kind: Issuer
+                ---
+                apiVersion: cert-manager.io/v1
+                kind: Issuer
+                metadata:
+                  name: cert-manager-test-issuer
+                  namespace: cert-manager
+                spec:
+                  selfSigned: {}
+                EOF
+                  
+                  echo "Waiting for test certificate to be issued (max 2 minutes)..."
+                  for i in {1..24}; do
+                    if oc get secret cert-manager-test-tls -n cert-manager 2>/dev/null; then
+                      echo "✓ Test certificate issued successfully - cert-manager is ready!"
+                      oc delete certificate cert-manager-test -n cert-manager
+                      oc delete issuer cert-manager-test-issuer -n cert-manager
+                      oc delete secret cert-manager-test-tls -n cert-manager
+                      break
+                    fi
+                    echo "Waiting for certificate... ($i/24)"
+                    sleep 5
+                  done
+                fi
+                
+                # Don't delete the caching namespace - let Helm manage it through the chart
+                # The chart templates will create/update resources in caching namespace
+                # Using -n=default for Helm metadata keeps it separate from resource namespace
+                
+                # Install squid (matches magefile.go pattern)
+                echo "Installing Squid chart..."
+                helm install squid . \
+                  --namespace "$namespace" \
+                  --set environment=prerelease \
+                  --set envSettings.prerelease.squid.image.repository="$squid_repo" \
+                  --set envSettings.prerelease.squid.image.tag="$squid_tag" \
+                  --set envSettings.prerelease.test.image.repository="$tester_repo" \
+                  --set envSettings.prerelease.test.image.tag="$tester_tag" \
+                  --set mirrord.enabled=false \
+                  --set installCertManagerComponents=false \
+                  --set cert-manager.enabled=false \
+                  --set trust-manager.enabled=false \
+                  $secret_args \
+                  --wait \
+                  --timeout=5m \
+                  --debug
+                
+                echo "Squid deployed successfully!"
+                oc get pods -n "caching"
+                
+                echo ""
+                echo "=========================================="
+                echo "🔍 DEBUG: Deployed Images"
+                echo "=========================================="
+                echo "Squid image: $squid_repo:$squid_tag"
+                echo "Tester image: $tester_repo:$tester_tag"
+                echo ""
+                echo "Actual deployed squid image:"
+                oc get deployment squid -n "caching" -o jsonpath='{.spec.template.spec.containers[0].image}'
+                echo ""
+                echo "=========================================="
+                echo ""
+                
+                echo "Running Helm tests..."
+                if ! helm test squid --namespace "$namespace" --timeout 90m; then
+                  echo "ERROR: Helm test failed!"
+                  echo "=== squid-test pod logs (failure) ==="
+                  oc logs -n "caching" squid-test --tail=2000 2>&1 || true
+                  exit 1
+                fi
+                
+                echo "Helm tests succeeded, capturing squid-test logs for diagnostics..."
+                echo "=== squid-test pod logs (success) ==="
+                oc logs -n "caching" squid-test --tail=2000 2>&1 || true
+                
+                echo "All E2E tests passed!"
+        params:
+          - name: squid-image
+            value: "$(tasks.extract-snapshot-images.results.squid-image)"
+          - name: tester-image
+            value: "$(tasks.extract-snapshot-images.results.squid-tester-image)"
+          - name: git-url
+            value: "$(tasks.test-metadata.results.git-url)"
+          - name: git-revision
+            value: "$(tasks.test-metadata.results.git-revision)"
+
+    finally:
+      - name: cleanup-report
+        taskSpec:
+          steps:
+            - name: report
+              image: registry.redhat.io/ubi9/ubi-minimal:latest
+              script: |
+                #!/bin/bash
+                echo "Cleanup complete"
+                echo "Ephemeral cluster will auto-delete after 2 hours"
