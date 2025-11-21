@@ -16,7 +16,7 @@ require (
 	github.com/prashantv/gostub v1.1.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.67.3
+	github.com/prometheus/common v0.67.4
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	helm.sh/helm/v3 v3.19.2
@@ -30,7 +30,7 @@ require (
 	dario.cat/mergo v1.0.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/BurntSushi/toml v1.5.0 // indirect
-	github.com/MakeNowJust/heredoc/v2 v2.0.1 // indirect
+	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.4.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
@@ -43,7 +43,7 @@ require (
 	github.com/chai2010/gettext-go v1.0.3 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
-	github.com/containerd/containerd/v2 v2.2.0 // indirect
+	github.com/containerd/containerd v1.7.29 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/containerd/platforms v1.0.0-rc.2 // indirect
