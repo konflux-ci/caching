@@ -1,5 +1,5 @@
 # Start from latest stable Fedora image (digest-pinned)
-FROM registry.fedoraproject.org/fedora:latest@sha256:1419f348f97df7618da0bc5541a21b386192b6afd5d3df81b93f1e9258994b36
+FROM registry.fedoraproject.org/fedora:latest@sha256:f97ce4a455d5b06c678969599e0efeb0a107239267c5f2c1cd5d49fafbb735a2
 
 # DNF tuning from official Podman Containerfile for build robustness
 RUN echo -e "\\n\\n# Added during image build" >> /etc/dnf/dnf.conf && \
