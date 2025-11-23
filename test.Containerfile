@@ -1,15 +1,16 @@
 FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:28ec2f4662bdc4b0d4893ef0d8aebf36a5165dfb1d1dc9f46319bd8a03ed3365
 
-# Install required packages for Go and testing (version-locked)
+# Install required packages for Go and testing
 # Note: curl-minimal is already present in ubi10-minimal
+# Using generic package names - exact versions are controlled by rpms.lock.yaml
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     microdnf install -y \
-    tar-2:1.35-7.el10 \
-    gzip-1.13-3.el10 \
-    which-2.21-44.el10_0 \
-    procps-ng-4.0.4-8.el10 \
-    gcc-14.3.1-2.1.el10 \
-    shadow-utils-2:4.15.0-8.el10 && \
+    tar \
+    gzip \
+    which \
+    procps-ng \
+    gcc \
+    shadow-utils && \
     microdnf clean all
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -77,4 +78,4 @@ LABEL io.openshift.expose-services="3128:squid"
 LABEL io.openshift.tags="squid-tester"
 
 # Default command runs the compiled test binary
-CMD ["./tests/e2e/e2e.test", "-ginkgo.v"] 
+CMD ["./tests/e2e/e2e.test", "-ginkgo.v"]

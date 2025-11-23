@@ -10,8 +10,6 @@ ENV DESCRIPTION="\
     hot objects cached in RAM, caches DNS lookups, supports non-blocking \
     DNS lookups, and implements negative caching of failed requests."
 
-ENV SQUID_VERSION="6.10-6.el10_1.1"
-
 LABEL name="$NAME"
 LABEL summary="$SUMMARY"
 LABEL description="$DESCRIPTION"
@@ -32,7 +30,7 @@ EXPOSE 3130
 COPY LICENSE /licenses/
 
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    microdnf install -y "squid-${SQUID_VERSION}" && microdnf clean all
+    microdnf install -y squid && microdnf clean all
 
 COPY --chmod=0755 container-entrypoint.sh /usr/sbin/container-entrypoint.sh
 
