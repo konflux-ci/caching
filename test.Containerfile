@@ -70,12 +70,18 @@ USER 1001
 LABEL name="Konflux CI Squid Tester"
 LABEL summary="Konflux CI Squid Tester"
 LABEL description="Konflux CI Squid Tester"
+LABEL usage="podman run --rm konflux-ci/squid-tester"
 LABEL maintainer="bkorren@redhat.com"
 LABEL com.redhat.component="konflux-ci-squid-tester"
 LABEL io.k8s.description="Konflux CI Squid Tester"
 LABEL io.k8s.display-name="konflux-ci-squid-tester"
 LABEL io.openshift.expose-services="3128:squid"
 LABEL io.openshift.tags="squid-tester"
+LABEL version="1.0"
+LABEL release="1"
+LABEL vendor="Red Hat, Inc."
+LABEL distribution-scope="public"
+LABEL url="https://github.com/konflux-ci/caching"
 
 # Default command runs the compiled test binary
 CMD ["./tests/e2e/e2e.test", "-ginkgo.v"]

@@ -1,26 +1,5 @@
 FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:28ec2f4662bdc4b0d4893ef0d8aebf36a5165dfb1d1dc9f46319bd8a03ed3365 AS squid-base
 
-ENV NAME="konflux-ci/squid"
-ENV SUMMARY="The Squid proxy caching server for Konflux CI"
-ENV DESCRIPTION="\
-    Squid is a high-performance proxy caching server for Web clients, \
-    supporting FTP, gopher, and HTTP data objects. Unlike traditional \
-    caching software, Squid handles all requests in a single, \
-    non-blocking, I/O-driven process. Squid keeps metadata and especially \
-    hot objects cached in RAM, caches DNS lookups, supports non-blocking \
-    DNS lookups, and implements negative caching of failed requests."
-
-LABEL name="$NAME"
-LABEL summary="$SUMMARY"
-LABEL description="$DESCRIPTION"
-LABEL usage="podman run -d --name squid -p 3128:3128 $NAME"
-LABEL maintainer="bkorren@redhat.com"
-LABEL com.redhat.component="konflux-ci-squid-container"
-LABEL io.k8s.description="$DESCRIPTION"
-LABEL io.k8s.display-name="konflux-ci-squid"
-LABEL io.openshift.expose-services="3128:squid"
-LABEL io.openshift.tags="squid"
-
 # default port providing cache service
 EXPOSE 3128
 
@@ -107,6 +86,32 @@ RUN --mount=type=cache,target=/tmp/go-cache \
 # Final Stage: Squid with integrated exporters and helpers
 # ==========================================
 FROM squid-base
+
+ENV NAME="konflux-ci/squid"
+ENV SUMMARY="The Squid proxy caching server for Konflux CI"
+ENV DESCRIPTION="\
+    Squid is a high-performance proxy caching server for Web clients, \
+    supporting FTP, gopher, and HTTP data objects. Unlike traditional \
+    caching software, Squid handles all requests in a single, \
+    non-blocking, I/O-driven process. Squid keeps metadata and especially \
+    hot objects cached in RAM, caches DNS lookups, supports non-blocking \
+    DNS lookups, and implements negative caching of failed requests."
+
+LABEL name="$NAME"
+LABEL summary="$SUMMARY"
+LABEL description="$DESCRIPTION"
+LABEL usage="podman run -d --name squid -p 3128:3128 $NAME"
+LABEL maintainer="bkorren@redhat.com"
+LABEL com.redhat.component="konflux-ci-squid-container"
+LABEL io.k8s.description="$DESCRIPTION"
+LABEL io.k8s.display-name="konflux-ci-squid"
+LABEL io.openshift.expose-services="3128:squid"
+LABEL io.openshift.tags="squid"
+LABEL version="1.0"
+LABEL release="1"
+LABEL vendor="Red Hat, Inc."
+LABEL distribution-scope="public"
+LABEL url="https://github.com/konflux-ci/caching"
 
 # Copy all binaries from builder stage
 COPY --from=go-builder \
