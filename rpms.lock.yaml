@@ -53,13 +53,13 @@ arches:
     name: httpd-filesystem
     evr: 2.4.63-4.el10
     sourcerpm: httpd-2.4.63-4.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-124.11.1.el10_1.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-124.13.1.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 3378689
-    checksum: sha256:94ef24b4d905878a4722cb92dd2504d784a7a1e47c5204be0ce5e8e811f85cc6
+    size: 3379769
+    checksum: sha256:61ae7945706ef2dd730085697d75a9daebee13d7d8e6684ceef7ad5aac2cb7c3
     name: kernel-headers
-    evr: 6.12.0-124.11.1.el10_1
-    sourcerpm: kernel-6.12.0-124.11.1.el10_1.src.rpm
+    evr: 6.12.0-124.13.1.el10_1
+    sourcerpm: kernel-6.12.0-124.13.1.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/l/libecap-1.0.1-19.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 29616
