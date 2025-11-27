@@ -391,6 +391,54 @@ type SquidHelmValues struct {
 	VolumeMounts       []corev1.VolumeMount      `json:"volumeMounts,omitempty"`
 }
 
+// parseImageReference extracts repository and tag from an image reference
+// Handles both digest (@sha256:xxx) and tag (:vX.Y.Z) formats
+func parseImageReference(image string) (repo, tag string) {
+	if strings.Contains(image, "@sha256:") {
+		// Digest format: repo@sha256:xxx
+		parts := strings.SplitN(image, "@", 2)
+		return parts[0], parts[1]
+	} else if strings.Contains(image, ":") {
+		// Tag format: repo:tag
+		lastColon := strings.LastIndex(image, ":")
+		return image[:lastColon], image[lastColon+1:]
+	}
+	return image, "latest"
+}
+
+// buildPrereleaseHelmArgs builds Helm arguments for prerelease environment
+// This preserves pipeline-deployed images and disables externally-managed components
+func buildPrereleaseHelmArgs(environment string, deployment *v1.Deployment) []string {
+	var extraArgs []string
+
+	// Disable cert-manager, trust-manager, and mirrord (managed externally by pipeline)
+	extraArgs = []string{
+		"--set", "installCertManagerComponents=false",
+		"--set", "cert-manager.enabled=false",
+		"--set", "trust-manager.enabled=false",
+		"--set", "mirrord.enabled=false",
+	}
+
+	// Preserve pipeline-deployed image tags to prevent reverting to :latest
+	if deployment != nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
+		currentImage := deployment.Spec.Template.Spec.Containers[0].Image
+		imageRepo, imageTag := parseImageReference(currentImage)
+
+		// Derive test image (squid → squid-tester in prerelease)
+		testImageRepo := strings.Replace(imageRepo, "/squid", "/squid-tester", 1)
+
+		// Pass to helm to prevent reverting to :latest defaults
+		extraArgs = append(extraArgs,
+			"--set", fmt.Sprintf("envSettings.%s.squid.image.repository=%s", environment, imageRepo),
+			"--set", fmt.Sprintf("envSettings.%s.squid.image.tag=%s", environment, imageTag),
+			"--set", fmt.Sprintf("envSettings.%s.test.image.repository=%s", environment, testImageRepo),
+			"--set", fmt.Sprintf("envSettings.%s.test.image.tag=%s", environment, imageTag),
+		)
+	}
+
+	return extraArgs
+}
+
 // ConfigureSquidWithHelm configures Squid deployment using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
 	// Environment is passed from test pod via SQUID_ENVIRONMENT env var
@@ -439,54 +487,13 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		chartPath = "./squid"
 	}
 
-	// Build extraArgs based on environment
+	// Build helm arguments based on environment
 	var extraArgs []string
-
-	// In prerelease (EaaS), disable cert-manager, trust-manager, and mirrord
-	// These are managed externally by the E2E pipeline (installed separately or disabled)
 	if environment == "prerelease" {
-		extraArgs = []string{
-			"--set", "installCertManagerComponents=false",
-			"--set", "cert-manager.enabled=false",
-			"--set", "trust-manager.enabled=false",
-			"--set", "mirrord.enabled=false",
-		}
+		extraArgs = buildPrereleaseHelmArgs(environment, deployment)
 	}
+	// In dev (devcontainer), keep all components enabled (extraArgs remains empty)
 
-	// CRITICAL: In prerelease (EaaS), preserve pipeline-deployed image tags
-	// In dev/devcontainer, let helm use values.yaml defaults (:latest is correct there)
-	if environment == "prerelease" && deployment != nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
-		currentImage := deployment.Spec.Template.Spec.Containers[0].Image
-
-		var imageRepo, imageTag string
-		if strings.Contains(currentImage, "@sha256:") {
-			// Digest format: repo@sha256:xxx
-			parts := strings.SplitN(currentImage, "@", 2)
-			imageRepo = parts[0]
-			imageTag = parts[1]
-		} else if strings.Contains(currentImage, ":") {
-			// Tag format: repo:tag
-			lastColon := strings.LastIndex(currentImage, ":")
-			imageRepo = currentImage[:lastColon]
-			imageTag = currentImage[lastColon+1:]
-		} else {
-			imageRepo = currentImage
-			imageTag = "latest"
-		}
-
-		// Derive test image (squid → squid-tester in prerelease)
-		testImageRepo := strings.Replace(imageRepo, "/squid", "/squid-tester", 1)
-
-		// Pass to helm to prevent reverting to :latest defaults
-		extraArgs = append(extraArgs,
-			"--set", fmt.Sprintf("envSettings.%s.squid.image.repository=%s", environment, imageRepo),
-			"--set", fmt.Sprintf("envSettings.%s.squid.image.tag=%s", environment, imageTag),
-			"--set", fmt.Sprintf("envSettings.%s.test.image.repository=%s", environment, testImageRepo),
-			"--set", fmt.Sprintf("envSettings.%s.test.image.tag=%s", environment, imageTag),
-		)
-	}
-
-	// In dev (devcontainer), keep all components enabled for full test functionality
 	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
