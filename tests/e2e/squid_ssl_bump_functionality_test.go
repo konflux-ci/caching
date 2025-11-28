@@ -17,7 +17,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-var _ = Describe("Squid SSL-Bump Functionality", Ordered, func() {
+var _ = Describe("Squid SSL-Bump Functionality", Ordered, Serial, func() {
 	var (
 		k8sClient     *kubernetes.Clientset
 		config        *rest.Config

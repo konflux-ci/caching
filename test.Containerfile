@@ -58,6 +58,9 @@ COPY tests/ ./tests/
 # Copy squid chart
 COPY squid/ ./squid/
 
+# Copy test entrypoint script
+COPY --chmod=0755 test-entrypoint.sh ./test-entrypoint.sh
+
 # Compile tests and testserver at build time
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     ginkgo build ./tests/e2e && \
