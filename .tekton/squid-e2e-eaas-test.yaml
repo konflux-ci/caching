@@ -48,6 +48,10 @@ spec:
         description: 'The EC2 instance type for cluster worker nodes (amd64 or arm64).'
         type: string
         default: "m5.xlarge"
+      - name: helm-version
+        description: 'The Helm version to install and use for deployments.'
+        type: string
+        default: "3.16.3"
 
     tasks:
       - name: test-metadata
@@ -210,6 +214,7 @@ spec:
             - name: tester-image
             - name: git-url
             - name: git-revision
+            - name: helm-version
           volumes:
             - name: credentials
               emptyDir: {}
@@ -290,9 +295,13 @@ spec:
                 
                 echo "Using kubeconfig at: $KUBECONFIG"
                 
-                # Install helm
-                echo "Installing Helm..."
-                curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+                # Install helm with pinned version
+                HELM_VERSION="$(params.helm-version)"
+                echo "Installing Helm ${HELM_VERSION}..."
+                curl -fsSL "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" -o helm.tgz
+                tar -xzf helm.tgz
+                mv linux-amd64/helm /usr/local/bin/helm
+                rm -rf helm.tgz linux-amd64
                 helm version
                 
                 # Verify cluster access
@@ -328,7 +337,11 @@ spec:
                   secret_args=""
                 fi
                 
-                # Install cert-manager
+                # Install cert-manager manually because the bundled cert-manager chart in squid/values.yaml
+                # specifies runAsUser: 1001, which violates OpenShift's restricted-v2 SCC.
+                # OpenShift requires UIDs in namespace-specific ranges (e.g., 1000740000-1000749999).
+                # The official jetstack chart doesn't hardcode UIDs, allowing OpenShift to auto-assign
+                # compatible UIDs from the allowed range.
                 echo "Adding jetstack Helm repository..."
                 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
                 helm repo update
@@ -425,7 +438,8 @@ spec:
                 # The chart templates will create/update resources in caching namespace
                 # Using -n=default for Helm metadata keeps it separate from resource namespace
                 
-                # Install squid (matches magefile.go pattern)
+                # Install squid with bundled cert-manager disabled (we installed it manually above
+                # because the bundled version has hardcoded UID that conflicts with OpenShift SCC)
                 echo "Installing Squid chart..."
                 helm install squid . \
                   --namespace "$namespace" \
@@ -481,6 +495,8 @@ spec:
             value: "$(tasks.test-metadata.results.git-url)"
           - name: git-revision
             value: "$(tasks.test-metadata.results.git-revision)"
+          - name: helm-version
+            value: "$(params.helm-version)"
 
     finally:
       - name: cleanup-report
