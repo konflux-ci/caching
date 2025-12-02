@@ -85,6 +85,9 @@ spec:
               mountPath: /etc/squid/trust/test-server
               readOnly: true
             {{- end }}
+            {{- with .Values.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- if .Values.perSiteExporter.enabled }}
           args:
             - squid-with-per-site-exporter
@@ -204,6 +207,9 @@ spec:
             items:
             - key: ca.crt
               path: ca.crt
+        {{- end }}
+        {{- with .Values.volumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
