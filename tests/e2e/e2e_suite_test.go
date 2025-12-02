@@ -149,18 +149,13 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	// Check if we should skip helm reconfiguration (e.g., in EaaS where deployment is already correct)
-	skipReconfigure := os.Getenv("SKIP_HELM_RECONFIGURE")
-	if skipReconfigure != "true" {
-		// Local/devcontainer testing: reconfigure to ensure correct state
-		err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
-			ReplicaCount: int(suiteReplicaCount),
-		})
-		Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+	err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
+		ReplicaCount: int(suiteReplicaCount),
+	})
+	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
 
-		err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
-		Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
-	}
+	err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
+	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
 
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})

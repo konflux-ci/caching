@@ -337,11 +337,7 @@ spec:
                   secret_args=""
                 fi
                 
-                # Install cert-manager manually because the bundled cert-manager chart in squid/values.yaml
-                # specifies runAsUser: 1001, which violates OpenShift's restricted-v2 SCC.
-                # OpenShift requires UIDs in namespace-specific ranges (e.g., 1000740000-1000749999).
-                # The official jetstack chart doesn't hardcode UIDs, allowing OpenShift to auto-assign
-                # compatible UIDs from the allowed range.
+                # Prepare Helm chart with cert-manager dependency
                 echo "Adding jetstack Helm repository..."
                 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
                 helm repo update
@@ -360,87 +356,11 @@ spec:
                 echo "Squid: $squid_repo:$squid_tag"
                 echo "Tester: $tester_repo:$tester_tag"
                 
-                # Check if cert-manager exists
-                if oc get crd certificates.cert-manager.io 2>/dev/null; then
-                  echo "cert-manager already installed"
-                else
-                  echo "Installing cert-manager v1.19.1..."
-                  helm install cert-manager jetstack/cert-manager \
-                    --namespace cert-manager \
-                    --create-namespace \
-                    --version v1.19.1 \
-                    --set installCRDs=true \
-                    --set startupapicheck.enabled=false \
-                    --wait \
-                    --timeout=15m \
-                    --debug
-                  
-                  echo "Giving cert-manager webhook time to register with API server..."
-                  sleep 10
-                  
-                  echo "Installing trust-manager v0.20.2..."
-                  helm install trust-manager jetstack/trust-manager \
-                    --namespace cert-manager \
-                    --version v0.20.2 \
-                    --wait \
-                    --timeout=10m \
-                    --debug
-                  
-                  echo "Giving trust-manager time to register CRDs..."
-                  sleep 5
-                  
-                  echo "Verifying cert-manager can issue certificates..."
-                  # Create a test certificate to ensure cert-manager is fully functional
-                  cat <<EOF | oc apply -f -
-                apiVersion: cert-manager.io/v1
-                kind: Certificate
-                metadata:
-                  name: cert-manager-test
-                  namespace: cert-manager
-                spec:
-                  secretName: cert-manager-test-tls
-                  duration: 24h
-                  renewBefore: 12h
-                  isCA: false
-                  privateKey:
-                    algorithm: RSA
-                    size: 2048
-                  dnsNames:
-                    - test.example.com
-                  issuerRef:
-                    name: cert-manager-test-issuer
-                    kind: Issuer
-                ---
-                apiVersion: cert-manager.io/v1
-                kind: Issuer
-                metadata:
-                  name: cert-manager-test-issuer
-                  namespace: cert-manager
-                spec:
-                  selfSigned: {}
-                EOF
-                  
-                  echo "Waiting for test certificate to be issued (max 2 minutes)..."
-                  for i in {1..24}; do
-                    if oc get secret cert-manager-test-tls -n cert-manager 2>/dev/null; then
-                      echo "✓ Test certificate issued successfully - cert-manager is ready!"
-                      oc delete certificate cert-manager-test -n cert-manager
-                      oc delete issuer cert-manager-test-issuer -n cert-manager
-                      oc delete secret cert-manager-test-tls -n cert-manager
-                      break
-                    fi
-                    echo "Waiting for certificate... ($i/24)"
-                    sleep 5
-                  done
-                fi
-                
-                # Don't delete the caching namespace - let Helm manage it through the chart
-                # The chart templates will create/update resources in caching namespace
-                # Using -n=default for Helm metadata keeps it separate from resource namespace
-                
-                # Install squid with bundled cert-manager disabled (we installed it manually above
-                # because the bundled version has hardcoded UID that conflicts with OpenShift SCC)
-                echo "Installing Squid chart..."
+                # Install squid with bundled cert-manager, overriding runAsUser to be OpenShift SCC compatible
+                # OpenShift's restricted-v2 SCC requires UIDs in namespace-specific ranges (e.g., 1000740000-1000749999)
+                # By not specifying runAsUser/runAsGroup/fsGroup, OpenShift will auto-assign from the allowed range
+                # Note: Using installCRDs=false to let squid/crds/ directory handle CRDs (avoids ownership conflicts)
+                echo "Installing Squid chart with cert-manager..."
                 helm install squid . \
                   --namespace "$namespace" \
                   --set environment=prerelease \
@@ -449,29 +369,18 @@ spec:
                   --set envSettings.prerelease.test.image.repository="$tester_repo" \
                   --set envSettings.prerelease.test.image.tag="$tester_tag" \
                   --set mirrord.enabled=false \
-                  --set installCertManagerComponents=false \
-                  --set cert-manager.enabled=false \
-                  --set trust-manager.enabled=false \
+                  --set installCertManagerComponents=true \
+                  --set cert-manager.enabled=true \
+                  --set cert-manager.installCRDs=false \
+                  --set cert-manager.securityContext.runAsUser=null \
+                  --set cert-manager.securityContext.runAsGroup=null \
+                  --set cert-manager.securityContext.fsGroup=null \
                   $secret_args \
                   --wait \
                   --timeout=5m \
                   --debug
                 
                 echo "Squid deployed successfully!"
-                oc get pods -n "caching"
-                
-                echo ""
-                echo "=========================================="
-                echo "🔍 DEBUG: Deployed Images"
-                echo "=========================================="
-                echo "Squid image: $squid_repo:$squid_tag"
-                echo "Tester image: $tester_repo:$tester_tag"
-                echo ""
-                echo "Actual deployed squid image:"
-                oc get deployment squid -n "caching" -o jsonpath='{.spec.template.spec.containers[0].image}'
-                echo ""
-                echo "=========================================="
-                echo ""
                 
                 echo "Running Helm tests..."
                 if ! helm test squid --namespace "$namespace" --timeout 90m; then

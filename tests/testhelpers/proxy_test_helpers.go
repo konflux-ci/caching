@@ -407,16 +407,13 @@ func parseImageReference(image string) (repo, tag string) {
 }
 
 // buildPrereleaseHelmArgs builds Helm arguments for prerelease environment
-// This preserves pipeline-deployed images and disables externally-managed components
+// This preserves pipeline-deployed images and disables mirrord (not available in EaaS)
 func buildPrereleaseHelmArgs(environment string, deployment *v1.Deployment) []string {
-	var extraArgs []string
-
-	// Disable cert-manager, trust-manager, and mirrord (managed externally by pipeline)
-	extraArgs = []string{
-		"--set", "installCertManagerComponents=false",
-		"--set", "cert-manager.enabled=false",
-		"--set", "trust-manager.enabled=false",
+	// In prerelease (OpenShift EaaS), disable mirrord which is not available
+	// Skip managing cert-manager during test reconfigurations to avoid reconciliation timeouts
+	extraArgs := []string{
 		"--set", "mirrord.enabled=false",
+		"--set", "installCertManagerComponents=false",
 	}
 
 	// Preserve pipeline-deployed image tags to prevent reverting to :latest
