@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/konflux-ci/caching/tests/testhelpers"
 )
@@ -124,6 +125,40 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 		})
 	})
 
+	It("should include custom volumes and volumeMounts in squid container", func() {
+		output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+			Volumes: []corev1.Volume{
+				{
+					Name: "custom-config",
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "my-configmap",
+							},
+						},
+					},
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      "custom-config",
+					MountPath: "/etc/custom-config",
+					ReadOnly:  true,
+				},
+			},
+		})
+		Expect(err).NotTo(HaveOccurred(), "Helm template rendering should succeed")
+
+		squidDeploymentSection := extractSquidDeploymentSection(output)
+
+		// Verify custom volume is present
+		Expect(squidDeploymentSection).To(ContainSubstring("name: custom-config"), "Should contain custom volume name")
+		Expect(squidDeploymentSection).To(ContainSubstring("name: my-configmap"), "Should contain configmap reference")
+
+		// Verify custom volumeMount is present
+		Expect(squidDeploymentSection).To(ContainSubstring("mountPath: /etc/custom-config"), "Should contain custom mount path")
+	})
+
 	Describe("Template Validation", func() {
 		It("should produce valid YAML for all configuration scenarios", func() {
 			testCases := []struct {
@@ -146,6 +181,28 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 					name: "custom node affinity",
 					values: testhelpers.SquidHelmValues{
 						Affinity: json.RawMessage(`{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"node-type","operator":"In","values":["proxy"]}]}]}}}`),
+					},
+				},
+				{
+					name: "custom volumes and volumeMounts",
+					values: testhelpers.SquidHelmValues{
+						Volumes: []corev1.Volume{
+							{
+								Name: "custom-secret",
+								VolumeSource: corev1.VolumeSource{
+									Secret: &corev1.SecretVolumeSource{
+										SecretName: "my-secret",
+									},
+								},
+							},
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{
+								Name:      "custom-secret",
+								MountPath: "/etc/custom-secret",
+								ReadOnly:  true,
+							},
+						},
 					},
 				},
 			}

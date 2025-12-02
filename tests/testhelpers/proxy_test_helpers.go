@@ -387,6 +387,8 @@ type SquidHelmValues struct {
 	ReplicaCount       int                       `json:"replicaCount,omitempty"`
 	TLSOutgoingOptions *TLSOutgoingOptionsValues `json:"tlsOutgoingOptions,omitempty"`
 	Affinity           json.RawMessage           `json:"affinity,omitempty"`
+	Volumes            []corev1.Volume           `json:"volumes,omitempty"`
+	VolumeMounts       []corev1.VolumeMount      `json:"volumeMounts,omitempty"`
 }
 
 // ConfigureSquidWithHelm configures Squid deployment using helm values
