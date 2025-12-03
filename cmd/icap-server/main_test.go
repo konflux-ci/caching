@@ -57,7 +57,7 @@ var _ = Describe("reqmodHandler", func() {
 			})
 		})
 
-		Context("with a CDN URL", func() {
+		Context("with a Quay.io CDN URL", func() {
 			It("should remove Authorization header and return 200", func() {
 				httpReq, _ := http.NewRequest("GET", "https://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890", nil)
 				httpReq.Header.Set("Authorization", "Bearer token123")
@@ -74,6 +74,46 @@ var _ = Describe("reqmodHandler", func() {
 				Expect(mockWriter.StatusCode).To(Equal(200))
 				Expect(httpReq.Header.Get("Authorization")).To(BeEmpty())
 				Expect(httpReq.Header.Get("User-Agent")).To(Equal("test-agent"))
+			})
+		})
+
+		Context("with a Docker Hub R2 CDN URL", func() {
+			It("should remove Authorization header and return 200", func() {
+				httpReq, _ := http.NewRequest("GET", "https://docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171/data", nil)
+				httpReq.Header.Set("Authorization", "Bearer docker-token")
+				httpReq.Header.Set("User-Agent", "docker-client")
+
+				mockRequest := &icap.Request{
+					Method:  "REQMOD",
+					Header:  make(textproto.MIMEHeader),
+					Request: httpReq,
+				}
+
+				reqmodHandler(mockWriter, mockRequest)
+
+				Expect(mockWriter.StatusCode).To(Equal(200))
+				Expect(httpReq.Header.Get("Authorization")).To(BeEmpty())
+				Expect(httpReq.Header.Get("User-Agent")).To(Equal("docker-client"))
+			})
+		})
+
+		Context("with a Docker Hub Cloudflare CDN URL (production.cloudflare.docker.com)", func() {
+			It("should remove Authorization header and return 200", func() {
+				httpReq, _ := http.NewRequest("GET", "https://production.cloudflare.docker.com/registry-v2/docker/registry/v2/blobs/sha256/24/24c63b8dcb66721062f32b893ef1027404afddd62aade87f3f39a3a6e70a74d0/data", nil)
+				httpReq.Header.Set("Authorization", "Bearer cloudflare-token")
+				httpReq.Header.Set("User-Agent", "docker-client")
+
+				mockRequest := &icap.Request{
+					Method:  "REQMOD",
+					Header:  make(textproto.MIMEHeader),
+					Request: httpReq,
+				}
+
+				reqmodHandler(mockWriter, mockRequest)
+
+				Expect(mockWriter.StatusCode).To(Equal(200))
+				Expect(httpReq.Header.Get("Authorization")).To(BeEmpty())
+				Expect(httpReq.Header.Get("User-Agent")).To(Equal("docker-client"))
 			})
 		})
 

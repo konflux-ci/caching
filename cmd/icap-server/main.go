@@ -9,7 +9,16 @@ import (
 	"github.com/intra-sh/icap"
 )
 
+// Quay.io CDN patterns
 var cdnRegex = regexp.MustCompile(`^https://cdn(\d{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}`)
+
+// Docker Hub Cloudflare R2 patterns
+// Example: https://docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171/data
+var dockerHubR2Regex = regexp.MustCompile(`^https://docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data`)
+
+// Docker Hub Cloudflare CDN pattern (production.cloudflare.docker.com)
+// Example: https://production.cloudflare.docker.com/registry-v2/docker/registry/v2/blobs/sha256/24/24c63b8dcb66721062f32b893ef1027404afddd62aade87f3f39a3a6e70a74d0/data
+var dockerHubCloudflareCDNRegex = regexp.MustCompile(`^https://production\.cloudflare\.docker\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data`)
 
 // reqmodHandler handles REQMOD requests
 func reqmodHandler(w icap.ResponseWriter, req *icap.Request) {
@@ -32,8 +41,11 @@ func reqmodHandler(w icap.ResponseWriter, req *icap.Request) {
 			return
 		}
 
-		// If the request is for a CDN URL, delete the Authorization header
-		if cdnRegex.MatchString(req.Request.URL.String()) {
+		// If the request is for a content-addressable CDN URL, delete the Authorization header
+		requestURL := req.Request.URL.String()
+		if cdnRegex.MatchString(requestURL) ||
+			dockerHubR2Regex.MatchString(requestURL) ||
+			dockerHubCloudflareCDNRegex.MatchString(requestURL) {
 			req.Request.Header.Del("Authorization")
 			writeHeaderAndLog(w, req, 200)
 			return
