@@ -79,10 +79,15 @@ var _ = Describe("normalizeStoreID", func() {
 			result := normalizeStoreID(mockClient, url)
 			Expect(result).To(Equal(url), "URL should be unchanged")
 		},
-		Entry("wrong host", "https://badcdn.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
-		Entry("hash too short", "https://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456789"),
-		Entry("wrong protocol (http)", "http://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
-		Entry("wrong protocol (ftp)", "ftp://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
+		Entry("quay.io wrong host", "https://badcdn.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
+		Entry("quay.io hash too short", "https://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456789"),
+		Entry("quay.io wrong protocol (http)", "http://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
+		Entry("quay.io wrong protocol (ftp)", "ftp://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
+		Entry("docker hub r2 wrong domain", "https://docker-images-wrong.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171/data"),
+		Entry("docker hub r2 hash too short", "https://docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b/data"),
+		Entry("docker hub r2 wrong protocol", "http://docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171/data"),
+		Entry("docker hub cloudflare cdn hash too short", "https://production.cloudflare.docker.com/registry-v2/docker/registry/v2/blobs/sha256/24/24c63b8dcb66721062f32b893ef1027404afddd62aade87f3f39a3a6e70a74/data"),
+		Entry("docker hub cloudflare cdn wrong protocol", "http://production.cloudflare.docker.com/registry-v2/docker/registry/v2/blobs/sha256/24/24c63b8dcb66721062f32b893ef1027404afddd62aade87f3f39a3a6e70a74d0/data"),
 	)
 
 	When("given content addressable CDN URLs", func() {
@@ -116,6 +121,74 @@ var _ = Describe("normalizeStoreID", func() {
 			}
 
 			Expect(normalizeStoreID(mockClient, testURL)).To(Equal(testURL))
+		})
+	})
+
+	When("given Docker Hub R2 CDN URLs", func() {
+		const testDockerHubURL = "https://docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171/data?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=f1baa2dd9b876aeb89efebbfc9e5d5f4%2F20251202%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20251202T200117Z&X-Amz-Expires=1200&X-Amz-SignedHeaders=host&X-Amz-Signature=daa6b76aa13b45e9d3101f93651237f375fb7c1aac859dfaf6ef1208cdc1d9c3"
+
+		It("should return normalized URL (without query params) when HTTP request succeeds", func() {
+			mockClient := &MockHTTPClient{
+				StatusCode: http.StatusOK,
+			}
+
+			expectedURL := "https://docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171/data"
+			Expect(normalizeStoreID(mockClient, testDockerHubURL)).To(Equal(expectedURL))
+		})
+
+		It("should handle non-200 HTTP responses by returning original URL", func() {
+			mockClient := &MockHTTPClient{
+				StatusCode: http.StatusUnauthorized,
+			}
+
+			Expect(normalizeStoreID(mockClient, testDockerHubURL)).To(Equal(testDockerHubURL))
+		})
+
+		It("should handle HTTP error responses by returning original URL", func() {
+			mockClient := &MockHTTPClient{
+				ShouldError: true,
+				Error: &url.Error{
+					Op:  "Get",
+					URL: testDockerHubURL,
+					Err: http.ErrServerClosed,
+				},
+			}
+
+			Expect(normalizeStoreID(mockClient, testDockerHubURL)).To(Equal(testDockerHubURL))
+		})
+	})
+
+	When("given Docker Hub Cloudflare CDN URLs (production.cloudflare.docker.com)", func() {
+		const testCloudflareCDNURL = "https://production.cloudflare.docker.com/registry-v2/docker/registry/v2/blobs/sha256/24/24c63b8dcb66721062f32b893ef1027404afddd62aade87f3f39a3a6e70a74d0/data?verify=1717211225-SoFsY9MpCnMY8xiypN2ii7WhLsA%3D"
+
+		It("should return normalized URL (without query params) when HTTP request succeeds", func() {
+			mockClient := &MockHTTPClient{
+				StatusCode: http.StatusOK,
+			}
+
+			expectedURL := "https://production.cloudflare.docker.com/registry-v2/docker/registry/v2/blobs/sha256/24/24c63b8dcb66721062f32b893ef1027404afddd62aade87f3f39a3a6e70a74d0/data"
+			Expect(normalizeStoreID(mockClient, testCloudflareCDNURL)).To(Equal(expectedURL))
+		})
+
+		It("should handle non-200 HTTP responses by returning original URL", func() {
+			mockClient := &MockHTTPClient{
+				StatusCode: http.StatusUnauthorized,
+			}
+
+			Expect(normalizeStoreID(mockClient, testCloudflareCDNURL)).To(Equal(testCloudflareCDNURL))
+		})
+
+		It("should handle HTTP error responses by returning original URL", func() {
+			mockClient := &MockHTTPClient{
+				ShouldError: true,
+				Error: &url.Error{
+					Op:  "Get",
+					URL: testCloudflareCDNURL,
+					Err: http.ErrServerClosed,
+				},
+			}
+
+			Expect(normalizeStoreID(mockClient, testCloudflareCDNURL)).To(Equal(testCloudflareCDNURL))
 		})
 	})
 })
