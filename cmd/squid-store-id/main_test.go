@@ -73,24 +73,11 @@ var _ = Describe("parseLine", func() {
 })
 
 var _ = Describe("normalizeStoreID", func() {
-	DescribeTable("when given non-content addressable CDN URLs, should return the original URL unchanged",
-		func(url string) {
-			mockClient := &MockHTTPClient{}
-			result := normalizeStoreID(mockClient, url)
-			Expect(result).To(Equal(url), "URL should be unchanged")
-		},
-		Entry("quay.io wrong host", "https://badcdn.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
-		Entry("quay.io hash too short", "https://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456789"),
-		Entry("quay.io wrong protocol (http)", "http://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
-		Entry("quay.io wrong protocol (ftp)", "ftp://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
-		Entry("docker hub r2 wrong domain", "https://docker-images-wrong.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171/data"),
-		Entry("docker hub r2 hash too short", "https://docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b/data"),
-		Entry("docker hub r2 wrong protocol", "http://docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171/data"),
-		Entry("docker hub cloudflare cdn hash too short", "https://production.cloudflare.docker.com/registry-v2/docker/registry/v2/blobs/sha256/24/24c63b8dcb66721062f32b893ef1027404afddd62aade87f3f39a3a6e70a74/data"),
-		Entry("docker hub cloudflare cdn wrong protocol", "http://production.cloudflare.docker.com/registry-v2/docker/registry/v2/blobs/sha256/24/24c63b8dcb66721062f32b893ef1027404afddd62aade87f3f39a3a6e70a74d0/data"),
-	)
+	// Note: URL pattern filtering is now handled by Squid ACLs (store_id_access directive).
+	// This helper processes all URLs it receives without pattern checking.
+	// See squid/templates/configmap.yaml for ACL definitions.
 
-	When("given content addressable CDN URLs", func() {
+	When("given CDN URLs with query parameters", func() {
 		const testURL = "https://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890?token=abc123"
 
 		It("should return normalized URL (without query params) when HTTP request succeeds", func() {

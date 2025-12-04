@@ -117,45 +117,9 @@ var _ = Describe("reqmodHandler", func() {
 			})
 		})
 
-		Context("with non-CDN URLs", func() {
-			Context("when client allows 204 responses", func() {
-				It("should return 204", func() {
-					httpReq, _ := http.NewRequest("GET", "https://example.com/some/path", nil)
-					httpReq.Header.Set("Authorization", "Bearer token123")
-
-					mockRequest := &icap.Request{
-						Method:  "REQMOD",
-						Header:  make(textproto.MIMEHeader),
-						Request: httpReq,
-					}
-					// Simulate the Allow header being set by the client
-					mockRequest.Header.Set("Allow", "204")
-
-					reqmodHandler(mockWriter, mockRequest)
-
-					Expect(mockWriter.StatusCode).To(Equal(204))
-					Expect(httpReq.Header.Get("Authorization")).To(Equal("Bearer token123"))
-				})
-			})
-
-			Context("when client does not allow 204 responses", func() {
-				It("should return 200", func() {
-					httpReq, _ := http.NewRequest("GET", "https://example.com/some/path", nil)
-					httpReq.Header.Set("Authorization", "Bearer token123")
-
-					mockRequest := &icap.Request{
-						Method:  "REQMOD",
-						Header:  make(textproto.MIMEHeader),
-						Request: httpReq,
-					}
-
-					reqmodHandler(mockWriter, mockRequest)
-
-					Expect(mockWriter.StatusCode).To(Equal(200))
-					Expect(httpReq.Header.Get("Authorization")).To(Equal("Bearer token123"))
-				})
-			})
-		})
+		// Note: URL pattern filtering is now handled by Squid ACLs (adaptation_access directive).
+		// This ICAP server only receives CDN/S3 URLs and always removes Authorization headers.
+		// See squid/templates/configmap.yaml for ACL definitions.
 	})
 
 	When("handling unsupported methods", func() {
