@@ -7,27 +7,10 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 )
-
-// Quay.io CDN patterns
-var cdnRegex = regexp.MustCompile(`^https://cdn(\d{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}`)
-
-// S3 URL patterns - supports both path-style and virtual-hosted-style for quay.io
-// Path-style: https://s3.region.amazonaws.com/quayio-production-s3/sha256/.../hash
-// Virtual-hosted: https://quayio-production-s3.s3.region.amazonaws.com/sha256/.../hash
-var s3Regex = regexp.MustCompile(`^https://(?:quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com/sha256/.+/[a-f0-9]{64}|s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3/sha256/.+/[a-f0-9]{64})`)
-
-// Docker Hub Cloudflare R2 patterns
-// Example: https://docker-images-prod.6aa30f8b08e16409b46e0173d6de2f56.r2.cloudflarestorage.com/registry-v2/docker/registry/v2/blobs/sha256/b5/b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171/data
-var dockerHubR2Regex = regexp.MustCompile(`^https://docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data`)
-
-// Docker Hub Cloudflare CDN pattern (production.cloudflare.docker.com)
-// Example: https://production.cloudflare.docker.com/registry-v2/docker/registry/v2/blobs/sha256/24/24c63b8dcb66721062f32b893ef1027404afddd62aade87f3f39a3a6e70a74d0/data
-var dockerHubCloudflareCDNRegex = regexp.MustCompile(`^https://production\.cloudflare\.docker\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data`)
 
 // HTTPClient interface for making HTTP requests (allows mocking)
 type HTTPClient interface {
@@ -40,14 +23,13 @@ func isChannelID(s string) bool {
 	return err == nil && val >= 0
 }
 
-// normalizeStoreID normalizes the store-id for caching by removing query parameters from CDN and S3 URLs.
+// normalizeStoreID normalizes the store-id for caching by removing query parameters from CDN URLs.
+// Only content-addressable URLs (containing SHA256 hashes) are normalized.
 // The request URL must return a 200 status code to ensure the request is authorized.
 func normalizeStoreID(client HTTPClient, requestURL string) string {
-	// Check if URL matches any of the content-addressable CDN patterns
-	if !cdnRegex.MatchString(requestURL) &&
-		!s3Regex.MatchString(requestURL) &&
-		!dockerHubR2Regex.MatchString(requestURL) &&
-		!dockerHubCloudflareCDNRegex.MatchString(requestURL) {
+	// Only normalize content-addressable URLs (those with SHA256 hashes in the path).
+	// This prevents breaking caching for arbitrary URLs with meaningful query parameters.
+	if !strings.Contains(requestURL, "/sha256/") {
 		return requestURL
 	}
 
