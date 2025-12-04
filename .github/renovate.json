@@ -4,6 +4,20 @@
   "lockFileMaintenance": {
     "enabled": true
   },
+  "regexManagers": [
+    {
+      "description": "Track Helm version in Tekton pipelines",
+      "fileMatch": [
+        "^\\.tekton/.*\\.ya?ml$"
+      ],
+      "matchStrings": [
+        "name:\\s+helm-version\\s+description:.*?\\s+type:.*?\\s+default:\\s+\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "helm/helm",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    }
+  ],
   "packageRules": [
     {
       "description": "Group all cert-manager components",

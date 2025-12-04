@@ -17,7 +17,7 @@
     },
     "environment": {
       "type": "string",
-      "enum": ["dev", "release"],
+      "enum": ["dev", "prerelease", "release"],
       "description": "Environment selector for image repositories (should be set externally via --set)"
     },
     "envSettings": {
@@ -27,12 +27,16 @@
           "$ref": "#/$defs/environmentConfig",
           "description": "Development environment settings"
         },
+        "prerelease": {
+          "$ref": "#/$defs/environmentConfig",
+          "description": "Prerelease environment settings for PR testing"
+        },
         "release": {
           "$ref": "#/$defs/environmentConfig",
           "description": "Release environment settings"
         }
       },
-      "required": ["dev", "release"],
+      "required": ["dev", "prerelease", "release"],
       "additionalProperties": false,
       "description": "Environment-specific configuration for squid and test images"
     },

@@ -1,8 +1,8 @@
-{{- if .Values.installCertManagerComponents }}
+{{- if or .Values.installCertManagerComponents (eq .Values.environment "prerelease") }}
 apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ (index .Values "cert-manager").namespace }}
   labels:
-    name: {{ (index .Values "cert-manager").namespace }} 
+    name: {{ (index .Values "cert-manager").namespace }}
 {{- end }}

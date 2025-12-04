@@ -12,7 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("Container image pulls", Ordered, Label("external-deps"), func() {
+var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"), func() {
 	AfterAll(func() {
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
 		Expect(err).NotTo(HaveOccurred(), "Failed to restore squid cache defaults")

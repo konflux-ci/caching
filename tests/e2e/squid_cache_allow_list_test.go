@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("Cache allow list tests", Ordered, func() {
+var _ = Describe("Cache allow list tests", Ordered, Serial, func() {
 	var (
 		testServer *testhelpers.CachingTestServer
 		client     *http.Client

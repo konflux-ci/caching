@@ -26,18 +26,17 @@ spec:
     imagePullPolicy: {{ .Values.test.image.pullPolicy | default "IfNotPresent" }}
     workingDir: /app
     command:
-    - /bin/bash
-    - -c
-    - |
-      set -e
-      echo "=== Starting Ginkgo E2E Tests ==="
-      echo "Target namespace: {{ .Values.namespace.name }}"
-      echo "Squid service: {{ include "squid.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}"
-
-      # Run the compiled test binary
-      echo "Running tests..."
-      ./tests/e2e/e2e.test -ginkgo.v -ginkgo.label-filter="{{ .Values.test.labelFilter }}"
+    - /app/test-entrypoint.sh
     env:
+    - name: TARGET_NAMESPACE
+      value: {{ .Values.namespace.name | quote }}
+    - name: SQUID_SERVICE
+      value: "{{ include "squid.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}"
+    - name: LABEL_FILTER
+      value: {{ .Values.test.labelFilter | quote }}
+    # Pass environment to test binary so it knows which image repos to use
+    - name: SQUID_ENVIRONMENT
+      value: {{ .Values.environment | quote }}
     - name: POD_IP
       valueFrom:
         fieldRef:
