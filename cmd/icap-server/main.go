@@ -3,13 +3,10 @@ package main
 import (
 	"log"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/intra-sh/icap"
 )
-
-var cdnRegex = regexp.MustCompile(`^https://cdn(\d{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}`)
 
 // reqmodHandler handles REQMOD requests
 func reqmodHandler(w icap.ResponseWriter, req *icap.Request) {
@@ -32,21 +29,9 @@ func reqmodHandler(w icap.ResponseWriter, req *icap.Request) {
 			return
 		}
 
-		// If the request is for a CDN URL, delete the Authorization header
-		if cdnRegex.MatchString(req.Request.URL.String()) {
-			req.Request.Header.Del("Authorization")
-			writeHeaderAndLog(w, req, 200)
-			return
-		}
-
-		// No modification is needed for the request
-		// If the client allows 204 responses, use that to reduce bandwidth usage
-		if req.Header.Get("Allow") == "204" {
-			writeHeaderAndLog(w, req, 204)
-			return
-		}
-
-		// Otherwise, return a 200 response
+		// Squid's adaptation_access ACL ensures we only receive CDN/S3 URLs here.
+		// For all content-addressable CDN URLs, remove the Authorization header to enable caching.
+		req.Request.Header.Del("Authorization")
 		writeHeaderAndLog(w, req, 200)
 	default:
 		// Unsupported method

@@ -647,6 +647,33 @@
         }
       },
       "additionalProperties": false
+    },
+    "cdnPatterns": {
+      "type": "object",
+      "properties": {
+        "quayCDN": {
+          "type": "string",
+          "description": "Regex pattern for Quay.io CDN URLs"
+        },
+        "dockerHubR2CDN": {
+          "type": "string",
+          "description": "Regex pattern for Docker Hub R2 CDN URLs"
+        },
+        "dockerHubCloudflareCDN": {
+          "type": "string",
+          "description": "Regex pattern for Docker Hub Cloudflare CDN URLs"
+        },
+        "s3QuayPathStyle": {
+          "type": "string",
+          "description": "Regex pattern for S3 path-style URLs (Quay backend)"
+        },
+        "s3QuayVirtualHosted": {
+          "type": "string",
+          "description": "Regex pattern for S3 virtual-hosted-style URLs (Quay backend)"
+        }
+      },
+      "additionalProperties": false,
+      "description": "CDN URL patterns for content-addressable caching"
     }
   },
   "required": [

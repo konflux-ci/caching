@@ -105,15 +105,27 @@ data:
     # --- END SSL BUMP CONFIGURATION ---
 
     # --- STORE ID CONFIGURATION ---
-    # CDN requests requiring store-id helper. Matches URLs like:
-    # - https://cdn.quay.io/foo/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
-    # - https://cdn01.quay.io/foo/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
-    acl cdns url_regex ^https://cdn([0-9]{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}
+    # CDN requests requiring store-id helper. Matches content-addressable URLs.
+    # All patterns are defined in values.yaml under cdnPatterns for centralized management.
+    
+    # Quay.io CDNs and Docker Hub CDNs
+    {{- with .Values.cdnPatterns.quayCDN }}
+    acl cdns url_regex {{ . }}
+    {{- end }}
+    {{- with .Values.cdnPatterns.dockerHubR2CDN }}
+    acl cdns url_regex {{ . }}
+    {{- end }}
+    {{- with .Values.cdnPatterns.dockerHubCloudflareCDN }}
+    acl cdns url_regex {{ . }}
+    {{- end }}
+
     # S3 backend URLs (Quay redirects to S3 for blob storage in some environments)
-    # Path-style: https://s3.us-east-1.amazonaws.com/quayio-production-s3/sha256/55/551849931ba0dec...
-    acl s3_quay_path url_regex ^https://s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3/sha256/.+/[a-f0-9]{64}
-    # Virtual-hosted-style: https://quayio-production-s3.s3.us-east-1.amazonaws.com/sha256/55/...
-    acl s3_quay_vhost url_regex ^https://quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com/sha256/.+/[a-f0-9]{64}
+    {{- with .Values.cdnPatterns.s3QuayPathStyle }}
+    acl s3_quay_path url_regex {{ . }}
+    {{- end }}
+    {{- with .Values.cdnPatterns.s3QuayVirtualHosted }}
+    acl s3_quay_vhost url_regex {{ . }}
+    {{- end }}
     # Use the store-id helper for CDN URLs and S3 backend
     store_id_access allow cdns
     store_id_access allow s3_quay_path
@@ -131,8 +143,10 @@ data:
     icap_enable on
     icap_service icap_server reqmod_precache bypass=0 icap://127.0.0.1:1344/reqmod
 
-    # Only use the ICAP service for CDN requests
+    # Only use the ICAP service for CDN and S3 requests (remove Authorization headers)
     adaptation_access icap_server allow cdns
+    adaptation_access icap_server allow s3_quay_path
+    adaptation_access icap_server allow s3_quay_vhost
     adaptation_access icap_server deny all
     # --- END ICAP CONFIGURATION ---
 
