@@ -380,7 +380,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, testURL, replicaCount)
 			Expect(err).NotTo(HaveOccurred(), "Should find a cache hit from any pod")
-			Expect(cacheHitResult.CacheHitFound).To(BeTrue(), "Should find a cache hit from any pod")
+			Expect(cacheHitResult.CacheHitFound).To(BeFalse(), "INTENTIONAL FAILURE: Testing that both workflows catch this")
 
 			testhelpers.ValidateCacheHitSamePod(cacheHitResult.OriginalResponse, cacheHitResult.CachedResponse, cacheHitResult.CacheHitPod, cacheHitResult.CacheHitPod)
 
