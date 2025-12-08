@@ -3,6 +3,7 @@ FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:a13cec4e2e30fa2ca6468d4
 # Install required packages for Go and testing
 # Note: curl-minimal is already present in ubi10-minimal
 # Using generic package names - exact versions are controlled by rpms.lock.yaml
+# go-toolset already declared in rpms.in.yaml (prefetched by Cachi2)
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     microdnf install -y \
     tar \
@@ -10,27 +11,15 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     which \
     procps-ng \
     gcc \
-    shadow-utils && \
+    shadow-utils \
+    go-toolset && \
     microdnf clean all
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Install Go (version-locked)
-ARG GO_VERSION=1.25.4
-ARG GO_SHA256=9fa5ffeda4170de60f67f3aa0f824e426421ba724c21e133c1e35d6159ca1bec
-# Use prefetched Go tarball from Cachi2
-RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    if [ -f /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz ]; then \
-        cp /cachi2/output/deps/generic/go${GO_VERSION}.linux-amd64.tar.gz go.tar.gz; \
-    else \
-        curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz; \
-    fi && \
-    echo "${GO_SHA256}  go.tar.gz" | sha256sum -c - && \
-    tar -C /usr/local -xzf go.tar.gz && \
-    rm go.tar.gz
-
-# Set Go environment
-ENV PATH="/usr/local/go/bin:/root/go/bin:$PATH"
+# Set Go environment (GOPATH needed for go mod download)
+# go-toolset installs to /usr/bin/go (already in PATH)
+ENV PATH="/root/go/bin:$PATH"
 ENV GOPATH="/root/go"
 ENV GOCACHE="/tmp/go-cache"
 
