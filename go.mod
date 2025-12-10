@@ -11,7 +11,7 @@ require (
 	github.com/intra-sh/icap v0.1.1
 	github.com/magefile/mage v1.15.0
 	github.com/onsi/ginkgo/v2 v2.27.2
-	github.com/onsi/gomega v1.38.2
+	github.com/onsi/gomega v1.38.3
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prashantv/gostub v1.1.0
 	github.com/prometheus/client_golang v1.23.2
