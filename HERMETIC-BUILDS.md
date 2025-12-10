@@ -25,8 +25,8 @@ The following files control which dependencies are available during hermetic bui
 
 | File | Purpose | Update Frequency |
 |------|---------|------------------|
-| `artifacts.lock.yaml` | Version locks for Go and Helm tarballs | When upgrading toolchain versions |
-| `rpms.in.yaml` | Declares required RPM packages | When adding system packages |
+| `artifacts.lock.yaml` | Version locks for external artifacts (currently empty) | Rarely (only if external downloads needed) |
+| `rpms.in.yaml` | Declares required RPM packages (including go-toolset) | When adding system packages |
 | `rpms.lock.yaml` | Auto-generated transitive RPM dependencies | After changing `rpms.in.yaml` |
 | `go.mod` / `go.sum` | Go module dependencies | When adding/updating Go modules |
 | `tools.go` | Build-time Go tool dependencies | When adding build tools |
@@ -34,30 +34,19 @@ The following files control which dependencies are available during hermetic bui
 
 ## Common Maintenance Tasks
 
-### Upgrading Go or Helm Versions
+### Upgrading Go Version
 
-When upgrading toolchain versions, you must update both the Containerfiles and the artifacts lock file.
+Go is installed via the `go-toolset` RPM package from UBI10 repositories.
 
-**Step 1:** Update the version and checksum in the Containerfiles.
+**Automatic updates:** Mintmaker tracks the latest version of `go-toolset` available in UBI10 repositories and will automatically update `rpms.lock.yaml` when new versions are released. No manual intervention is typically required.
 
-```dockerfile
-# In both Containerfile and test.Containerfile
-ARG GO_VERSION=1.25.0
-ARG GO_SHA256=<new-checksum>
+**Manual upgrade (if needed):** To force an immediate update to the latest available version:
+
+```bash
+rpm-lockfile-prototype --image <BASE_IMAGE_WITH_DIGEST> --outfile rpms.lock.yaml rpms.in.yaml
 ```
 
-**Step 2:** Obtain the checksum from the official source (https://golang.org/dl/) or run `sha256sum` on the downloaded tarball.
-
-**Step 3:** Update `artifacts.lock.yaml` with the new version and checksum.
-
-```yaml
-artifacts:
-  - download_url: "https://golang.org/dl/go1.25.0.linux-amd64.tar.gz"
-    checksum: "sha256:<new-checksum>"
-    filename: "go1.25.0.linux-amd64.tar.gz"
-```
-
-Follow the same process for Helm version upgrades.
+The `rpms.in.yaml` file specifies only the package name without a version, allowing Mintmaker to automatically track the latest available version.
 
 ### Adding RPM Packages
 
@@ -112,7 +101,10 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 
 ## Automated Dependency Updates
 
-Go module dependencies are updated by Renovate, so no extra manual intervention should be required for routine Go dependency updates.
+- **Go modules** (including Helm): Updated automatically by Renovate
+- **RPM packages** (including go-toolset): Updated automatically by Mintmaker
+
+No manual intervention is required for routine dependency updates.
 
 ## Troubleshooting
 
@@ -142,11 +134,10 @@ Version-lock critical RPM packages for maximum reproducibility. Always verify ch
 
 Manual intervention may be required for:
 
-- Upgrading Go or Helm toolchain versions
 - Adding new system packages (RPMs)
 - Adding new build-time tools
 
-These updates require modifying the appropriate lock files and, in the case of RPMs, regenerating the dependency lock file.
+Go and Helm versions are automatically updated by Mintmaker and Renovate respectively, so manual upgrades are rarely needed. When manual updates are necessary, they require modifying the appropriate lock files and, in the case of RPMs, regenerating the dependency lock file.
 
 ## References
 
