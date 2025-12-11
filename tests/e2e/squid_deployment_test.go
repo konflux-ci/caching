@@ -1,11 +1,14 @@
 package e2e_test
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	certmanagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -415,7 +418,8 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 				// Verify RAM caching configuration
 				Expect(squidConf).To(ContainSubstring("cache_mem 0"), "Should set cache_mem to 0")
 				// Verify disk cache directory is configured
-				Expect(squidConf).To(ContainSubstring("cache_dir aufs /var/spool/squid/cache 204 16 256"), "Should have disk cache configured")
+				// Cache size is 304MB, cache_dir is 80% = 243MB
+				Expect(squidConf).To(ContainSubstring("cache_dir aufs /var/spool/squid/cache 243 16 256"), "Should have disk cache configured")
 				// Verify maximum object size is configured
 				Expect(squidConf).To(ContainSubstring("maximum_object_size 192 MB"), "Should have maximum object size configured")
 				// Verify cache replacement policy
@@ -532,6 +536,176 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 				Expect(tlsSecret.Data["tls.crt"]).NotTo(BeEmpty(), "TLS certificate should not be empty")
 				Expect(tlsSecret.Data["tls.key"]).NotTo(BeEmpty(), "TLS private key should not be empty")
 			})
+		})
+	})
+
+	Describe("Cache Recovery", func() {
+		It("should clean cache on restart when cache is full", func() {
+			By("Getting the current Squid pod")
+			deployment, err := clientset.AppsV1().Deployments(namespace).Get(
+				ctx,
+				deploymentName,
+				metav1.GetOptions{},
+			)
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid deployment")
+
+			pods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *deployment.Spec.Replicas)
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods")
+			Expect(pods).NotTo(BeEmpty(), "Expected at least one pod")
+			// Select one pod to test (works with single or multiple replicas)
+			pod := pods[0]
+
+			By("Filling cache with garbage to exceed 95% threshold")
+			// Create aufs directory structure and fill with garbage
+			// Target: fill to ~96% of 243MB cache_dir (80% of 304MB volume) = ~233MB
+			// Use multiple files to ensure we exceed 95% threshold
+			// Fill 135+135+20 = 290MB to ensure we exceed 95% threshold
+			// Target: 96% of 243.2MB cache_dir = ~233MB
+			// df measures the entire 304MB volume, so we need to write enough to
+			// account for the volume size when calculating percentage
+			fillCacheCmd := []string{
+				"sh", "-c",
+				`for i in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do
+					mkdir -p /var/spool/squid/cache/${i}${i}/00
+				done &&
+				dd if=/dev/zero of=/var/spool/squid/cache/00/00/largefile1 bs=1M count=135 2>&1 &&
+				dd if=/dev/zero of=/var/spool/squid/cache/00/00/largefile2 bs=1M count=135 2>&1 &&
+				dd if=/dev/zero of=/var/spool/squid/cache/00/00/largefile3 bs=1M count=20 2>&1`,
+			}
+
+			// Get REST config for exec
+			restConfig, err := testhelpers.GetRESTConfig()
+			Expect(err).NotTo(HaveOccurred(), "Failed to get REST config")
+
+			err = testhelpers.ExecCommandInPodWithWriters(
+				ctx, clientset, restConfig, namespace, pod.Name, "squid", fillCacheCmd, os.Stdout, os.Stderr)
+			Expect(err).NotTo(HaveOccurred(), "Failed to fill cache")
+
+			By("Verifying cache usage is above 95%")
+			checkUsageCmd := []string{
+				"sh", "-c", "df /var/spool/squid/cache | awk 'NR==2 {print $5}' | sed 's/%//'"}
+			var usageOutput bytes.Buffer
+			err = testhelpers.ExecCommandInPodWithWriters(
+				ctx, clientset, restConfig, namespace, pod.Name, "squid", checkUsageCmd, &usageOutput, os.Stderr)
+			Expect(err).NotTo(HaveOccurred(), "Failed to check cache usage")
+
+			usageStr := strings.TrimSpace(usageOutput.String())
+			usageBefore, _ := strconv.Atoi(usageStr)
+			Expect(usageBefore).To(BeNumerically(">", 95),
+				"Cache should be above 95%% before restart to test recovery",
+			)
+
+			By("Reading restart count before triggering restart")
+			var restartCountBefore int32
+			for _, status := range pod.Status.ContainerStatuses {
+				if status.Name == "squid" {
+					restartCountBefore = status.RestartCount
+					break
+				}
+			}
+
+			By("Triggering container restart by killing all processes")
+			killCmd := []string{"kill", "-9", "-1"}
+			_ = testhelpers.ExecCommandInPodWithWriters(
+				ctx, clientset, restConfig, namespace, pod.Name, "squid", killCmd, os.Stderr, os.Stderr,
+			)
+
+			By("Waiting for container to restart and become ready")
+			// Wait for container restart count to increase, then ensure pod is Ready
+			// We use Eventually to wait for restart count to increase, then GetSquidPods to ensure Ready state
+			var restartedPod *corev1.Pod
+			Eventually(func() bool {
+				// Wait for restart count to increase
+				// We query by pod.Name, so we always get the same pod (or NotFound error)
+				updatedPod, err := clientset.CoreV1().Pods(namespace).Get(ctx, pod.Name, metav1.GetOptions{})
+				if err != nil {
+					return false
+				}
+
+				// Check if restart count increased
+				for _, status := range updatedPod.Status.ContainerStatuses {
+					if status.Name == "squid" {
+						if status.RestartCount > restartCountBefore {
+							restartedPod = updatedPod
+							return true
+						}
+						return false
+					}
+				}
+				return false
+			}, 60*time.Second, 2*time.Second).Should(BeTrue(), "Container restart count should increase")
+
+			// Now wait for pod to be Ready using GetSquidPods (same as other tests)
+			// This ensures the container has fully restarted and is ready
+			restartedPods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *deployment.Spec.Replicas)
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods after restart")
+
+			// Find the pod with the same name (ensure it's the same pod, not recreated)
+			restartedPod = nil
+			for _, p := range restartedPods {
+				if p.Name == pod.Name {
+					restartedPod = p
+					break
+				}
+			}
+			Expect(restartedPod).NotTo(BeNil(),
+				"Pod %s should still exist after container restart (pod was not recreated). If pod was recreated, emptyDir was lost and cache recovery cannot be tested.",
+				pod.Name,
+			)
+
+			// Verify restart count increased (double-check after Ready)
+			var restartCountAfter int32
+			for _, status := range restartedPod.Status.ContainerStatuses {
+				if status.Name == "squid" {
+					restartCountAfter = status.RestartCount
+					break
+				}
+			}
+			Expect(restartCountAfter).To(BeNumerically(">", restartCountBefore),
+				"Container restart count should have increased from %d to %d",
+				restartCountBefore, restartCountAfter,
+			)
+
+			By("Verifying cleanup happened and cache is empty")
+			// Verify cleanup by checking that cache usage is low (proving cleanup happened)
+			// and that cache directories were recreated (indicating cleanup + squid -z)
+			Eventually(func() bool {
+				// Check cache usage after cleanup
+				checkUsageCmd := []string{"sh", "-c", "df /var/spool/squid/cache | awk 'NR==2 {print $5}' | sed 's/%//'"}
+				var usageOutput bytes.Buffer
+				err := testhelpers.ExecCommandInPodWithWriters(
+					ctx, clientset, restConfig, namespace, restartedPod.Name, "squid",
+					checkUsageCmd, &usageOutput, os.Stderr,
+				)
+				if err != nil {
+					return false
+				}
+
+				usageAfterStr := strings.TrimSpace(usageOutput.String())
+				usageAfter, err := strconv.Atoi(usageAfterStr)
+				if err != nil {
+					return false
+				}
+
+				// Cache should be much lower after cleanup (should be < 10% since we removed everything)
+				return usageAfter < 10
+			}, 30*time.Second, 2*time.Second).Should(BeTrue(), "Cache usage should be low after cleanup")
+
+			// Also verify cache directories were recreated
+			checkDirsCmd := []string{
+				"sh", "-c", "ls -d /var/spool/squid/cache/[0-9a-fA-F][0-9a-fA-F] 2>/dev/null | wc -l",
+			}
+			var dirCountOutput bytes.Buffer
+			err = testhelpers.ExecCommandInPodWithWriters(
+				ctx, clientset, restConfig, namespace, restartedPod.Name, "squid",
+				checkDirsCmd, &dirCountOutput, os.Stderr,
+			)
+			Expect(err).NotTo(HaveOccurred(), "Failed to check cache directories")
+
+			dirCountStr := strings.TrimSpace(dirCountOutput.String())
+			dirCount, err := strconv.Atoi(dirCountStr)
+			Expect(err).NotTo(HaveOccurred(), "Failed to parse directory count")
+			Expect(dirCount).To(BeNumerically(">", 0), "Should have aufs directories recreated by squid -z")
 		})
 	})
 })

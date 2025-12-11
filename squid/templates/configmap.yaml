@@ -173,6 +173,13 @@ data:
     # Structure: 16 first-level directories, 256 second-level subdirectories
     cache_dir aufs /var/spool/squid/cache {{ mulf .Values.cache.size 0.8 | int }} 16 256
 
+    # Cache swap watermarks (percentages)
+    # Below cache_swap_low: minimal eviction
+    # Between low and high: moderate eviction
+    # Above cache_swap_high: aggressive eviction
+    cache_swap_low {{ .Values.cache.swapLow }}
+    cache_swap_high {{ .Values.cache.swapHigh }}
+
     # Maximum object size to cache
     maximum_object_size {{ .Values.cache.maxObjectSize }} MB
 

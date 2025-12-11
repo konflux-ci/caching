@@ -1,6 +1,7 @@
 package testhelpers
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -32,6 +33,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/client-go/util/homedir"
 )
 
 // TestServerResponse represents the standard JSON response from test servers
@@ -489,7 +494,6 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	if environment == "prerelease" {
 		extraArgs = buildPrereleaseHelmArgs(environment, deployment)
 	}
-	// In dev (devcontainer), keep all components enabled (extraArgs remains empty)
 
 	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
 	if err != nil {
@@ -954,4 +958,91 @@ func FindContainerByName(pod *corev1.Pod, containerName string) (*corev1.Contain
 		}
 	}
 	return nil, fmt.Errorf("container %s not found in pod %s", containerName, pod.Name)
+}
+
+// GetRESTConfig returns a Kubernetes REST config, trying in-cluster config first,
+// then falling back to kubeconfig file (from KUBECONFIG env var or ~/.kube/config).
+// This is useful for both in-cluster and local testing scenarios.
+func GetRESTConfig() (*rest.Config, error) {
+	// Try in-cluster config first (when running in a pod)
+	config, err := rest.InClusterConfig()
+	if err == nil {
+		return config, nil
+	}
+
+	// Fall back to kubeconfig file (when running locally)
+	var kubeconfig string
+	if os.Getenv("KUBECONFIG") != "" {
+		kubeconfig = os.Getenv("KUBECONFIG")
+	} else if home := homedir.HomeDir(); home != "" {
+		kubeconfig = filepath.Join(home, ".kube", "config")
+	} else {
+		return nil, fmt.Errorf("failed to get in-cluster config and cannot determine kubeconfig path (KUBECONFIG not set and HOME not available)")
+	}
+
+	config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build config from kubeconfig %s: %w", kubeconfig, err)
+	}
+
+	return config, nil
+}
+
+// ExecCommandInPod executes a command in a container within a pod using kubectl exec.
+// It returns the stdout and stderr output as strings, or an error if execution fails.
+// This is a convenience wrapper around ExecCommandInPodWithWriters that captures output.
+func ExecCommandInPod(ctx context.Context, client kubernetes.Interface, restConfig *rest.Config,
+	namespace, podName, containerName string, command []string) (stdout, stderr string, err error) {
+	var stdoutBuf, stderrBuf bytes.Buffer
+	err = ExecCommandInPodWithWriters(
+		ctx, client, restConfig, namespace, podName, containerName,
+		command, &stdoutBuf, &stderrBuf,
+	)
+	return stdoutBuf.String(), stderrBuf.String(), err
+}
+
+// ExecCommandInPodWithWriters executes a command in a container within a pod using kubectl exec.
+// stdout and stderr writers can be nil, in which case output will be discarded.
+// This function uses the Kubernetes client-go remotecommand API to execute commands.
+func ExecCommandInPodWithWriters(ctx context.Context, client kubernetes.Interface, restConfig *rest.Config,
+	namespace, podName, containerName string, command []string, stdout, stderr io.Writer) error {
+	// Build the exec request
+	execReq := client.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Namespace(namespace).
+		Name(podName).
+		SubResource("exec").
+		Param("container", containerName).
+		Param("stdout", "true").
+		Param("stderr", "true")
+
+	// Add each command part as a separate "command" parameter
+	for _, cmd := range command {
+		execReq = execReq.Param("command", cmd)
+	}
+
+	// Create the executor
+	executor, err := remotecommand.NewSPDYExecutor(restConfig, "POST", execReq.URL())
+	if err != nil {
+		return fmt.Errorf("failed to create executor: %w", err)
+	}
+
+	// Set up output writers (use io.Discard if nil)
+	if stdout == nil {
+		stdout = io.Discard
+	}
+	if stderr == nil {
+		stderr = io.Discard
+	}
+
+	// Execute the command
+	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdout: stdout,
+		Stderr: stderr,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to execute command: %w", err)
+	}
+
+	return nil
 }

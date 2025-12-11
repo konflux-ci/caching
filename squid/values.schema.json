@@ -634,6 +634,18 @@
           "type": "integer",
           "minimum": 1,
           "description": "Maximum object size to cache in MiB"
+        },
+        "swapLow": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Cache swap low watermark (percentage). Below this percentage, Squid minimizes object eviction"
+        },
+        "swapHigh": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Cache swap high watermark (percentage). Above this percentage, Squid aggressively evicts objects to free up space"
         }
       },
       "additionalProperties": false
