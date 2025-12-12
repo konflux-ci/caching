@@ -18,9 +18,7 @@ spec:
     spec:
       containers:
       - name: nginx
-        # Use nginxinc/nginx-unprivileged for OpenShift compatibility
-        # This image runs as UID 101 and doesn't require root privileges
-        image: nginxinc/nginx-unprivileged:alpine
+        image: nginx:latest
         ports:
         # Port 8443 instead of 443: OpenShift runs containers as non-root,
         # which cannot bind to privileged ports (<1024). Service still exposes 443 externally.
