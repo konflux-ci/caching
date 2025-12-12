@@ -18,11 +18,11 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: nginx:latest
+        # Use nginxinc/nginx-unprivileged for OpenShift compatibility
+        # This image runs as UID 101 and doesn't require root privileges
+        image: nginxinc/nginx-unprivileged:alpine
         ports:
-        # Port 8443 instead of 443: OpenShift runs containers as non-root,
-        # which cannot bind to privileged ports (<1024). Service still exposes 443 externally.
-        - containerPort: 8443
+        - containerPort: 443
         volumeMounts:
         - name: tls
           mountPath: "/etc/nginx/tls"
@@ -59,7 +59,7 @@ spec:
   ports:
     - protocol: TCP
       port: 443
-      targetPort: 8443
+      targetPort: 443
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -68,9 +68,8 @@ metadata:
   namespace: {{ .Values.namespace.name }}
 data:
   default.conf: |
-    # Listen on 8443 (non-privileged port) for OpenShift compatibility
     server {
-        listen 8443 ssl;
+        listen 443 ssl;
         server_name test-server.{{ .Values.namespace.name }}.svc.cluster.local;
 
         ssl_certificate /etc/nginx/tls/tls.crt;
