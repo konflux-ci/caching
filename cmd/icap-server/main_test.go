@@ -57,9 +57,9 @@ var _ = Describe("reqmodHandler", func() {
 			})
 		})
 
-		Context("with a CDN URL", func() {
-			It("should remove Authorization header and return 200", func() {
-				httpReq, _ := http.NewRequest("GET", "https://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890", nil)
+		Context("with a content-addressable URL", func() {
+			It("should remove Authorization header for URLs with /sha256/ in path", func() {
+				httpReq, _ := http.NewRequest("GET", "https://cdn.example.com/blobs/sha256/ab/abcdef1234567890", nil)
 				httpReq.Header.Set("Authorization", "Bearer token123")
 				httpReq.Header.Set("User-Agent", "test-agent")
 
@@ -77,9 +77,9 @@ var _ = Describe("reqmodHandler", func() {
 			})
 		})
 
-		Context("with non-CDN URLs", func() {
+		Context("with a non-content-addressable URL", func() {
 			Context("when client allows 204 responses", func() {
-				It("should return 204", func() {
+				It("should return 204 and preserve Authorization header", func() {
 					httpReq, _ := http.NewRequest("GET", "https://example.com/some/path", nil)
 					httpReq.Header.Set("Authorization", "Bearer token123")
 
@@ -99,7 +99,7 @@ var _ = Describe("reqmodHandler", func() {
 			})
 
 			Context("when client does not allow 204 responses", func() {
-				It("should return 200", func() {
+				It("should return 200 and preserve Authorization header", func() {
 					httpReq, _ := http.NewRequest("GET", "https://example.com/some/path", nil)
 					httpReq.Header.Set("Authorization", "Bearer token123")
 

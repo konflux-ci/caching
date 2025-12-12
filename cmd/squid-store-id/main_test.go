@@ -73,27 +73,15 @@ var _ = Describe("parseLine", func() {
 })
 
 var _ = Describe("normalizeStoreID", func() {
-	DescribeTable("when given non-content addressable CDN URLs, should return the original URL unchanged",
-		func(url string) {
-			mockClient := &MockHTTPClient{}
-			result := normalizeStoreID(mockClient, url)
-			Expect(result).To(Equal(url), "URL should be unchanged")
-		},
-		Entry("wrong host", "https://badcdn.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
-		Entry("hash too short", "https://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef123456789"),
-		Entry("wrong protocol (http)", "http://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
-		Entry("wrong protocol (ftp)", "ftp://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"),
-	)
-
-	When("given content addressable CDN URLs", func() {
-		const testURL = "https://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890?token=abc123"
+	When("given content-addressable URLs with query parameters", func() {
+		const testURL = "https://cdn.example.com/blobs/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890?token=abc123&expires=456"
 
 		It("should return normalized URL (without query params) when HTTP request succeeds", func() {
 			mockClient := &MockHTTPClient{
 				StatusCode: http.StatusOK,
 			}
 
-			expectedURL := "https://cdn01.quay.io/repository/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+			expectedURL := "https://cdn.example.com/blobs/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 			Expect(normalizeStoreID(mockClient, testURL)).To(Equal(expectedURL))
 		})
 
