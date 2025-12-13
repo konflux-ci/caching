@@ -51,7 +51,7 @@ spec:
       - name: helm-version
         description: 'The Helm version to install and use for deployments.'
         type: string
-        default: "3.16.3"
+        default: "3.19.4"
 
     tasks:
       - name: test-metadata
