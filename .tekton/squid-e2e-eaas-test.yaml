@@ -372,9 +372,6 @@ spec:
                   --set installCertManagerComponents=true \
                   --set cert-manager.enabled=true \
                   --set cert-manager.installCRDs=false \
-                  --set cert-manager.securityContext.runAsUser=null \
-                  --set cert-manager.securityContext.runAsGroup=null \
-                  --set cert-manager.securityContext.fsGroup=null \
                   $secret_args \
                   --wait \
                   --timeout=5m \
