@@ -4,6 +4,14 @@
   "lockFileMaintenance": {
     "enabled": true
   },
+  "tekton": {
+    "schedule": [
+      "* * * * *"
+    ],
+    "includePaths": [
+      ".tekton/**"
+    ]
+  },
   "regexManagers": [
     {
       "description": "Track Helm version in Tekton pipelines",
