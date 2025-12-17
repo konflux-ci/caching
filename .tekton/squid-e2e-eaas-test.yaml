@@ -356,9 +356,7 @@ spec:
                 echo "Squid: $squid_repo:$squid_tag"
                 echo "Tester: $tester_repo:$tester_tag"
                 
-                # Install squid with bundled cert-manager, overriding runAsUser to be OpenShift SCC compatible
-                # OpenShift's restricted-v2 SCC requires UIDs in namespace-specific ranges (e.g., 1000740000-1000749999)
-                # By not specifying runAsUser/runAsGroup/fsGroup, OpenShift will auto-assign from the allowed range
+                # Install squid with bundled cert-manager
                 # Note: Using installCRDs=false to let squid/crds/ directory handle CRDs (avoids ownership conflicts)
                 echo "Installing Squid chart with cert-manager..."
                 helm install squid . \
@@ -372,9 +370,6 @@ spec:
                   --set installCertManagerComponents=true \
                   --set cert-manager.enabled=true \
                   --set cert-manager.installCRDs=false \
-                  --set cert-manager.securityContext.runAsUser=null \
-                  --set cert-manager.securityContext.runAsGroup=null \
-                  --set cert-manager.securityContext.fsGroup=null \
                   $secret_args \
                   --wait \
                   --timeout=5m \
