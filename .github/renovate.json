@@ -12,11 +12,12 @@
       ".tekton/**"
     ]
   },
-  "regexManagers": [
+  "customManagers": [
     {
+      "customType": "regex",
       "description": "Track Helm version in Tekton pipelines",
-      "fileMatch": [
-        "^\\.tekton/.*\\.ya?ml$"
+      "managerFilePatterns": [
+        "/^\\.tekton/.*\\.ya?ml$/"
       ],
       "matchStrings": [
         "name:\\s+helm-version\\s+description:.*?\\s+type:.*?\\s+default:\\s+\"(?<currentValue>[^\"]+)\""
