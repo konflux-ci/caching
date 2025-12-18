@@ -125,13 +125,17 @@ func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 		fmt.Printf("%s\n", logStr)
 
 		// Check for MISS pattern
-		if regexp.MatchString(missPattern, logStr) {
+		matched, err := regexp.MatchString(missPattern, logStr)
+		Expect(err).NotTo(HaveOccurred(), "Invalid regex pattern: %s", missPattern)
+		if matched {
 			fmt.Printf("DEBUG: Found TCP_MISS for %s in pod %s\n", cdnName, pod.Name)
 			foundMiss = true
 		}
 
 		// Check for HIT pattern
-		if regexp.MatchString(hitPattern, logStr) {
+		matched, err = regexp.MatchString(hitPattern, logStr)
+		Expect(err).NotTo(HaveOccurred(), "Invalid regex pattern: %s", hitPattern)
+		if matched {
 			fmt.Printf("DEBUG: Found TCP_HIT for %s in pod %s\n", cdnName, pod.Name)
 			foundHit = true
 		}
@@ -141,17 +145,19 @@ func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 	// Check logs from pod creation time to see if there was a TCP_MISS that populated the cache.
 	if foundHit && !foundMiss {
 		fmt.Printf("DEBUG: Found TCP_HIT but no TCP_MISS in test window. Checking logs from pod creation time to see if cache was warm from previous test...\n")
-		
+
 		for _, pod := range pods {
 			podCreationTime := pod.CreationTimestamp
-			
+
 			logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, pod.Name, squidContainerName, &podCreationTime)
 			if err != nil {
 				continue
 			}
 			logStr := string(logs)
-			
-			if matched, _ := regexp.MatchString(missPattern, logStr); matched {
+
+			matched, err := regexp.MatchString(missPattern, logStr)
+			Expect(err).NotTo(HaveOccurred(), "Invalid regex pattern: %s", missPattern)
+			if matched {
 				fmt.Printf("DEBUG: Found TCP_MISS for %s in pod %s from logs since pod creation (cache was warm from previous test)\n", cdnName, pod.Name)
 				foundMiss = true
 				break // Found it, no need to check other pods
