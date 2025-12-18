@@ -116,13 +116,13 @@ arches:
     name: golang-src
     evr: 1.25.3-1.el10_1
     sourcerpm: golang-1.25.3-1.el10_1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/h/httpd-filesystem-2.4.63-4.el10.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/h/httpd-filesystem-2.4.63-4.el10_1.2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 13559
-    checksum: sha256:b0602e9dbb6a7558bc5b1bb3a054a8051c002f56d9cdee4da5ba0b00d28c1370
+    size: 13515
+    checksum: sha256:f1524575bf816a6c9e31d343a3d72d356b93c1df5b4446550f8c8f1bfa9f20e0
     name: httpd-filesystem
-    evr: 2.4.63-4.el10
-    sourcerpm: httpd-2.4.63-4.el10.src.rpm
+    evr: 2.4.63-4.el10_1.2
+    sourcerpm: httpd-2.4.63-4.el10_1.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-124.21.1.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 3387425
@@ -704,20 +704,20 @@ arches:
     name: authselect-libs
     evr: 1.5.0-8.el10
     sourcerpm: authselect-1.5.0-8.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/b/binutils-2.41-58.el10.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/b/binutils-2.41-58.el10_1.2.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 6713070
-    checksum: sha256:672d5039c35533857265f0412ef0ee64beb48a8fedc3b129e1374a4cb9ba9118
+    size: 6709343
+    checksum: sha256:7059ffc674a7709755c63265dd505262374684b6d88992b6b0e853d2c14a7caa
     name: binutils
-    evr: 2.41-58.el10
-    sourcerpm: binutils-2.41-58.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/b/binutils-gold-2.41-58.el10.x86_64.rpm
+    evr: 2.41-58.el10_1.2
+    sourcerpm: binutils-2.41-58.el10_1.2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/b/binutils-gold-2.41-58.el10_1.2.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 816899
-    checksum: sha256:75c2a111a4a84c00f3969c58d15b4e3299e2d06a8f645286557dcde8115d9af0
+    size: 816566
+    checksum: sha256:276d2e51c7cea1c21363a2c44d099a158188e8bee1e7fc8779ec89145d72fa37
     name: binutils-gold
-    evr: 2.41-58.el10
-    sourcerpm: binutils-2.41-58.el10.src.rpm
+    evr: 2.41-58.el10_1.2
+    sourcerpm: binutils-2.41-58.el10_1.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/c/cracklib-2.9.11-8.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 102557
