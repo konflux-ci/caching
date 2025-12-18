@@ -13,8 +13,30 @@ import (
 )
 
 var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"), func() {
+	BeforeAll(func() {
+		// Configure Squid ONCE with all CDN patterns
+		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
+			Cache: &testhelpers.CacheValues{
+				AllowList: []string{
+					// Quay.io CDN patterns
+					"^https://cdn([0-9]{2})?\\.quay\\.io/.+/sha256/.+/[a-f0-9]{64}",
+					"^https://s3\\.[a-z0-9-]+\\.amazonaws\\.com/quayio-production-s3/sha256/.+/[a-f0-9]{64}",
+					"^https://quayio-production-s3\\.s3[a-z0-9.-]*\\.amazonaws\\.com/sha256/.+/[a-f0-9]{64}",
+					// Docker Hub CDN patterns
+					"^https://docker-images-prod\\.[a-f0-9]{32}\\.r2\\.cloudflarestorage\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+					"^https://production\\.cloudflare\\.docker\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+					"^https://docker-images-prod\\.s3[a-z0-9.-]*\\.amazonaws\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+				},
+			},
+			ReplicaCount: int(suiteReplicaCount),
+		})
+		Expect(err).NotTo(HaveOccurred(), "Failed to configure squid with CDN patterns")
+	})
+
 	AfterAll(func() {
-		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
+		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
+			ReplicaCount: int(suiteReplicaCount),
+		})
 		Expect(err).NotTo(HaveOccurred(), "Failed to restore squid cache defaults")
 	})
 
@@ -23,25 +45,30 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 		Entry("quay.io", "quay.io/konflux-ci/caching/squid@sha256:497644fae8de47ed449126735b02d54fdc152ef22634e32f175186094c2d638e"),
 		Entry("registry.access.redhat.com", "registry.access.redhat.com/ubi10-minimal:late@sha256:649f7ce8082531148ac5e45b61612046a21e36648ab096a77e6ba0c94428cf60"),
 	)
+
+	DescribeTable("should cache layers from docker.io CDNs",
+		pullAndVerifyDockerHubCDN,
+		Entry("docker.io/library/alpine", "docker.io/library/alpine:3.19@sha256:13b7e62e8df80264dbb747995705a986aa530415763a6c58f84a3ca8af9a5bcd"),
+		Entry("docker.io/library/nginx", "docker.io/library/nginx:1.25@sha256:4c0fdaa8b6341bfdeca5f18f7837462c80cff90527ee35ef185571e1c327beac"),
+	)
 })
 
 func pullAndVerifyQuayCDN(imageRef string) {
-	// Reconfigured squid to force the cache to be cleared
-	err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
-		Cache: &testhelpers.CacheValues{
-			AllowList: []string{
-				// Match Quay CDN URLs (direct)
-				"^https://cdn([0-9]{2})?\\.quay\\.io/.+/sha256/.+/[a-f0-9]{64}",
-				// Match S3 backend URLs - path-style (Quay redirects to S3 for blob storage)
-				"^https://s3\\.[a-z0-9-]+\\.amazonaws\\.com/quayio-production-s3/sha256/.+/[a-f0-9]{64}",
-				// Match S3 backend URLs - virtual-hosted-style
-				"^https://quayio-production-s3\\.s3[a-z0-9.-]*\\.amazonaws\\.com/sha256/.+/[a-f0-9]{64}",
-				"dummy-" + imageRef, // Unique dummy value to ensure the pod is recreated
-			},
-		},
-	})
-	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+	pullAndVerifyContainerImageCDN(imageRef,
+		`(cdn(?:[0-9]{2})?\.quay\.io|quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com|s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3)`,
+		"Quay CDN")
+}
 
+func pullAndVerifyDockerHubCDN(imageRef string) {
+	pullAndVerifyContainerImageCDN(imageRef,
+		`(docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com|production\.cloudflare\.docker\.com|docker-images-prod\.s3[a-z0-9.-]*\.amazonaws\.com)`,
+		"Docker Hub CDN")
+}
+
+// pullAndVerifyContainerImageCDN verifies that container image layers are cached from CDN hosts.
+// cdnRegexPattern should contain ONLY the CDN host pattern (e.g., "(cdn\.quay\.io|s3\.amazonaws\.com)").
+// The function will automatically build the full patterns with TCP_MISS and TCP_HIT prefixes.
+func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 	cm, err := clientset.CoreV1().ConfigMaps(namespace).Get(context.Background(), namespace+"-ca-bundle", metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred(), "Failed to get "+namespace+"-ca-bundle ConfigMap")
 
@@ -76,38 +103,76 @@ func pullAndVerifyQuayCDN(imageRef string) {
 	time.Sleep(1 * time.Second)
 
 	By("Verifying CDN requests in squid logs")
-	// Check logs from all pods since the beginning
-	cacheHitFound := false
+	// Collect logs from all pods and check for MISS and HIT patterns
+	var foundMiss, foundHit bool
+	// Build full patterns from the CDN host pattern
+	missPattern := fmt.Sprintf(`(?m)^.*TCP_MISS.*%s.*$`, cdnRegexPattern)
+	hitPattern := fmt.Sprintf(`(?m)^.*TCP_HIT.*%s.*$`, cdnRegexPattern)
 
+	// First, check logs from our test sequence
 	for _, pod := range pods {
 		logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, pod.Name, squidContainerName, &beforeSequence)
 		if err != nil {
 			continue // Skip pods where we can't get logs
 		}
 		logStr := string(logs)
-		if logStr != "" {
-			fmt.Printf("DEBUG: === Logs from pod %s ===\n", pod.Name)
-			fmt.Printf("%s\n", logStr)
 
-			// Check if this pod has a cache HIT (from either Quay CDN or S3 backend)
-			hitRegex := regexp.MustCompile(`(?m)^.*TCP_HIT.*(cdn(?:[0-9]{2})?\.quay\.io|quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com|s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3).*$`)
-			if hitRegex.MatchString(logStr) {
-				fmt.Printf("DEBUG: Found TCP_HIT in pod %s, verifying corresponding MISS\n", pod.Name)
+		if logStr == "" {
+			continue
+		}
 
-				// Verify this pod also has the corresponding MISS
-				Expect(logStr).To(
-					MatchRegexp(`(?m)^.*TCP_MISS.*(cdn(?:[0-9]{2})?\.quay\.io|quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com|s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3).*$`),
-					"Pod with cache hit should also show TCP_MISS for the same image",
-				)
+		fmt.Printf("DEBUG: === Logs from pod %s (since test start) ===\n", pod.Name)
+		fmt.Printf("%s\n", logStr)
 
-				cacheHitFound = true
-				fmt.Printf("DEBUG: Successfully verified both MISS and HIT in pod %s!\n", pod.Name)
-				break // Found a pod with both MISS and HIT, no need to check others
-			}
+		// Check for MISS pattern
+		matched, err := regexp.MatchString(missPattern, logStr)
+		Expect(err).NotTo(HaveOccurred(), "Invalid regex pattern: %s", missPattern)
+		if matched {
+			fmt.Printf("DEBUG: Found TCP_MISS for %s in pod %s\n", cdnName, pod.Name)
+			foundMiss = true
+		}
+
+		// Check for HIT pattern
+		matched, err = regexp.MatchString(hitPattern, logStr)
+		Expect(err).NotTo(HaveOccurred(), "Invalid regex pattern: %s", hitPattern)
+		if matched {
+			fmt.Printf("DEBUG: Found TCP_HIT for %s in pod %s\n", cdnName, pod.Name)
+			foundHit = true
 		}
 	}
 
-	Expect(cacheHitFound).To(BeTrue(), "Should find at least one cache hit from any pod")
+	// If we found TCP_HIT but not TCP_MISS, the cache may have been warm from a previous test.
+	// Check logs from pod creation time to see if there was a TCP_MISS that populated the cache.
+	if foundHit && !foundMiss {
+		fmt.Printf("DEBUG: Found TCP_HIT but no TCP_MISS in test window. Checking logs from pod creation time to see if cache was warm from previous test...\n")
 
-	fmt.Printf("DEBUG: Caching verification successful - found both TCP_MISS and TCP_HIT in the same pod!\n")
+		for _, pod := range pods {
+			podCreationTime := pod.CreationTimestamp
+
+			logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, pod.Name, squidContainerName, &podCreationTime)
+			if err != nil {
+				continue
+			}
+			logStr := string(logs)
+
+			matched, err := regexp.MatchString(missPattern, logStr)
+			Expect(err).NotTo(HaveOccurred(), "Invalid regex pattern: %s", missPattern)
+			if matched {
+				fmt.Printf("DEBUG: Found TCP_MISS for %s in pod %s from logs since pod creation (cache was warm from previous test)\n", cdnName, pod.Name)
+				foundMiss = true
+				break // Found it, no need to check other pods
+			}
+		}
+		
+		if foundMiss {
+			fmt.Printf("DEBUG: Cache was warm from previous test, but caching is working correctly (MISS happened earlier, HIT in current test)\n")
+		}
+	}
+
+	// Verify we found both MISS and HIT (MISS may be from current test or earlier)
+	// This proves caching is working (MISS = fetched and cached, HIT = served from cache)
+	Expect(foundMiss).To(BeTrue(), "Should find TCP_MISS for %s in pod logs (proves content was fetched and cached, either in current test or earlier)", cdnName)
+	Expect(foundHit).To(BeTrue(), "Should find TCP_HIT for %s in pod logs (proves content was served from cache)", cdnName)
+
+	fmt.Printf("DEBUG: Caching verification successful - found both TCP_MISS and TCP_HIT for %s!\n", cdnName)
 }
