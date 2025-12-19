@@ -1,4 +1,4 @@
-# 1. Caching quay.io container image layers
+# 1. Caching container image layers from CDNs
 
 Date: 2025-09-30
 
@@ -8,16 +8,26 @@ Accepted
 
 ## Context
 
-Konflux and its pipelines pull many container images from quay.io. It's important to support caching
+Konflux and its pipelines pull container images from multiple registries. It's important to support caching
 of these container image layers.
 
-The same applies to the Red Hat registries:
-- registry.access.redhat.com
-- registry.redhat.io
-
-They're backed by quay.io infrastructure so there's an opportunity to also solve for these at the same time.
+Commonly used registries include:
+- quay.io and Red Hat registries (registry.access.redhat.com, registry.redhat.io)
+- Docker Hub (docker.io)
 
 These images may be public or private.
+
+### Common Registry Behavior
+
+Container registries typically redirect blob requests to CDN backends for efficient content delivery. 
+These CDNs use content-addressable URLs containing SHA256 hashes (e.g., `/sha256/[hash]`) and include:
+- Temporary credentials in query parameters
+- Short-lived signatures to prevent abuse
+- `Authorization` headers (even for public images in some cases)
+
+The caching solution is registry-agnostic and works with any CDN that uses content-addressable URLs. Users can extend support to additional registries by adding their CDN URL patterns to the configuration.
+
+### Example: Quay.io
 
 When pulling a blob directly from quay.io, the registry returns a `302` redirect. The redirect target varies by region and load:
 
@@ -106,6 +116,9 @@ We'll create a custom store ID helper program to compute IDs for content-address
 1. Quay CDN: `^https://cdn(\d{2})?\.quay\.io/.+/sha256/.+/[a-f0-9]{64}`
 2. Quay S3 backend (path-style): `^https://s3\.[a-z0-9-]+\.amazonaws\.com/quayio-production-s3/sha256/.+/[a-f0-9]{64}`
 3. Quay S3 backend (virtual-hosted): `^https://quayio-production-s3\.s3[a-z0-9.-]*\.amazonaws\.com/sha256/.+/[a-f0-9]{64}`
+4. Docker Hub CDN (Cloudflare R2): `^https://docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data`
+5. Docker Hub CDN (Cloudflare): `^https://production\.cloudflare\.docker\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data`
+6. Docker Hub S3 backend: `^https://docker-images-prod\.s3[a-z0-9.-]*\.amazonaws\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data`
 
 It will perform a lightweight GET authorization check to the original URL.
 Given a `200 OK` response, it will return the same URL without query parameters to use as the stable
@@ -116,6 +129,13 @@ destined for the CDN. These altered requests will only be used for cache hit det
 squid and will not be stripped from the outgoing CDN requests. Response modification (e.g. adding
 the `Cache-Control: public` header) is to be avoided since it requires passing blob data through the
 ICAP server.
+
+**Pattern Configuration:** CDN URL patterns are configured via the `cache.allowList` Helm value, which is used by:
+- Squid ACLs for caching decisions (`cache allow/deny`)
+- Store-ID helper access control (`store_id_access`)
+- ICAP server access control (`adaptation_access`)
+
+This centralized approach ensures consistency and simplifies configuration management.
 
 The resulting flow for pulling (and re-pulling) from the CDN would then look like:
 
@@ -169,6 +189,8 @@ Positive:
 - Blob payloads never traverse the ICAP server.
 - Applies equally to Red Hat registries (`registry.access.redhat.com`, `registry.redhat.io`) which proxy to quay.io.
 - Strict compliance with Squid's caching specifications for `Authorization`.
+- Extensible to additional CDN providers (e.g., Docker Hub) without architectural changes.
+- Centralized pattern configuration via `cache.allowList` ensures consistency across Squid ACLs and helpers.
 
 Negative:
 - Additional components to maintain (store ID helper and ICAP sidecar).
