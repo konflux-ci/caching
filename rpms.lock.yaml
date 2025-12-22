@@ -116,13 +116,13 @@ arches:
     name: golang-src
     evr: 1.25.3-1.el10_1
     sourcerpm: golang-1.25.3-1.el10_1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/h/httpd-filesystem-2.4.63-4.el10_1.2.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/h/httpd-filesystem-2.4.63-4.el10_1.3.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 13515
-    checksum: sha256:f1524575bf816a6c9e31d343a3d72d356b93c1df5b4446550f8c8f1bfa9f20e0
+    size: 13792
+    checksum: sha256:eedff03bc9b84595f27f4051a49a97033d643db2970baa556d789aa69e45a107
     name: httpd-filesystem
-    evr: 2.4.63-4.el10_1.2
-    sourcerpm: httpd-2.4.63-4.el10_1.2.src.rpm
+    evr: 2.4.63-4.el10_1.3
+    sourcerpm: httpd-2.4.63-4.el10_1.3.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-124.21.1.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 3387425
