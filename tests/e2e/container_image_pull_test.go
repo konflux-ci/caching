@@ -80,13 +80,13 @@ func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 	)
 	Expect(err).NotTo(HaveOccurred(), "Failed to create trusted squid caching client")
 
-	deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
-	Expect(err).NotTo(HaveOccurred(), "Failed to get deployment")
-	pods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *deployment.Spec.Replicas)
+	statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+	Expect(err).NotTo(HaveOccurred(), "Failed to get statefulset")
+	pods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *statefulSet.Spec.Replicas)
 	Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods")
 
-	maxAttempts := int(*deployment.Spec.Replicas) + 1
-	fmt.Printf("🔍 DEBUG: Replica count: %d, pulling %d times to guarantee cache hit\n", *deployment.Spec.Replicas, maxAttempts)
+	maxAttempts := int(*statefulSet.Spec.Replicas) + 1
+	fmt.Printf("🔍 DEBUG: Replica count: %d, pulling %d times to guarantee cache hit\n", *statefulSet.Spec.Replicas, maxAttempts)
 
 	// Get timestamp before starting pulls
 	beforeSequence := metav1.Now()

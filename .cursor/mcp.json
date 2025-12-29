@@ -1,7 +1,11 @@
 {
     "mcpServers": {
-        "jira-mcp-server": {
-            "url": "https://jira-mcp-snowflake.mcp-playground-poc.devshift.net/sse"
+        "Konflux CI Docs": {
+            "url": "https://gitmcp.io/konflux-ci/docs"
+        },  
+        "Konflux CI Architecture": {
+            "url": "https://gitmcp.io/konflux-ci/architecture"
         }
     }
 }
+  

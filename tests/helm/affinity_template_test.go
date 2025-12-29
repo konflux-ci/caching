@@ -21,8 +21,8 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 			})
 			Expect(err).NotTo(HaveOccurred(), "Helm template rendering should succeed")
 
-			// Check that the squid deployment is present
-			Expect(output).To(ContainSubstring("name: "+testhelpers.DeploymentName), "Should contain squid deployment")
+			// Check that the squid statefulset is present
+			Expect(output).To(ContainSubstring("name: "+testhelpers.DeploymentName), "Should contain squid statefulset")
 			Expect(output).To(ContainSubstring("namespace: "+testhelpers.Namespace), "Should be in caching namespace")
 
 			// Check for anti-affinity configuration
@@ -53,13 +53,13 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 			})
 			Expect(err).NotTo(HaveOccurred(), "Helm template rendering should succeed")
 
-			// Should contain the deployment but no affinity section
-			Expect(output).To(ContainSubstring("name: "+testhelpers.DeploymentName), "Should contain squid deployment")
+			// Should contain the statefulset but no affinity section
+			Expect(output).To(ContainSubstring("name: "+testhelpers.DeploymentName), "Should contain squid statefulset")
 
-			// Extract just the squid deployment section for more precise checking
+			// Extract just the squid statefulset section for more precise checking
 			squidDeploymentSection := extractSquidDeploymentSection(output)
-			Expect(squidDeploymentSection).NotTo(ContainSubstring("affinity:"), "Squid deployment should not contain affinity section")
-			Expect(squidDeploymentSection).NotTo(ContainSubstring("podAntiAffinity"), "Squid deployment should not contain podAntiAffinity")
+			Expect(squidDeploymentSection).NotTo(ContainSubstring("affinity:"), "Squid statefulset should not contain affinity section")
+			Expect(squidDeploymentSection).NotTo(ContainSubstring("podAntiAffinity"), "Squid statefulset should not contain podAntiAffinity")
 		})
 	})
 
@@ -216,20 +216,20 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 				// Verify basic Kubernetes resource structure
 				Expect(output).To(ContainSubstring("apiVersion:"), "Should contain apiVersion")
 				Expect(output).To(ContainSubstring("kind:"), "Should contain kind")
-				Expect(output).To(ContainSubstring("name: "+testhelpers.DeploymentName), "Should contain squid deployment")
+				Expect(output).To(ContainSubstring("name: "+testhelpers.DeploymentName), "Should contain squid statefulset")
 			}
 		})
 	})
 })
 
-// extractSquidDeploymentSection extracts just the squid deployment YAML for more precise testing
+// extractSquidDeploymentSection extracts just the squid statefulset YAML for more precise testing
 func extractSquidDeploymentSection(helmOutput string) string {
 	lines := strings.Split(helmOutput, "\n")
 	var squidDeploymentLines []string
 	inSquidDeployment := false
 
 	for _, line := range lines {
-		// Start capturing when we find the squid deployment
+		// Start capturing when we find the squid statefulset
 		if strings.Contains(line, "# Source: squid/templates/deployment.yaml") {
 			inSquidDeployment = true
 			continue

@@ -15,7 +15,7 @@ var _ = Describe("Cache allow list tests", Ordered, Serial, func() {
 	var (
 		testServer *testhelpers.CachingTestServer
 		client     *http.Client
-		deployment *appsv1.Deployment
+		statefulSet *appsv1.StatefulSet
 		err        error
 	)
 
@@ -23,8 +23,8 @@ var _ = Describe("Cache allow list tests", Ordered, Serial, func() {
 		testServer = setupHTTPTestServer("Cache allow list test server")
 		client = setupHTTPTestClient()
 
-		deployment, err = clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
-		Expect(err).NotTo(HaveOccurred(), "Failed to get squid deployment")
+		statefulSet, err = clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 	})
 
 	Context("When cache.allowList is empty (default behavior)", func() {
@@ -36,7 +36,7 @@ var _ = Describe("Cache allow list tests", Ordered, Serial, func() {
 			initialServerHits := testServer.GetRequestCount()
 			fmt.Printf("🔍 DEBUG: Initial server hits: %d\n", initialServerHits)
 
-			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, testURL, *deployment.Spec.Replicas)
+			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, testURL, *statefulSet.Spec.Replicas)
 			Expect(err).NotTo(HaveOccurred(), "Should find a cache hit from any pod")
 			Expect(cacheHitResult.CacheHitFound).To(BeTrue(), "Should find a cache hit from any pod")
 			fmt.Printf("DEBUG: Cache hit result: %+v\n", cacheHitResult)
@@ -94,7 +94,7 @@ var _ = Describe("Cache allow list tests", Ordered, Serial, func() {
 			initialServerHits := testServer.GetRequestCount()
 			fmt.Printf("🔍 DEBUG: Initial server hits: %d\n", initialServerHits)
 
-			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, matchingURL, *deployment.Spec.Replicas)
+			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, matchingURL, *statefulSet.Spec.Replicas)
 			Expect(err).NotTo(HaveOccurred(), "Should find a cache hit from any pod")
 			Expect(cacheHitResult.CacheHitFound).To(BeTrue(), "Should find a cache hit from any pod")
 			fmt.Printf("DEBUG: Cache hit result: %+v\n", cacheHitResult)
@@ -131,9 +131,9 @@ var _ = Describe("Cache allow list tests", Ordered, Serial, func() {
 			initialServerHits := testServer.GetRequestCount()
 			fmt.Printf("🔍 DEBUG: Initial server hits: %d\n", initialServerHits)
 
-			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, nonMatchingURL, *deployment.Spec.Replicas)
+			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(client, nonMatchingURL, *statefulSet.Spec.Replicas)
 			Expect(err).To(HaveOccurred(), "Failed to get a cache hit from any pod")
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("no cache hit found from any pod within %d attempts", *deployment.Spec.Replicas+1)), "Should not find a cache hit from any pod")
+			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("no cache hit found from any pod within %d attempts", *statefulSet.Spec.Replicas+1)), "Should not find a cache hit from any pod")
 			Expect(cacheHitResult).To(BeNil(), "Should not find a cache hit from any pod")
 		})
 	})
