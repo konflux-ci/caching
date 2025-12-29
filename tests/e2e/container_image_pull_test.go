@@ -171,7 +171,14 @@ func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 
 	// Verify we found both MISS and HIT (MISS may be from current test or earlier)
 	// This proves caching is working (MISS = fetched and cached, HIT = served from cache)
-	Expect(foundMiss).To(BeTrue(), "Should find TCP_MISS for %s in pod logs (proves content was fetched and cached, either in current test or earlier)", cdnName)
+	//
+	// NOTE: Commented out the MISS check when switching to using PVCs for cache storag, because
+	// its a lot harder to get a MISS because the storage can easily contain cached data from
+	// previous tests, and persists across redeployments of squid.
+	// I'm leaving the miss detection code behind because the debug prints might help us in the
+	// future, and we might decide to add force-cleaning of the storgate at some point.
+	//
+	// Expect(foundMiss).To(BeTrue(), "Should find TCP_MISS for %s in pod logs (proves content was fetched and cached, either in current test or earlier)", cdnName)
 	Expect(foundHit).To(BeTrue(), "Should find TCP_HIT for %s in pod logs (proves content was served from cache)", cdnName)
 
 	fmt.Printf("DEBUG: Caching verification successful - found both TCP_MISS and TCP_HIT for %s!\n", cdnName)
