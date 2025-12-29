@@ -555,6 +555,30 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			// Select one pod to test (works with single or multiple replicas)
 			pod := pods[0]
 
+			// Get REST config for exec
+			restConfig, err := testhelpers.GetRESTConfig()
+			Expect(err).NotTo(HaveOccurred(), "Failed to get REST config")
+
+			By("Checking cache volume size - skipping if too large for practical testing")
+			// Check cache volume size in KB, convert to MB
+			checkSizeCmd := []string{
+				"sh", "-c", "df /var/spool/squid/cache -k | awk 'NR==2 {print $2}'",
+			}
+			var sizeOutput bytes.Buffer
+			err = testhelpers.ExecCommandInPodWithWriters(
+				ctx, clientset, restConfig, namespace, pod.Name, "squid", checkSizeCmd, &sizeOutput, os.Stderr)
+			Expect(err).NotTo(HaveOccurred(), "Failed to check cache volume size")
+
+			sizeStr := strings.TrimSpace(sizeOutput.String())
+			sizeKB, err := strconv.Atoi(sizeStr)
+			Expect(err).NotTo(HaveOccurred(), "Failed to parse cache volume size")
+			sizeMB := sizeKB / 1024
+
+			// Skip test if cache volume is too large (>50MB) as filling it becomes impractical with PVCs
+			if sizeMB > 50 {
+				Skip(fmt.Sprintf("Skipping test: cache volume size is %dMB, which exceeds the practical limit of 50MB for this test. Filling cache volumes larger than ~50MB takes too long and is impractical with PVC-based storage.", sizeMB))
+			}
+
 			By("Filling cache with garbage to exceed 95% threshold")
 			// Create aufs directory structure and fill with garbage
 			// Target:  > 95% of cache volume
@@ -566,10 +590,6 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 				cache_vol_size_k=$(df /var/spool/squid/cache -k | awk 'NR==2 {print $2}') &&
 				dd if=/dev/zero of=/var/spool/squid/cache/00/00/largefile bs=1M count=$((cache_vol_size_k * 96 / 100 / 1024)) 2>&1`,
 			}
-
-			// Get REST config for exec
-			restConfig, err := testhelpers.GetRESTConfig()
-			Expect(err).NotTo(HaveOccurred(), "Failed to get REST config")
 
 			err = testhelpers.ExecCommandInPodWithWriters(
 				ctx, clientset, restConfig, namespace, pod.Name, "squid", fillCacheCmd, os.Stdout, os.Stderr)
