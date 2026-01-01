@@ -21,15 +21,15 @@ var _ = Describe("Squid Caching Metrics Integration", func() {
 
 	Describe("Metrics Endpoint", func() {
 		It("should have squid-exporter container running with correct configuration", func() {
-			// Get the squid deployment to verify exporter container
-			deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get squid deployment")
+			// Get the squid statefulset to verify exporter container
+			statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 
 			// Find squid-exporter container
 			var exporterContainer *v1.Container
-			for i := range deployment.Spec.Template.Spec.Containers {
-				if deployment.Spec.Template.Spec.Containers[i].Name == deploymentName+"-exporter" {
-					exporterContainer = &deployment.Spec.Template.Spec.Containers[i]
+			for i := range statefulSet.Spec.Template.Spec.Containers {
+				if statefulSet.Spec.Template.Spec.Containers[i].Name == deploymentName+"-exporter" {
+					exporterContainer = &statefulSet.Spec.Template.Spec.Containers[i]
 					break
 				}
 			}

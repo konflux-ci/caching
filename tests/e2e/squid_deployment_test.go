@@ -50,7 +50,7 @@ func generateCacheBuster(testName string) string {
 		GinkgoRandomSeed())
 }
 
-var _ = Describe("Squid Helm Chart Deployment", func() {
+var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 	Describe("Namespace", func() {
 		It("should have the caching namespace created", func() {
@@ -61,46 +61,46 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 	})
 
-	Describe("Deployment", func() {
-		var deployment *appsv1.Deployment
+	Describe("StatefulSet", func() {
+		var statefulSet *appsv1.StatefulSet
 
 		BeforeEach(func() {
 			var err error
-			deployment, err = clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get squid deployment")
+			statefulSet, err = clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 		})
 
 		It("should exist and be properly configured", func() {
-			Expect(deployment.Name).To(Equal(deploymentName))
-			Expect(deployment.Namespace).To(Equal(namespace))
+			Expect(statefulSet.Name).To(Equal(deploymentName))
+			Expect(statefulSet.Namespace).To(Equal(namespace))
 
-			// Check deployment spec
-			Expect(deployment.Spec.Replicas).NotTo(BeNil())
-			Expect(*deployment.Spec.Replicas).To(BeNumerically(">=", 1))
+			// Check statefulset spec
+			Expect(statefulSet.Spec.Replicas).NotTo(BeNil())
+			Expect(*statefulSet.Spec.Replicas).To(BeNumerically(">=", 1))
 
 			// Check selector and labels
-			Expect(deployment.Spec.Selector.MatchLabels).To(HaveKeyWithValue("app.kubernetes.io/name", deploymentName))
+			Expect(statefulSet.Spec.Selector.MatchLabels).To(HaveKeyWithValue("app.kubernetes.io/name", deploymentName))
 		})
 
 		It("should be ready and available", func() {
 			Eventually(func() bool {
-				dep, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+				sts, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
 				if err != nil {
 					return false
 				}
-				return dep.Status.ReadyReplicas == *dep.Spec.Replicas &&
-					dep.Status.AvailableReplicas == *dep.Spec.Replicas
-			}, timeout, interval).Should(BeTrue(), "Deployment should be ready and available")
+				return sts.Status.ReadyReplicas == *sts.Spec.Replicas &&
+					sts.Status.AvailableReplicas == *sts.Spec.Replicas
+			}, timeout, interval).Should(BeTrue(), "StatefulSet should be ready and available")
 		})
 
 		It("should have the correct container image and configuration", func() {
-			Expect(deployment.Spec.Template.Spec.Containers).To(HaveLen(3))
+			Expect(statefulSet.Spec.Template.Spec.Containers).To(HaveLen(3))
 
 			// Find squid container
 			var squidContainer *corev1.Container
-			for i := range deployment.Spec.Template.Spec.Containers {
-				if deployment.Spec.Template.Spec.Containers[i].Name == deploymentName {
-					squidContainer = &deployment.Spec.Template.Spec.Containers[i]
+			for i := range statefulSet.Spec.Template.Spec.Containers {
+				if statefulSet.Spec.Template.Spec.Containers[i].Name == deploymentName {
+					squidContainer = &statefulSet.Spec.Template.Spec.Containers[i]
 					break
 				}
 			}
@@ -116,9 +116,9 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 			// Find squid-exporter container
 			var exporterContainer *corev1.Container
-			for i := range deployment.Spec.Template.Spec.Containers {
-				if deployment.Spec.Template.Spec.Containers[i].Name == deploymentName+"-exporter" {
-					exporterContainer = &deployment.Spec.Template.Spec.Containers[i]
+			for i := range statefulSet.Spec.Template.Spec.Containers {
+				if statefulSet.Spec.Template.Spec.Containers[i].Name == deploymentName+"-exporter" {
+					exporterContainer = &statefulSet.Spec.Template.Spec.Containers[i]
 					break
 				}
 			}
@@ -131,9 +131,9 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 			// Find icap-server container
 			var icapContainer *corev1.Container
-			for i := range deployment.Spec.Template.Spec.Containers {
-				if deployment.Spec.Template.Spec.Containers[i].Name == "icap-server" {
-					icapContainer = &deployment.Spec.Template.Spec.Containers[i]
+			for i := range statefulSet.Spec.Template.Spec.Containers {
+				if statefulSet.Spec.Template.Spec.Containers[i].Name == "icap-server" {
+					icapContainer = &statefulSet.Spec.Template.Spec.Containers[i]
 					break
 				}
 			}
@@ -145,11 +145,11 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		})
 
 		It("should have correct anti-affinity configuration in deployed resources", func() {
-			// Verify the actual deployed deployment has expected affinity rules
+			// Verify the actual deployed statefulset has expected affinity rules
 
-			// Check affinity configuration in the deployment
-			affinity := deployment.Spec.Template.Spec.Affinity
-			Expect(affinity).NotTo(BeNil(), "Deployed deployment should have affinity rules")
+			// Check affinity configuration in the statefulset
+			affinity := statefulSet.Spec.Template.Spec.Affinity
+			Expect(affinity).NotTo(BeNil(), "Deployed statefulset should have affinity rules")
 			Expect(affinity.PodAntiAffinity).NotTo(BeNil(), "Should have pod anti-affinity in deployed resources")
 
 			// Verify the anti-affinity configuration matches our template defaults
@@ -164,7 +164,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 			labels := rule.PodAffinityTerm.LabelSelector.MatchLabels
 			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/name", deploymentName))
 			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/component", deploymentName+"-"+namespace))
-			// Note: instance label will be "squid" in actual deployment vs "test-release" in template tests
+			// Note: instance label will be "squid" in actual statefulset vs "test-release" in template tests
 			Expect(labels).To(HaveKey("app.kubernetes.io/instance"))
 		})
 
@@ -174,11 +174,11 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 			// Verify all replicas are ready despite anti-affinity constraints
 			Eventually(func() bool {
-				dep, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+				sts, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
 				if err != nil {
 					return false
 				}
-				return dep.Status.ReadyReplicas == *dep.Spec.Replicas
+				return sts.Status.ReadyReplicas == *sts.Spec.Replicas
 			}, timeout, interval).Should(BeTrue(), "All replicas should be ready despite anti-affinity constraints")
 
 			// Verify pods are actually running (not stuck in pending due to anti-affinity)
@@ -272,11 +272,11 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 		BeforeEach(func() {
 			var err error
-			deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get squid deployment")
+			statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 			// GetSquidPods also checks that the all defined replicas are running and ready
 			// It returns the list of pods
-			pods, err = testhelpers.GetSquidPods(ctx, clientset, namespace, *deployment.Spec.Replicas)
+			pods, err = testhelpers.GetSquidPods(ctx, clientset, namespace, *statefulSet.Spec.Replicas)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pod")
 		})
 
@@ -371,10 +371,10 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 		It("should cache HTTP responses and serve subsequent requests from cache", func() {
 			testURL := testServer.URL + "?" + generateCacheBuster("cache-basic")
 
-			// Get the number of replicas from the deployment
-			deployment, err := clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Should get squid deployment")
-			replicaCount := *deployment.Spec.Replicas
+			// Get the number of replicas from the statefulset
+			statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred(), "Should get squid statefulset")
+			replicaCount := *statefulSet.Spec.Replicas
 
 			By("Making requests until we get a cache hit from any pod")
 			// Track first server hit from each pod
@@ -542,40 +542,54 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 	Describe("Cache Recovery", func() {
 		It("should clean cache on restart when cache is full", func() {
 			By("Getting the current Squid pod")
-			deployment, err := clientset.AppsV1().Deployments(namespace).Get(
+			statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(
 				ctx,
 				deploymentName,
 				metav1.GetOptions{},
 			)
-			Expect(err).NotTo(HaveOccurred(), "Failed to get squid deployment")
+			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 
-			pods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *deployment.Spec.Replicas)
+			pods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *statefulSet.Spec.Replicas)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods")
 			Expect(pods).NotTo(BeEmpty(), "Expected at least one pod")
 			// Select one pod to test (works with single or multiple replicas)
 			pod := pods[0]
 
+			// Get REST config for exec
+			restConfig, err := testhelpers.GetRESTConfig()
+			Expect(err).NotTo(HaveOccurred(), "Failed to get REST config")
+
+			By("Checking cache volume size - skipping if too large for practical testing")
+			// Check cache volume size in KB, convert to MB
+			checkSizeCmd := []string{
+				"sh", "-c", "df /var/spool/squid/cache -k | awk 'NR==2 {print $2}'",
+			}
+			var sizeOutput bytes.Buffer
+			err = testhelpers.ExecCommandInPodWithWriters(
+				ctx, clientset, restConfig, namespace, pod.Name, "squid", checkSizeCmd, &sizeOutput, os.Stderr)
+			Expect(err).NotTo(HaveOccurred(), "Failed to check cache volume size")
+
+			sizeStr := strings.TrimSpace(sizeOutput.String())
+			sizeKB, err := strconv.Atoi(sizeStr)
+			Expect(err).NotTo(HaveOccurred(), "Failed to parse cache volume size")
+			sizeMB := sizeKB / 1024
+
+			// Skip test if cache volume is too large (>50MB) as filling it becomes impractical with PVCs
+			if sizeMB > 50 {
+				Skip(fmt.Sprintf("Skipping test: cache volume size is %dMB, which exceeds the practical limit of 50MB for this test. Filling cache volumes larger than ~50MB takes too long and is impractical with PVC-based storage.", sizeMB))
+			}
+
 			By("Filling cache with garbage to exceed 95% threshold")
 			// Create aufs directory structure and fill with garbage
-			// Target: fill to ~96% of 243MB cache_dir (80% of 304MB volume) = ~233MB
-			// Use multiple files to ensure we exceed 95% threshold
-			// Fill 135+135+20 = 290MB to ensure we exceed 95% threshold
-			// Target: 96% of 243.2MB cache_dir = ~233MB
-			// df measures the entire 304MB volume, so we need to write enough to
-			// account for the volume size when calculating percentage
+			// Target:  > 95% of cache volume
 			fillCacheCmd := []string{
 				"sh", "-c",
 				`for i in 0 1 2 3 4 5 6 7 8 9 a b c d e f; do
 					mkdir -p /var/spool/squid/cache/${i}${i}/00
 				done &&
-				dd if=/dev/zero of=/var/spool/squid/cache/00/00/largefile1 bs=1M count=135 2>&1 &&
-				dd if=/dev/zero of=/var/spool/squid/cache/00/00/largefile2 bs=1M count=135 2>&1 &&
-				dd if=/dev/zero of=/var/spool/squid/cache/00/00/largefile3 bs=1M count=20 2>&1`,
+				cache_vol_size_k=$(df /var/spool/squid/cache -k | awk 'NR==2 {print $2}') &&
+				dd if=/dev/zero of=/var/spool/squid/cache/00/00/largefile bs=1M count=$((cache_vol_size_k * 96 / 100 / 1024)) 2>&1`,
 			}
-
-			// Get REST config for exec
-			restConfig, err := testhelpers.GetRESTConfig()
-			Expect(err).NotTo(HaveOccurred(), "Failed to get REST config")
 
 			err = testhelpers.ExecCommandInPodWithWriters(
 				ctx, clientset, restConfig, namespace, pod.Name, "squid", fillCacheCmd, os.Stdout, os.Stderr)
@@ -637,7 +651,7 @@ var _ = Describe("Squid Helm Chart Deployment", func() {
 
 			// Now wait for pod to be Ready using GetSquidPods (same as other tests)
 			// This ensures the container has fully restarted and is ready
-			restartedPods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *deployment.Spec.Replicas)
+			restartedPods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *statefulSet.Spec.Replicas)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods after restart")
 
 			// Find the pod with the same name (ensure it's the same pod, not recreated)

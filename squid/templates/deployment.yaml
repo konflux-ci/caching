@@ -1,11 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "squid.fullname" . }}
   namespace: {{ .Values.namespace.name }}
   labels:
     {{- include "squid.labels" . | nindent 4 }}
 spec:
+  serviceName: {{ include "squid.fullname" . }}-headless
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
@@ -191,11 +192,6 @@ spec:
         - name: squid-certs-secret
           secret:
             secretName: {{ .Values.namespace.name }}-tls
-        # Volume for Squid's cache
-        - name: squid-spool-cache
-          emptyDir:
-            medium: Memory
-            sizeLimit: {{ .Values.cache.size }}Mi
         # Volume for Squid's SSL database
         - name: squid-spool-ssl
           emptyDir: {}
@@ -228,3 +224,11 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: squid-spool-cache
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: {{ .Values.cache.size }}Mi

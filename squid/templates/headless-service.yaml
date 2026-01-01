@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "squid.fullname" . }}-headless
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "squid.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    {{- if .Values.squidExporter.enabled }}
+    - port: {{ .Values.squidExporter.port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
+    {{- if .Values.perSiteExporter.enabled }}
+    - port: {{ .Values.perSiteExporter.port }}
+      targetPort: per-site-http
+      protocol: TCP
+      name: per-site-http
+    {{- end }}
+  selector:
+    {{- include "squid.selectorLabels" . | nindent 4 }}

@@ -118,15 +118,15 @@ var _ = BeforeSuite(func() {
 		}
 	} else {
 		// No env var set, try to read from existing deployment
-		fmt.Printf("DEBUG: SQUID_REPLICA_COUNT not set, reading from deployment...\n")
-		deployment, err := clientset.AppsV1().Deployments(testhelpers.Namespace).Get(ctx, testhelpers.DeploymentName, metav1.GetOptions{})
-		if err == nil && deployment != nil && deployment.Spec.Replicas != nil {
-			suiteReplicaCount = *deployment.Spec.Replicas
-			fmt.Printf("DEBUG: Using replica count from existing deployment: %d\n", suiteReplicaCount)
+		fmt.Printf("DEBUG: SQUID_REPLICA_COUNT not set, reading from statefulset...\n")
+		statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.Namespace).Get(ctx, testhelpers.DeploymentName, metav1.GetOptions{})
+		if err == nil && statefulSet != nil && statefulSet.Spec.Replicas != nil {
+			suiteReplicaCount = *statefulSet.Spec.Replicas
+			fmt.Printf("DEBUG: Using replica count from existing statefulset: %d\n", suiteReplicaCount)
 		} else {
-			// No existing deployment, default to 1
+			// No existing statefulset, default to 1
 			suiteReplicaCount = 1
-			fmt.Printf("DEBUG: No existing deployment found, defaulting to: %d\n", suiteReplicaCount)
+			fmt.Printf("DEBUG: No existing statefulset found, defaulting to: %d\n", suiteReplicaCount)
 		}
 	}
 

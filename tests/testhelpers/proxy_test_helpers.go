@@ -343,26 +343,26 @@ func ValidateServerHit(response *TestServerResponse, expectedRequestID float64, 
 		"Server should have received expected number of requests")
 }
 
-// WaitForSquidDeploymentReady waits for squid deployment to be ready and all replica pods to be present
-func WaitForSquidDeploymentReady(ctx context.Context, client kubernetes.Interface) (*v1.Deployment, error) {
-	fmt.Printf("Waiting for squid deployment to be ready...\n")
+// WaitForSquidStatefulSetReady waits for squid statefulset to be ready and all replica pods to be present
+func WaitForSquidStatefulSetReady(ctx context.Context, client kubernetes.Interface) (*v1.StatefulSet, error) {
+	fmt.Printf("Waiting for squid statefulset to be ready...\n")
 
 	var expectedReplicas int32
-	var deployment *v1.Deployment
+	var statefulSet *v1.StatefulSet
 	Eventually(func() error {
 		var err error
-		deployment, err = client.AppsV1().Deployments(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
+		statefulSet, err = client.AppsV1().StatefulSets(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
 		if err != nil {
-			return fmt.Errorf("failed to get deployments: %w", err)
+			return fmt.Errorf("failed to get statefulsets: %w", err)
 		}
 
-		expectedReplicas = *deployment.Spec.Replicas
-		fmt.Printf("Deployment status: %d/%d replicas ready (expected: %d)\n",
-			deployment.Status.ReadyReplicas, expectedReplicas, expectedReplicas)
+		expectedReplicas = *statefulSet.Spec.Replicas
+		fmt.Printf("StatefulSet status: %d/%d replicas ready (expected: %d)\n",
+			statefulSet.Status.ReadyReplicas, expectedReplicas, expectedReplicas)
 
-		if deployment.Status.ReadyReplicas != expectedReplicas {
-			return fmt.Errorf("deployment not ready: %d/%d replicas ready",
-				deployment.Status.ReadyReplicas, expectedReplicas)
+		if statefulSet.Status.ReadyReplicas != expectedReplicas {
+			return fmt.Errorf("statefulset not ready: %d/%d replicas ready",
+				statefulSet.Status.ReadyReplicas, expectedReplicas)
 		}
 
 		return nil
@@ -375,7 +375,7 @@ func WaitForSquidDeploymentReady(ctx context.Context, client kubernetes.Interfac
 	}
 	fmt.Printf("Successfully found %d squid pod(s) ready\n", len(pods))
 
-	return deployment, nil
+	return statefulSet, nil
 }
 
 type CacheValues struct {
@@ -413,7 +413,7 @@ func parseImageReference(image string) (repo, tag string) {
 
 // buildPrereleaseHelmArgs builds Helm arguments for prerelease environment
 // This preserves pipeline-deployed images and disables mirrord (not available in EaaS)
-func buildPrereleaseHelmArgs(environment string, deployment *v1.Deployment) []string {
+func buildPrereleaseHelmArgs(environment string, statefulSet *v1.StatefulSet) []string {
 	// In prerelease (OpenShift EaaS), disable mirrord which is not available
 	// Skip managing cert-manager during test reconfigurations to avoid reconciliation timeouts
 	extraArgs := []string{
@@ -422,8 +422,8 @@ func buildPrereleaseHelmArgs(environment string, deployment *v1.Deployment) []st
 	}
 
 	// Preserve pipeline-deployed image tags to prevent reverting to :latest
-	if deployment != nil && len(deployment.Spec.Template.Spec.Containers) > 0 {
-		currentImage := deployment.Spec.Template.Spec.Containers[0].Image
+	if statefulSet != nil && len(statefulSet.Spec.Template.Spec.Containers) > 0 {
+		currentImage := statefulSet.Spec.Template.Spec.Containers[0].Image
 		imageRepo, imageTag := parseImageReference(currentImage)
 
 		// Derive test image (squid → squid-tester in prerelease)
@@ -441,7 +441,7 @@ func buildPrereleaseHelmArgs(environment string, deployment *v1.Deployment) []st
 	return extraArgs
 }
 
-// ConfigureSquidWithHelm configures Squid deployment using helm values
+// ConfigureSquidWithHelm configures Squid statefulset using helm values
 func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, values SquidHelmValues) error {
 	// Environment is passed from test pod via SQUID_ENVIRONMENT env var
 	// This is set by test-pod.yaml from .Values.environment
@@ -453,8 +453,8 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 
 	values.Environment = environment
 
-	// Get current deployment for image preservation logic
-	deployment, err := client.AppsV1().Deployments(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
+	// Get current statefulset for image preservation logic
+	statefulSet, err := client.AppsV1().StatefulSets(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
 
 	// Handle replica count logic:
 	// 1. If SQUID_REPLICA_COUNT env var does not exist or equals 0 -> use value from values.yaml (don't set ReplicaCount)
@@ -492,7 +492,7 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	// Build helm arguments based on environment
 	var extraArgs []string
 	if environment == "prerelease" {
-		extraArgs = buildPrereleaseHelmArgs(environment, deployment)
+		extraArgs = buildPrereleaseHelmArgs(environment, statefulSet)
 	}
 
 	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
@@ -500,9 +500,9 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
 
-	_, err = WaitForSquidDeploymentReady(ctx, client)
+	_, err = WaitForSquidStatefulSetReady(ctx, client)
 	if err != nil {
-		return fmt.Errorf("failed to wait for squid deployment to be ready: %w", err)
+		return fmt.Errorf("failed to wait for squid statefulset to be ready: %w", err)
 	}
 
 	return nil
