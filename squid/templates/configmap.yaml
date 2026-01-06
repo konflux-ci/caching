@@ -202,5 +202,8 @@ data:
     #
     # Add any of your own refresh_pattern entries above these.
     #
+    # Refresh patterns for GCR content-addressable URLs
+    refresh_pattern /v2/.+/blobs/sha256:[a-f0-9]{64} 10080 100% 10080 override-expire override-lastmod ignore-reload ignore-no-cache ignore-no-store ignore-private ignore-must-revalidate ignore-auth
+    refresh_pattern /artifacts-downloads/.+ 10080 100% 10080 override-expire override-lastmod ignore-reload ignore-no-cache ignore-no-store ignore-private ignore-must-revalidate ignore-auth
     refresh_pattern . 0 20% 4320
     pid_filename none

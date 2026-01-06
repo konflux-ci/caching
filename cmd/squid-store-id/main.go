@@ -2,11 +2,14 @@ package main
 
 import (
 	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,6 +20,17 @@ type HTTPClient interface {
 	Get(url string) (*http.Response, error)
 }
 
+// gcrDigestCache maps GCR host/namespace to their most recent blob digest
+// Key: "host/namespace" (e.g., "gcr.io/google-containers")
+// Value: digest without "sha256:" prefix
+// This is populated when blob requests come in and used when artifacts-downloads URLs are requested
+var gcrDigestCache = struct {
+	sync.RWMutex
+	m map[string]string
+}{
+	m: make(map[string]string),
+}
+
 // isChannelID checks if a string represents a positive integer (for channel-ID detection)
 func isChannelID(s string) bool {
 	val, err := strconv.ParseInt(s, 10, 64)
@@ -24,12 +38,76 @@ func isChannelID(s string) bool {
 }
 
 // normalizeStoreID normalizes the store-id for caching by removing query parameters from CDN URLs.
-// Only content-addressable URLs (containing SHA256 hashes) are normalized.
+// Only content-addressable URLs (containing SHA256 hashes or GCR artifacts-downloads) are normalized.
 // The request URL must return a 200 status code to ensure the request is authorized.
 func normalizeStoreID(client HTTPClient, requestURL string) string {
-	// Only normalize content-addressable URLs (those with SHA256 hashes in the path).
-	// This prevents breaking caching for arbitrary URLs with meaningful query parameters.
-	if !strings.Contains(requestURL, "/sha256/") {
+	// Handle GCR blob request URLs: /v2/{namespace}/{repo}/blobs/sha256:{digest}
+	// Store the host/namespace → digest mapping for later use with artifacts-downloads URLs
+	if strings.Contains(requestURL, "/v2/") && strings.Contains(requestURL, "/blobs/sha256:") {
+		blobRegex := regexp.MustCompile(`https?://([^/]+)/v2/([^/]+)/([^/]+)/blobs/sha256:([a-f0-9]{64})`)
+		if matches := blobRegex.FindStringSubmatch(requestURL); len(matches) == 5 {
+			host := matches[1]
+			namespace := matches[2]
+			digest := matches[4]
+			cacheKey := host + "/" + namespace
+
+			// Store: "host/namespace" → digest for lookup when artifacts-downloads request comes
+			gcrDigestCache.Lock()
+			gcrDigestCache.m[cacheKey] = digest
+			gcrDigestCache.Unlock()
+
+			log.Printf("GCR blob: %s → sha256:%s", cacheKey, digest)
+			// Return original URL (blob requests are 302 redirects, not cached)
+			return requestURL
+		}
+	}
+
+	// Handle GCR artifacts-downloads URLs
+	// These are the actual blob downloads. GCR generates unique tokens for each request,
+	// so we normalize based on the host/namespace lookup from the earlier blob request.
+	if strings.Contains(requestURL, "/artifacts-downloads/namespaces/") {
+		// Match the full artifacts-downloads URL structure including /downloads/ path
+		artifactsRegex := regexp.MustCompile(`https?://([^/]+)/artifacts-downloads/namespaces/([^/]+)/repositories/([^/]+)/downloads/`)
+		matches := artifactsRegex.FindStringSubmatch(requestURL)
+		if len(matches) == 4 {
+			host := matches[1]
+			namespace := matches[2]
+			repo := matches[3]
+			cacheKey := host + "/" + namespace
+
+			// Try to find the digest by looking up host/namespace in cache
+			gcrDigestCache.RLock()
+			digest, found := gcrDigestCache.m[cacheKey]
+			gcrDigestCache.RUnlock()
+
+			if found {
+				// Create normalized store-id using the digest
+				normalizedURL := fmt.Sprintf("https://%s/artifacts-downloads/namespaces/%s/repositories/%s/downloads/sha256:%s",
+					host, namespace, repo, digest)
+				log.Printf("GCR artifacts-downloads: %s → sha256:%s (normalized)", cacheKey, digest)
+				return normalizedURL
+			}
+
+			log.Printf("GCR artifacts-downloads: %s not found in digest cache, fallback to token hash", cacheKey)
+			// If no digest found in cache, use a hash of the download token as the cache key
+			// This ensures the same token always maps to the same cache entry
+			tokenStart := strings.Index(requestURL, "/downloads/")
+			if tokenStart >= 0 {
+				token := requestURL[tokenStart+11:] // Skip "/downloads/"
+				tokenHash := sha256.Sum256([]byte(token))
+				hashKey := "unknown-" + hex.EncodeToString(tokenHash[:8])
+				log.Printf("GCR artifacts-downloads (no digest): using token hash %s", hashKey)
+				// Return URL with query params stripped
+				return strings.SplitN(requestURL, "?", 2)[0]
+			}
+		} else {
+			log.Printf("GCR artifacts-downloads: regex did not match URL: %s", requestURL)
+		}
+	}
+
+	// Only normalize content-addressable URLs with SHA256 hashes in the path (Quay, Docker Hub)
+	isContentAddressable := strings.Contains(requestURL, "/sha256/")
+	if !isContentAddressable {
 		return requestURL
 	}
 
