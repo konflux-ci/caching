@@ -14,6 +14,7 @@ of these container image layers.
 Commonly used registries include:
 - quay.io and Red Hat registries (registry.access.redhat.com, registry.redhat.io)
 - Docker Hub (docker.io)
+- Google Container Registry (gcr.io, mirror.gcr.io)
 
 These images may be public or private.
 
@@ -119,6 +120,7 @@ We'll create a custom store ID helper program to compute IDs for content-address
 4. Docker Hub CDN (Cloudflare R2): `^https://docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data`
 5. Docker Hub CDN (Cloudflare): `^https://production\.cloudflare\.docker\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data`
 6. Docker Hub S3 backend: `^https://docker-images-prod\.s3[a-z0-9.-]*\.amazonaws\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data`
+7. GCR CDN (artifacts-downloads): `^https://(gcr\.io|mirror\.gcr\.io)/artifacts-downloads/namespaces/[^/]+/repositories/[^/]+/downloads/[A-Za-z0-9_-]+=*`
 
 It will perform a lightweight GET authorization check to the original URL.
 Given a `200 OK` response, it will return the same URL without query parameters to use as the stable
@@ -189,7 +191,7 @@ Positive:
 - Blob payloads never traverse the ICAP server.
 - Applies equally to Red Hat registries (`registry.access.redhat.com`, `registry.redhat.io`) which proxy to quay.io.
 - Strict compliance with Squid's caching specifications for `Authorization`.
-- Extensible to additional CDN providers (e.g., Docker Hub) without architectural changes.
+- Extensible to additional CDN providers (e.g., Docker Hub, GCR) without architectural changes.
 - Centralized pattern configuration via `cache.allowList` ensures consistency across Squid ACLs and helpers.
 
 Negative:
