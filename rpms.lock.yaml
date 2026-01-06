@@ -1075,13 +1075,13 @@ arches:
     name: systemd-pam
     evr: 257-13.el10
     sourcerpm: systemd-257-13.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/t/tar-1.35-7.el10.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/t/tar-1.35-9.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 887097
-    checksum: sha256:94c290cb710327c72aa792e65a78de5c3f561b225d3cf9d038373328d527a36c
+    size: 886497
+    checksum: sha256:5baf4aceabe3b95bf74f4a7b206f2bc5b7f5a8f526fd7e5020edbf49646941a6
     name: tar
-    evr: 2:1.35-7.el10
-    sourcerpm: tar-1.35-7.el10.src.rpm
+    evr: 2:1.35-9.el10_1
+    sourcerpm: tar-1.35-9.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/u/util-linux-2.40.2-13.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 1320232
