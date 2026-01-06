@@ -23,7 +23,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, Serial, func() {
 		config        *rest.Config
 		trustedClient *http.Client
 		squidPods     []*corev1.Pod
-		deployment    *appsv1.Deployment
+		statefulSet   *appsv1.StatefulSet
 	)
 
 	const testServerURL = "https://test-server." + namespace + ".svc.cluster.local:443"
@@ -80,9 +80,9 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, Serial, func() {
 		)
 		Expect(err).NotTo(HaveOccurred(), "Failed to create trusted caching client with both CA bundles")
 		fmt.Printf("DEBUG: Trusted client created successfully\n")
-		deployment, err = clientset.AppsV1().Deployments(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
-		Expect(err).NotTo(HaveOccurred(), "Failed to get squid deployment")
-		squidPods, err = testhelpers.GetSquidPods(ctx, clientset, namespace, *deployment.Spec.Replicas)
+		statefulSet, err = clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
+		Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
+		squidPods, err = testhelpers.GetSquidPods(ctx, clientset, namespace, *statefulSet.Spec.Replicas)
 		Expect(err).NotTo(HaveOccurred(), "Failed to get Squid pods")
 		podNames := make([]string, len(squidPods))
 		for i, pod := range squidPods {
@@ -239,7 +239,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, Serial, func() {
 			// Get logs before all requests to capture the complete sequence
 			beforeSequence := metav1.Now()
 
-			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(trustedClient, testURL, *deployment.Spec.Replicas)
+			cacheHitResult, err := testhelpers.FindCacheHitFromAnyPod(trustedClient, testURL, *statefulSet.Spec.Replicas)
 			Expect(err).NotTo(HaveOccurred(), "Should find a cache hit from any pod")
 			Expect(cacheHitResult.CacheHitFound).To(BeTrue(), "Should find a cache hit from any pod")
 			fmt.Printf("DEBUG: Cache hit result: %v\n", cacheHitResult)

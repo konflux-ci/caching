@@ -436,11 +436,11 @@ func (SquidHelm) Status() error {
 		fmt.Printf("⚠️  Could not get service status: %v\n", err)
 	}
 
-	// Show deployment status
-	fmt.Printf("📦 Deployment status:\n")
-	err = sh.RunV("kubectl", "get", "deployment", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
+	// Show statefulset status
+	fmt.Printf("📦 StatefulSet status:\n")
+	err = sh.RunV("kubectl", "get", "statefulset", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
 	if err != nil {
-		fmt.Printf("⚠️  Could not get deployment status: %v\n", err)
+		fmt.Printf("⚠️  Could not get statefulset status: %v\n", err)
 	}
 
 	fmt.Printf("✅ Deployment status check completed!\n")
@@ -628,12 +628,12 @@ func (Test) ClusterMultiReplica() error {
 		return fmt.Errorf("failed to set replica count to 3: %w", err)
 	}
 
-	// Wait for deployment to be ready with 3 replicas
-	fmt.Println("⏳ Waiting for deployment with 3 replicas to be ready...")
-	err = sh.Run("kubectl", "wait", "--for=condition=Available",
-		"deployment/squid", "-n", "caching", "--timeout=120s")
+	// Wait for statefulset to be ready with 3 replicas
+	fmt.Println("⏳ Waiting for statefulset with 3 replicas to be ready...")
+	err = sh.Run("kubectl", "wait", "--for=condition=Ready",
+		"statefulset/squid", "-n", "caching", "--timeout=120s")
 	if err != nil {
-		return fmt.Errorf("deployment not ready: %w", err)
+		return fmt.Errorf("statefulset not ready: %w", err)
 	}
 
 	// Run tests with replica count 3

@@ -17,6 +17,7 @@ metadata:
     "helm.sh/hook": test
     "helm.sh/hook-weight": "1"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-timeout": "9000" # 15 minutes
 spec:
   restartPolicy: Never
   serviceAccountName: {{ include "squid.fullname" . }}-test

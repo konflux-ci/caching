@@ -244,6 +244,14 @@ mage all
 
 In this mode tests are invoked by Helm via `helm test`.
 
+**Note**: When running `helm test` directly (not through `mage all`), you must specify a timeout of at least 420 seconds (7 minutes) using the `--timeout` flag:
+
+```bash
+helm test squid --timeout=420s
+```
+
+The default Helm test timeout is 5 minutes (300 seconds), which may not be sufficient for all tests to complete.
+
 ### Local Development Testing with Mirrord
 
 For local development and debugging, use mirrord to run tests with cluster network access:
