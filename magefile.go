@@ -345,7 +345,7 @@ func (SquidHelm) Up() error {
 		"--set", "environment=dev",
 		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
 		"--wait",
-		"--timeout=120s",
+		"--timeout=300s",
 	)
 	if err != nil {
 		return fmt.Errorf("failed to install/upgrade helm chart: %w", err)
@@ -584,7 +584,7 @@ func resetSquidToDefaults() {
 		"--set", "environment=dev",
 		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
 		"--wait",
-		"--timeout=120s",
+		"--timeout=300s",
 	)
 	if err != nil {
 		fmt.Printf("⚠️  Warning: Failed to reset squid to values.yaml defaults: %v\n", err)
@@ -621,7 +621,7 @@ func (Test) ClusterMultiReplica() error {
 	err := sh.RunWith(map[string]string{
 		"SQUID_REPLICA_COUNT": "3",
 	}, "helm", "upgrade", "squid", "./squid",
-		"-n=default", "--wait", "--timeout=120s",
+		"-n=default", "--wait", "--timeout=300s",
 		"--set", "replicaCount=3",
 		"--set", "environment=dev")
 	if err != nil {

@@ -142,6 +142,10 @@ var _ = BeforeSuite(func() {
 	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})
 	Expect(err).NotTo(HaveOccurred(), "Failed to connect to Kubernetes cluster")
 
+	// Configure Nexus
+	err = testhelpers.ConfigureNexus(ctx, clientset, config, testhelpers.NewNexusConfig())
+	Expect(err).NotTo(HaveOccurred(), "Failed to configure Nexus")
+
 	By("Suite setup complete - Configuration is ready")
 	fmt.Printf("DEBUG: Suite-level configuration setup complete\n")
 })
