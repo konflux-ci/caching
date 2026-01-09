@@ -26,6 +26,8 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 					"^https://docker-images-prod\\.[a-f0-9]{32}\\.r2\\.cloudflarestorage\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 					"^https://production\\.cloudflare\\.docker\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 					"^https://docker-images-prod\\.s3[a-z0-9.-]*\\.amazonaws\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+					// OpenShift CI Registry CDN pattern (redirects to Cloudflare R2)
+					"^https://[a-f0-9]{32}\\.r2\\.cloudflarestorage\\.com/app-ci-image-registry/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 				},
 			},
 			ReplicaCount: int(suiteReplicaCount),
@@ -51,6 +53,12 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 		Entry("docker.io/library/alpine", "docker.io/library/alpine:3.19@sha256:13b7e62e8df80264dbb747995705a986aa530415763a6c58f84a3ca8af9a5bcd"),
 		Entry("docker.io/library/nginx", "docker.io/library/nginx:1.25@sha256:4c0fdaa8b6341bfdeca5f18f7837462c80cff90527ee35ef185571e1c327beac"),
 	)
+
+	DescribeTable("should cache layers from OpenShift CI registry CDN",
+		pullAndVerifyOpenShiftCICDN,
+		// Using ci/boskos (~40MB, max layer 31MB) for reliable caching with small cache sizes
+		Entry("registry.ci.openshift.org/ci/boskos", "registry.ci.openshift.org/ci/boskos@sha256:8c98a41b82dc817bb71a4b3c0cee152d5aa015d8f200b744e2044084601c07b0"),
+	)
 })
 
 func pullAndVerifyQuayCDN(imageRef string) {
@@ -63,6 +71,12 @@ func pullAndVerifyDockerHubCDN(imageRef string) {
 	pullAndVerifyContainerImageCDN(imageRef,
 		`(docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com|production\.cloudflare\.docker\.com|docker-images-prod\.s3[a-z0-9.-]*\.amazonaws\.com)`,
 		"Docker Hub CDN")
+}
+
+func pullAndVerifyOpenShiftCICDN(imageRef string) {
+	pullAndVerifyContainerImageCDN(imageRef,
+		`[a-f0-9]{32}\.r2\.cloudflarestorage\.com/app-ci-image-registry`,
+		"OpenShift CI Registry CDN")
 }
 
 // pullAndVerifyContainerImageCDN verifies that container image layers are cached from CDN hosts.
