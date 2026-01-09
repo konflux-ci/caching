@@ -202,5 +202,19 @@ data:
     #
     # Add any of your own refresh_pattern entries above these.
     #
+    # Refresh patterns for GCR content-addressable URLs
+    # IMPORTANT: refresh_pattern is evaluated against the STORE-ID (normalized URL), not the original request URL.
+    # The store-id helper normalizes GCR URLs to: https://(gcr.io|mirror.gcr.io)/artifacts-downloads/.../downloads/sha256:{digest}
+    # The normalized URLs are immutable (content-addressable), so they can be cached for a long time.
+    # The options override cache-control headers that might prevent caching.
+    # Patterns (ordered from most specific to least specific):
+    # 1. Normalized store-id format (most specific): /artifacts-downloads/.../downloads/sha256:{digest}
+    # 2. Fallback internal format (rare): http://gcr-blob.internal/sha256:{digest}
+    # 3. Any artifacts-downloads URL (fallback): /artifacts-downloads/...
+    # Note: Blob request URLs (/v2/.../blobs/sha256:...) are normalized to artifacts-downloads format by the store-id helper,
+    # so we don't need a separate pattern for them. The refresh_pattern is evaluated against the STORE-ID (normalized URL).
+    refresh_pattern ^https?://(gcr\.io|mirror\.gcr\.io)/artifacts-downloads/.+/downloads/sha256:[a-f0-9]{64} 10080 100% 10080 override-expire override-lastmod ignore-reload ignore-no-cache ignore-no-store ignore-private ignore-auth store-stale reload-into-ims
+    refresh_pattern ^http://gcr-blob\.internal/sha256:[a-f0-9]{64} 10080 100% 10080 override-expire override-lastmod ignore-reload ignore-no-cache ignore-no-store ignore-private ignore-auth store-stale reload-into-ims
+    refresh_pattern ^https?://(gcr\.io|mirror\.gcr\.io)/artifacts-downloads/.+ 10080 100% 10080 override-expire override-lastmod ignore-reload ignore-no-cache ignore-no-store ignore-private ignore-auth store-stale reload-into-ims
     refresh_pattern . 0 20% 4320
     pid_filename none
