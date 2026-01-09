@@ -202,5 +202,9 @@ data:
     #
     # Add any of your own refresh_pattern entries above these.
     #
+    # Force caching for NVIDIA CDN URLs regardless of origin headers
+    # This overrides Cache-Control: no-store, private, no-cache, must-revalidate
+    # Safe because these are content-addressable SHA256 blobs (immutable)
+    refresh_pattern layers\.nvcr\.io 43200 100% 43200 ignore-no-store ignore-private ignore-no-cache ignore-must-revalidate store-stale
     refresh_pattern . 0 20% 4320
     pid_filename none
