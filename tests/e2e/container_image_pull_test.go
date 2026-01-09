@@ -26,6 +26,8 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 					"^https://docker-images-prod\\.[a-f0-9]{32}\\.r2\\.cloudflarestorage\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 					"^https://production\\.cloudflare\\.docker\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 					"^https://docker-images-prod\\.s3[a-z0-9.-]*\\.amazonaws\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+					// NVIDIA Container Registry (nvcr.io) CDN pattern
+					"^https://layers\\.nvcr\\.io/registry/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 				},
 			},
 			ReplicaCount: int(suiteReplicaCount),
@@ -51,6 +53,12 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 		Entry("docker.io/library/alpine", "docker.io/library/alpine:3.19@sha256:13b7e62e8df80264dbb747995705a986aa530415763a6c58f84a3ca8af9a5bcd"),
 		Entry("docker.io/library/nginx", "docker.io/library/nginx:1.25@sha256:4c0fdaa8b6341bfdeca5f18f7837462c80cff90527ee35ef185571e1c327beac"),
 	)
+
+	DescribeTable("should cache layers from nvcr.io CDN",
+		pullAndVerifyNvcrCDN,
+		// Using nvidia/cuda base image - blobs redirect to layers.nvcr.io
+		Entry("nvcr.io/nvidia/cuda", "nvcr.io/nvidia/cuda:12.6.1-base-ubi9@sha256:1170a5981b3e769eb46da3f1588dd827853f45387326aad328efb685b9d6e478"),
+	)
 })
 
 func pullAndVerifyQuayCDN(imageRef string) {
@@ -63,6 +71,12 @@ func pullAndVerifyDockerHubCDN(imageRef string) {
 	pullAndVerifyContainerImageCDN(imageRef,
 		`(docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com|production\.cloudflare\.docker\.com|docker-images-prod\.s3[a-z0-9.-]*\.amazonaws\.com)`,
 		"Docker Hub CDN")
+}
+
+func pullAndVerifyNvcrCDN(imageRef string) {
+	pullAndVerifyContainerImageCDN(imageRef,
+		`layers\.nvcr\.io`,
+		"NVIDIA Container Registry CDN")
 }
 
 // pullAndVerifyContainerImageCDN verifies that container image layers are cached from CDN hosts.
