@@ -30,8 +30,13 @@ func reqmodHandler(w icap.ResponseWriter, req *icap.Request) {
 		}
 
 		// Squid's adaptation_access ACLs ensure we receive URLs from cache.allowList.
-		// Only remove Authorization header for content-addressable URLs (containing SHA256).
-		if strings.Contains(req.Request.URL.Path, "/sha256/") {
+		// Only remove Authorization header for content-addressable URLs:
+		// 1. URLs with SHA256 hashes in the path (Quay, Docker Hub)
+		// 2. GCR blob request URLs (/v2/.../blobs/sha256:...) which redirect to artifacts-downloads
+		// 3. GCR artifacts-downloads URLs
+		if strings.Contains(req.Request.URL.Path, "/sha256/") ||
+			strings.Contains(req.Request.URL.Path, "/blobs/sha256:") ||
+			strings.Contains(req.Request.URL.Path, "/artifacts-downloads/namespaces/") {
 			req.Request.Header.Del("Authorization")
 			writeHeaderAndLog(w, req, 200)
 			return

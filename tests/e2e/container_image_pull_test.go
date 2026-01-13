@@ -26,6 +26,11 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 					"^https://docker-images-prod\\.[a-f0-9]{32}\\.r2\\.cloudflarestorage\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 					"^https://production\\.cloudflare\\.docker\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 					"^https://docker-images-prod\\.s3[a-z0-9.-]*\\.amazonaws\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+					// GCR patterns
+					// Blob request URLs contain the digest and redirect to artifacts-downloads URLs
+					"^https://(gcr\\.io|mirror\\.gcr\\.io)/v2/.+/blobs/sha256:[a-f0-9]{64}",
+					// Original artifacts-downloads URLs with tokens (before normalization by store-id helper)
+					"^https://(gcr\\.io|mirror\\.gcr\\.io)/artifacts-downloads/namespaces/[^/]+/repositories/[^/]+/downloads/[A-Za-z0-9_-]+=*",
 				},
 			},
 			ReplicaCount: int(suiteReplicaCount),
@@ -51,6 +56,13 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 		Entry("docker.io/library/alpine", "docker.io/library/alpine:3.19@sha256:13b7e62e8df80264dbb747995705a986aa530415763a6c58f84a3ca8af9a5bcd"),
 		Entry("docker.io/library/nginx", "docker.io/library/nginx:1.25@sha256:4c0fdaa8b6341bfdeca5f18f7837462c80cff90527ee35ef185571e1c327beac"),
 	)
+
+	DescribeTable("should cache layers from GCR CDNs",
+		pullAndVerifyGCRCDN,
+		Entry("gcr.io/distroless/static", "gcr.io/distroless/static:nonroot"),
+		Entry("mirror.gcr.io/bash", "mirror.gcr.io/bash@sha256:1feaa01a5660ba507fca4196da8f07d9ba9267f62570044b8689a01c0da8350b"),
+		Entry("gcr.io/google-containers/cadvisor", "gcr.io/google-containers/cadvisor@sha256:46d4d730ef886aaece9e0a65a912564cab0303cf88718d82b3df84d3add6885c"),
+	)
 })
 
 func pullAndVerifyQuayCDN(imageRef string) {
@@ -63,6 +75,12 @@ func pullAndVerifyDockerHubCDN(imageRef string) {
 	pullAndVerifyContainerImageCDN(imageRef,
 		`(docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com|production\.cloudflare\.docker\.com|docker-images-prod\.s3[a-z0-9.-]*\.amazonaws\.com)`,
 		"Docker Hub CDN")
+}
+
+func pullAndVerifyGCRCDN(imageRef string) {
+	pullAndVerifyContainerImageCDN(imageRef,
+		`(gcr\.io|mirror\.gcr\.io)`,
+		"GCR")
 }
 
 // pullAndVerifyContainerImageCDN verifies that container image layers are cached from CDN hosts.
