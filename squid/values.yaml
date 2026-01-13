@@ -412,3 +412,15 @@ cache:
 tlsOutgoingOptions:
   # CA file for outgoing TLS connections
   caFile: ""
+
+# Nexus configuration (for testing)
+nexus:
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+    runAsNonRoot: true
+    runAsUser: 1001

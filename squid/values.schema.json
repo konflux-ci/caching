@@ -659,6 +659,16 @@
         }
       },
       "additionalProperties": false
+    },
+    "nexus": {
+      "type": "object",
+      "properties": {
+        "securityContext": {
+          "$ref": "#/$defs/securityContext"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Configuration for Nexus deployment (used for testing)"
     }
   },
   "required": [
@@ -926,8 +936,15 @@
           "type": "boolean"
         },
         "runAsUser": {
-          "type": "integer",
-          "minimum": 0
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "runAsGroup": {
           "type": "integer",
