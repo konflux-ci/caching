@@ -28,6 +28,8 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 					"^https://docker-images-prod\\.s3[a-z0-9.-]*\\.amazonaws\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 					// Fedora Registry CDN pattern (registry.fedoraproject.org redirects to cdn.registry.fedoraproject.org)
 					"^https://cdn\\.registry\\.fedoraproject\\.org/v2/.+/blobs/sha256:[a-f0-9]{64}",
+					// OpenShift CI Registry CDN pattern (redirects to Cloudflare R2)
+					"^https://[a-f0-9]{32}\\.r2\\.cloudflarestorage\\.com/app-ci-image-registry/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 				},
 			},
 			ReplicaCount: int(suiteReplicaCount),
@@ -58,6 +60,12 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 		pullAndVerifyFedoraRegistry,
 		Entry("registry.fedoraproject.org/fedora-minimal", "registry.fedoraproject.org/fedora-minimal@sha256:afc0521d66fdf17962949948b46482374fc462789f425bda444df25d0be2361e"),
 	)
+
+	DescribeTable("should cache layers from OpenShift CI registry CDN",
+		pullAndVerifyOpenShiftCICDN,
+		// Using ci/boskos (~40MB, max layer 31MB)
+		Entry("registry.ci.openshift.org/ci/boskos", "registry.ci.openshift.org/ci/boskos@sha256:8c98a41b82dc817bb71a4b3c0cee152d5aa015d8f200b744e2044084601c07b0"),
+	)
 })
 
 func pullAndVerifyQuayCDN(imageRef string) {
@@ -76,6 +84,12 @@ func pullAndVerifyFedoraRegistry(imageRef string) {
 	pullAndVerifyContainerImageCDN(imageRef,
 		`cdn\.registry\.fedoraproject\.org`,
 		"Fedora Registry CDN")
+}
+
+func pullAndVerifyOpenShiftCICDN(imageRef string) {
+	pullAndVerifyContainerImageCDN(imageRef,
+		`[a-f0-9]{32}\.r2\.cloudflarestorage\.com/app-ci-image-registry`,
+		"OpenShift CI Registry CDN")
 }
 
 // pullAndVerifyContainerImageCDN verifies that container image layers are cached from CDN hosts.
