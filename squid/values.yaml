@@ -395,9 +395,8 @@ cache:
   # An empty list disables this feature, meaning all URL patterns are cached.
   allowList: []
   # Size of the cache in MiB
-  # This counts towards the pod's memory limit. It should be less than the pod's memory limit
-  # and account for the rest of the pod's memory usage.
-  size: 304
+  # Default is 1GB to effectively cache container image layers
+  size: 1024
   # Maximum object size to cache in MiB
   # Should not exceed 80% of `size`
   maxObjectSize: 192
