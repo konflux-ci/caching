@@ -418,8 +418,8 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 				// Verify RAM caching configuration
 				Expect(squidConf).To(ContainSubstring("cache_mem 0"), "Should set cache_mem to 0")
 				// Verify disk cache directory is configured
-				// Cache size is 304MB, cache_dir is 80% = 243MB
-				Expect(squidConf).To(ContainSubstring("cache_dir aufs /var/spool/squid/cache 243 16 256"), "Should have disk cache configured")
+				// Cache size is 1024MB (1GB), cache_dir is 80% = 819MB
+				Expect(squidConf).To(ContainSubstring("cache_dir aufs /var/spool/squid/cache 819 16 256"), "Should have disk cache configured")
 				// Verify maximum object size is configured
 				Expect(squidConf).To(ContainSubstring("maximum_object_size 192 MB"), "Should have maximum object size configured")
 				// Verify cache replacement policy

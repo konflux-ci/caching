@@ -141,7 +141,7 @@ data:
 
     # --- CACHING CONFIGURATION ---
     # Disable memory cache for "hot objects" and "negative-cached objects"
-    # Disk cache is used instead (although backed by a tmpfs memory volume)
+    # Disk cache is used instead
     cache_mem 0
 
     # Purge policy when available cache size is low: Least Frequently Used with Data Aging algorithm
@@ -168,7 +168,7 @@ data:
     cache allow all
     {{- end }}
 
-    # Use an asynchronous(aufs) disk cache (backed by a tmpfs memory volume)
+    # Use an asynchronous (aufs) disk cache (backed by PVC)
     # Set storage limit at 80% of the total volume's size (per cache_dir docs)
     # Structure: 16 first-level directories, 256 second-level subdirectories
     cache_dir aufs /var/spool/squid/cache {{ mulf .Values.cache.size 0.8 | int }} 16 256
