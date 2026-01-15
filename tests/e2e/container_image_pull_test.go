@@ -30,6 +30,8 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 					"^https://cdn\\.registry\\.fedoraproject\\.org/v2/.+/blobs/sha256:[a-f0-9]{64}",
 					// OpenShift CI Registry CDN pattern (redirects to Cloudflare R2)
 					"^https://[a-f0-9]{32}\\.r2\\.cloudflarestorage\\.com/app-ci-image-registry/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+					// NVIDIA Container Registry (nvcr.io) CDN pattern
+					"^https://layers\\.nvcr\\.io/registry/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 				},
 			},
 			ReplicaCount: int(suiteReplicaCount),
@@ -66,6 +68,12 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 		// Using ci/boskos (~40MB, max layer 31MB)
 		Entry("registry.ci.openshift.org/ci/boskos", "registry.ci.openshift.org/ci/boskos@sha256:8c98a41b82dc817bb71a4b3c0cee152d5aa015d8f200b744e2044084601c07b0"),
 	)
+
+	DescribeTable("should cache layers from nvcr.io CDN",
+		pullAndVerifyNvcrCDN,
+		// Using nvidia/cuda base image - blobs redirect to layers.nvcr.io
+		Entry("nvcr.io/nvidia/cuda", "nvcr.io/nvidia/cuda:12.6.1-base-ubi9@sha256:1170a5981b3e769eb46da3f1588dd827853f45387326aad328efb685b9d6e478"),
+	)
 })
 
 func pullAndVerifyQuayCDN(imageRef string) {
@@ -90,6 +98,12 @@ func pullAndVerifyOpenShiftCICDN(imageRef string) {
 	pullAndVerifyContainerImageCDN(imageRef,
 		`[a-f0-9]{32}\.r2\.cloudflarestorage\.com/app-ci-image-registry`,
 		"OpenShift CI Registry CDN")
+}
+
+func pullAndVerifyNvcrCDN(imageRef string) {
+	pullAndVerifyContainerImageCDN(imageRef,
+		`layers\.nvcr\.io`,
+		"NVIDIA Container Registry CDN")
 }
 
 // pullAndVerifyContainerImageCDN verifies that container image layers are cached from CDN hosts.
@@ -134,7 +148,8 @@ func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 	var foundMiss, foundHit bool
 	// Build full patterns from the CDN host pattern
 	missPattern := fmt.Sprintf(`(?m)^.*TCP_MISS.*%s.*$`, cdnRegexPattern)
-	hitPattern := fmt.Sprintf(`(?m)^.*TCP_HIT.*%s.*$`, cdnRegexPattern)
+	// TCP_HIT = direct cache hit, TCP_REFRESH_UNMODIFIED = cache hit after revalidation (304 Not Modified)
+	hitPattern := fmt.Sprintf(`(?m)^.*TCP_(HIT|REFRESH_UNMODIFIED).*%s.*$`, cdnRegexPattern)
 
 	// First, check logs from our test sequence
 	for _, pod := range pods {

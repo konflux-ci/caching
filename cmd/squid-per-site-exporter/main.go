@@ -182,12 +182,14 @@ func (e *Exporter) parseLogLine(line string) {
 	}
 
 	// Determine hit/miss from result code (token before '/')
-	// Consider only codes ending in "_HIT" as cache hits (e.g., TCP_HIT, MEM_HIT).
+	// Consider codes ending in "_HIT" or "REFRESH_UNMODIFIED" as cache hits.
+	// TCP_HIT, MEM_HIT = direct cache hit
+	// TCP_REFRESH_UNMODIFIED = cache hit after revalidation (origin returned 304 Not Modified)
 	statusToken := codeStatus
 	if idx := strings.Index(codeStatus, "/"); idx >= 0 {
 		statusToken = codeStatus[:idx]
 	}
-	isHit := strings.HasSuffix(statusToken, "_HIT")
+	isHit := strings.HasSuffix(statusToken, "_HIT") || strings.HasSuffix(statusToken, "REFRESH_UNMODIFIED")
 
 	// Update Prometheus metrics
 	e.mutex.Lock()
