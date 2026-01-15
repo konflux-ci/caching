@@ -411,6 +411,23 @@ func parseImageReference(image string) (repo, tag string) {
 	return image, "latest"
 }
 
+// IsOpenShiftPlatform detects if the Kubernetes cluster is OpenShift by checking
+// for OpenShift-specific API groups using the discovery client
+func IsOpenShiftPlatform(client kubernetes.Interface) (bool, error) {
+	groupList, err := client.Discovery().ServerGroups()
+	if err != nil {
+		return false, fmt.Errorf("failed to discover server groups: %v", err)
+	}
+
+	for _, group := range groupList.Groups {
+		if group.Name == "security.openshift.io" {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 // buildPrereleaseHelmArgs builds Helm arguments for prerelease environment
 // This preserves pipeline-deployed images and disables mirrord (not available in EaaS)
 func buildPrereleaseHelmArgs(environment string, statefulSet *v1.StatefulSet) []string {
@@ -452,6 +469,11 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	}
 
 	values.Environment = environment
+
+	openshift, err := IsOpenShiftPlatform(client)
+	if err != nil {
+		return fmt.Errorf("failed to check if OpenShift platform: %w", err)
+	}
 
 	// Get current statefulset for image preservation logic
 	statefulSet, err := client.AppsV1().StatefulSets(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
@@ -495,6 +517,11 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		extraArgs = buildPrereleaseHelmArgs(environment, statefulSet)
 	}
 
+	// Allow OpenShift SCC to manage the nexus user ID
+	if openshift {
+		extraArgs = append(extraArgs, "--set", "nexus.securityContext.runAsUser=null")
+	}
+
 	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
@@ -520,7 +547,7 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	// Build helm command as a shell string
 	// Use default namespace for Helm release metadata (matches magefile.go)
 	// Resources created in caching namespace (from chart's namespace templates)
-	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=180s"}
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=300s"}
 
 	// Values file is provided by callers
 	cmdParts = append(cmdParts, "--values", valuesFile)

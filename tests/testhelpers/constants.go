@@ -10,4 +10,5 @@ const (
 	Timeout            = 60 * time.Second
 	Interval           = 2 * time.Second
 	SquidContainerName = "squid"
+	NexusServiceName   = "nexus"
 )

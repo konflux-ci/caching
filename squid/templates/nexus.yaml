@@ -1,0 +1,80 @@
+{{- if .Values.test.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nexus
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: nexus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nexus
+  template:
+    metadata:
+      labels:
+        app: nexus
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: nexus
+        image: docker.io/sonatype/nexus3:3.87.1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8081
+          name: http
+          protocol: TCP
+        env:
+        - name: INSTALL4J_ADD_VM_PARAMS
+          value: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=512m"
+        volumeMounts:
+        - name: nexus-data
+          mountPath: /nexus-data
+        resources:
+          requests:
+            memory: 768Mi
+          limits:
+            memory: 768Mi
+        livenessProbe:
+          httpGet:
+            path: /service/rest/v1/status
+            port: http
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /service/rest/v1/status
+            port: http
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        {{- with .Values.nexus.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      volumes:
+      - name: nexus-data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: nexus
+spec:
+  selector:
+    app: nexus
+  ports:
+  - protocol: TCP
+    port: 8081
+    targetPort: 8081
+    name: http
+  type: ClusterIP
+{{- end }}
