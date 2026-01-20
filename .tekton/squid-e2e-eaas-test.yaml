@@ -86,7 +86,7 @@ spec:
               description: Container image for the squid-tester component
           steps:
             - name: extract
-              image: quay.io/konflux-ci/konflux-test:v1.4.45@sha256:7948b501989694aef2dc4ef736174f56a00c5500109866fd3f63be0b664fcfa2
+              image: quay.io/konflux-ci/konflux-test:v1.4.46@sha256:c7e2099ad87d4c65284cba5df8488eae64d16ea0baff344c549ed7ca2415ebce
               script: |
                 #!/bin/bash
                 set -euo pipefail
@@ -237,7 +237,7 @@ spec:
                 - name: credentials
                   value: credentials
             - name: create-namespace
-              image: quay.io/konflux-ci/konflux-test:v1.4.45@sha256:7948b501989694aef2dc4ef736174f56a00c5500109866fd3f63be0b664fcfa2
+              image: quay.io/konflux-ci/konflux-test:v1.4.46@sha256:c7e2099ad87d4c65284cba5df8488eae64d16ea0baff344c549ed7ca2415ebce
               env:
                 - name: KUBECONFIG
                   value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
@@ -282,7 +282,7 @@ spec:
                 - name: labelSelector
                   value: "appstudio.redhat.com/internal=true"
             - name: deploy-and-test
-              image: quay.io/konflux-ci/konflux-test:v1.4.45@sha256:7948b501989694aef2dc4ef736174f56a00c5500109866fd3f63be0b664fcfa2
+              image: quay.io/konflux-ci/konflux-test:v1.4.46@sha256:c7e2099ad87d4c65284cba5df8488eae64d16ea0baff344c549ed7ca2415ebce
               env:
                 - name: KUBECONFIG
                   value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
