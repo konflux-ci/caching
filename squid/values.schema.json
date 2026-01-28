@@ -104,47 +104,13 @@
       "description": "Labels for the pod"
     },
     "podSecurityContext": {
-      "type": "object",
-      "properties": {
-        "fsGroup": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "runAsGroup": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "runAsUser": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "runAsNonRoot": {
-          "type": "boolean"
-        }
-      },
-      "additionalProperties": true,
-      "description": "Security context for the pod"
+      "$ref": "#/$defs/podSecurityContext"
     },
     "securityContext": {
       "$ref": "#/$defs/securityContext"
     },
     "service": {
-      "type": "object",
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"],
-          "description": "Kubernetes service type"
-        },
-        "port": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 65535,
-          "description": "Service port number"
-        }
-      },
-      "required": ["type", "port"],
-      "additionalProperties": false
+      "$ref": "#/$defs/service"
     },
     "squidExporter": {
       "type": "object",
@@ -660,6 +626,94 @@
       },
       "additionalProperties": false
     },
+    "squid": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable/disable the Squid forward proxy component"
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
+    "nginx": {
+      "type": "object",
+      "description": "Nginx reverse proxy configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable/disable the Nginx reverse proxy component"
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of replicas for the nginx StatefulSet"
+        },
+        "upstream": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "URL of the upstream server to proxy to"
+            }
+          },
+          "required": ["url"],
+          "additionalProperties": false
+        },
+        "auth": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable authorization header injection"
+            },
+            "secretName": {
+              "type": "string",
+              "description": "Name of a secret containing the authorization header value"
+            }
+          },
+          "required": ["enabled"],
+          "additionalProperties": false
+        },
+        "cache": {
+          "type": "object",
+          "properties": {
+            "allowList": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of regex patterns for paths to cache"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Cache size in megabytes"
+            }
+          },
+          "additionalProperties": false
+        },
+        "image": {
+          "type": "string",
+          "description": "Container image reference for nginx"
+        },
+        "service": {
+          "$ref": "#/$defs/service"
+        },
+        "resources": {
+          "$ref": "#/$defs/resources"
+        },
+        "securityContext": {
+          "$ref": "#/$defs/securityContext"
+        },
+        "podSecurityContext": {
+          "$ref": "#/$defs/podSecurityContext"
+        }
+      },
+      "required": ["enabled"],
+      "additionalProperties": false
+    },
     "nexus": {
       "type": "object",
       "properties": {
@@ -960,6 +1014,50 @@
       },
       "additionalProperties": true,
       "description": "Security context for the container"
+    },
+    "podSecurityContext": {
+      "type": "object",
+      "properties": {
+        "fsGroup": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runAsGroup": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runAsUser": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "runAsNonRoot": {
+          "type": "boolean"
+        },
+        "seccompProfile": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true,
+      "description": "Security context for the pod"
+    },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"],
+          "description": "Kubernetes service type"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Service port number"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Kubernetes service configuration"
     }
   }
 }

@@ -1,4 +1,10 @@
 {{/*
+=============================================================================
+SQUID HELPERS
+=============================================================================
+*/}}
+
+{{/*
 Expand the name of the chart.
 */}}
 {{- define "squid.name" -}}
@@ -94,4 +100,45 @@ podAntiAffinity:
         matchLabels:
           {{- include "squid.selectorLabels" . | nindent 10 }}
       topologyKey: kubernetes.io/hostname
+{{- end }}
+
+{{/*
+=============================================================================
+NGINX HELPERS
+=============================================================================
+*/}}
+
+{{/*
+Expand the name of nginx.
+*/}}
+{{- define "nginx.name" -}}
+nginx
+{{- end }}
+
+{{/*
+Fully qualified nginx app name.
+*/}}
+{{- define "nginx.fullname" -}}
+nginx
+{{- end }}
+
+{{/*
+Common labels
+*/}}
+{{- define "nginx.labels" -}}
+helm.sh/chart: {{ include "squid.chart" . }}
+{{ include "nginx.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "nginx.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "nginx.fullname" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: nginx-caching
 {{- end }}
