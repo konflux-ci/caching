@@ -9,8 +9,8 @@ Increase the `inotify` resource limits to avoid Kind issues related to
 To increase the limits temporarily, run the following commands:
 
 ```bash
-sudo sysctl fs.inotify.max_user_watches=524288
-sudo sysctl fs.inotify.max_user_instances=512
+sudo sysctl fs.inotify.max_user_watches=1048576
+sudo sysctl fs.inotify.max_user_instances=1024
 ```
 
 When using Dev Containers, the automation will fetch those values, and if it's

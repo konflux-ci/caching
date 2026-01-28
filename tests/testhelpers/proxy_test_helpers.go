@@ -343,15 +343,15 @@ func ValidateServerHit(response *TestServerResponse, expectedRequestID float64, 
 		"Server should have received expected number of requests")
 }
 
-// WaitForSquidStatefulSetReady waits for squid statefulset to be ready and all replica pods to be present
-func WaitForSquidStatefulSetReady(ctx context.Context, client kubernetes.Interface) (*v1.StatefulSet, error) {
-	fmt.Printf("Waiting for squid statefulset to be ready...\n")
+// WaitForStatefulSetReady waits for a statefulset to be ready and all replica pods to be present
+func WaitForStatefulSetReady(ctx context.Context, client kubernetes.Interface, name string) (*v1.StatefulSet, error) {
+	fmt.Printf("Waiting for %s statefulset to be ready...\n", name)
 
 	var expectedReplicas int32
 	var statefulSet *v1.StatefulSet
 	Eventually(func() error {
 		var err error
-		statefulSet, err = client.AppsV1().StatefulSets(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
+		statefulSet, err = client.AppsV1().StatefulSets(Namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get statefulsets: %w", err)
 		}
@@ -368,12 +368,12 @@ func WaitForSquidStatefulSetReady(ctx context.Context, client kubernetes.Interfa
 		return nil
 	}, 120*time.Second, 5*time.Second).Should(Succeed())
 
-	fmt.Printf("Waiting for %d squid pod(s) to be present and ready...\n", expectedReplicas)
-	pods, err := GetSquidPods(ctx, client, Namespace, expectedReplicas)
+	fmt.Printf("Waiting for %d pod(s) to be present and ready...\n", expectedReplicas)
+	pods, err := GetPods(ctx, client, Namespace, name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get squid pods: %w", err)
+		return nil, fmt.Errorf("failed to get pods: %w", err)
 	}
-	fmt.Printf("Successfully found %d squid pod(s) ready\n", len(pods))
+	fmt.Printf("Successfully found %d pod(s) ready\n", len(pods))
 
 	return statefulSet, nil
 }
@@ -394,6 +394,7 @@ type SquidHelmValues struct {
 	Affinity           json.RawMessage           `json:"affinity,omitempty"`
 	Volumes            []corev1.Volume           `json:"volumes,omitempty"`
 	VolumeMounts       []corev1.VolumeMount      `json:"volumeMounts,omitempty"`
+	Nginx              *NginxValues              `json:"nginx,omitempty"`
 }
 
 // parseImageReference extracts repository and tag from an image reference
@@ -470,13 +471,20 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 
 	values.Environment = environment
 
+	// Always enable nginx (disabled by default in values.yaml)
+	if values.Nginx == nil {
+		values.Nginx = &NginxValues{Enabled: true}
+	} else {
+		values.Nginx.Enabled = true
+	}
+
 	openshift, err := IsOpenShiftPlatform(client)
 	if err != nil {
 		return fmt.Errorf("failed to check if OpenShift platform: %w", err)
 	}
 
 	// Get current statefulset for image preservation logic
-	statefulSet, err := client.AppsV1().StatefulSets(Namespace).Get(ctx, DeploymentName, metav1.GetOptions{})
+	statefulSet, err := client.AppsV1().StatefulSets(Namespace).Get(ctx, SquidStatefulSetName, metav1.GetOptions{})
 
 	// Handle replica count logic:
 	// 1. If SQUID_REPLICA_COUNT env var does not exist or equals 0 -> use value from values.yaml (don't set ReplicaCount)
@@ -527,9 +535,14 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
 
-	_, err = WaitForSquidStatefulSetReady(ctx, client)
+	_, err = WaitForStatefulSetReady(ctx, client, SquidStatefulSetName)
 	if err != nil {
 		return fmt.Errorf("failed to wait for squid statefulset to be ready: %w", err)
+	}
+
+	_, err = WaitForStatefulSetReady(ctx, client, NginxStatefulSetName)
+	if err != nil {
+		return fmt.Errorf("failed to wait for nginx statefulset to be ready: %w", err)
 	}
 
 	return nil
@@ -691,26 +704,34 @@ func findChartYamlInDirectory(rootDir string) (string, error) {
 // GetSquidPods queries for squid pods and verifies the count matches deployment replicas.
 // Uses Eventually pattern to keep retrying until all active pods are running and ready.
 // During rolling updates, excludes terminating pods from the count.
-func GetSquidPods(ctx context.Context, client kubernetes.Interface, namespace string, expectedReplicas int32) ([]*corev1.Pod, error) {
-	fmt.Printf("Checking for squid pods: expected %d replicas\n", expectedReplicas)
+func GetPods(ctx context.Context, client kubernetes.Interface, namespace string, statefulSetName string) ([]*corev1.Pod, error) {
+	statefulSet, err := client.AppsV1().StatefulSets(namespace).Get(ctx, statefulSetName, metav1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get statefulset: %w", err)
+	}
+
+	expectedReplicas := *statefulSet.Spec.Replicas
+	fmt.Printf("Checking for %s statefulset pods: expecting %d replicas\n", statefulSetName, expectedReplicas)
+	labelSelector := fmt.Sprintf(
+		"app.kubernetes.io/name=%s,app.kubernetes.io/component=%s",
+		statefulSet.GetObjectMeta().GetLabels()["app.kubernetes.io/name"],
+		statefulSet.GetObjectMeta().GetLabels()["app.kubernetes.io/component"],
+	)
 
 	var result []*corev1.Pod
-	var err error
 
 	Eventually(func() error {
-		pods, listErr := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: "app.kubernetes.io/name=" + DeploymentName + ",app.kubernetes.io/component=" + DeploymentName + "-" + Namespace,
-		})
+		pods, listErr := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
 		if listErr != nil {
-			fmt.Printf("Failed to list squid pods: %v\n", listErr)
-			return fmt.Errorf("failed to list squid pods: %w", listErr)
+			fmt.Printf("Failed to list pods: %v\n", listErr)
+			return fmt.Errorf("failed to list pods: %w", listErr)
 		}
 
-		fmt.Printf("Found %d squid pod(s) in namespace %s\n", len(pods.Items), namespace)
+		fmt.Printf("Found %d pod(s) in namespace %s\n", len(pods.Items), namespace)
 
 		if len(pods.Items) == 0 {
-			fmt.Printf("No squid pods found, waiting...\n")
-			return fmt.Errorf("no squid pods found")
+			fmt.Printf("No pods found, waiting...\n")
+			return fmt.Errorf("no pods found")
 		}
 
 		// Filter out pods that are terminating (during rolling updates)
@@ -726,7 +747,7 @@ func GetSquidPods(ctx context.Context, client kubernetes.Interface, namespace st
 			}
 		}
 
-		fmt.Printf("Found %d active squid pod(s) (excluding terminating pods)\n", len(activePods))
+		fmt.Printf("Found %d active pod(s) (excluding terminating pods)\n", len(activePods))
 
 		// Wait for all terminating pods to be fully deleted before proceeding
 		// This ensures the service won't route traffic to pods with old configuration
@@ -737,7 +758,7 @@ func GetSquidPods(ctx context.Context, client kubernetes.Interface, namespace st
 
 		if int32(len(activePods)) != expectedReplicas {
 			fmt.Printf("Active pod count mismatch: expected %d, found %d, waiting...\n", expectedReplicas, len(activePods))
-			return fmt.Errorf("expected %d active squid pods, found %d", expectedReplicas, len(activePods))
+			return fmt.Errorf("expected %d active pods, found %d", expectedReplicas, len(activePods))
 		}
 
 		// Verify all active pods are running and ready
@@ -775,7 +796,7 @@ func GetSquidPods(ctx context.Context, client kubernetes.Interface, namespace st
 			result = append(result, pod)
 		}
 
-		fmt.Printf("All %d squid pod(s) are running and ready\n", len(result))
+		fmt.Printf("All %d pod(s) for statefulset %s are running and ready\n", len(result), statefulSetName)
 		return nil
 	}, 120*time.Second, 5*time.Second).Should(Succeed())
 
@@ -888,7 +909,7 @@ func GetPerSiteMetricsValue(metricsContent, metricName, hostname string) (float6
 //	totalRequests := GetAggregatedMetrics(ctx, clientset, metricsClient, namespace, 3, "squid_site_requests_total", "example.com")
 func GetAggregatedMetrics(ctx context.Context, client kubernetes.Interface, metricsHTTPClient *http.Client, namespace string, expectedReplicas int32, metricName, hostname string) (float64, error) {
 	var totalValue float64
-	pods, err := GetSquidPods(ctx, client, namespace, expectedReplicas)
+	pods, err := GetPods(ctx, client, namespace, SquidStatefulSetName)
 	if err != nil {
 		fmt.Printf("DEBUG: Error getting pods: %v\n", err)
 		return 0, fmt.Errorf("error getting pods: %w", err)
@@ -937,7 +958,7 @@ func GetAggregatedMetrics(ctx context.Context, client kubernetes.Interface, metr
 //	podMetrics will be: map[string]float64{"squid-xxx-pod1": 1234.5, "squid-xxx-pod2": 5678.9}
 func GetPerPodMetrics(ctx context.Context, client kubernetes.Interface, metricsHTTPClient *http.Client, namespace string, expectedReplicas int32, metricName, hostname string) (map[string]float64, error) {
 	podMetrics := make(map[string]float64)
-	pods, err := GetSquidPods(ctx, client, namespace, expectedReplicas)
+	pods, err := GetPods(ctx, client, namespace, SquidStatefulSetName)
 	if err != nil {
 		fmt.Printf("DEBUG: Error getting pods: %v\n", err)
 		return podMetrics, fmt.Errorf("error getting pods: %w", err)

@@ -343,6 +343,7 @@ func (SquidHelm) Up() error {
 		"./squid",
 		"--install",
 		"--set", "environment=dev",
+		"--set", "nginx.enabled=true",
 		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
 		"--wait",
 		"--timeout=300s",
@@ -422,25 +423,46 @@ func (SquidHelm) Status() error {
 		return fmt.Errorf("helm release not found: %w", err)
 	}
 
-	// Show pod status
-	fmt.Printf("🖥️  Pod status:\n")
+	// Show squid pod status
+	fmt.Printf("🖥️  Squid pod status:\n")
 	err = sh.RunV("kubectl", "get", "pods", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
 	if err != nil {
-		fmt.Printf("⚠️  Could not get pod status: %v\n", err)
+		fmt.Printf("⚠️  Could not get squid pod status: %v\n", err)
 	}
 
-	// Show service status
-	fmt.Printf("🌐 Service status:\n")
+	// Show squid service status
+	fmt.Printf("🌐 Squid service status:\n")
 	err = sh.RunV("kubectl", "get", "svc", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
 	if err != nil {
-		fmt.Printf("⚠️  Could not get service status: %v\n", err)
+		fmt.Printf("⚠️  Could not get squid service status: %v\n", err)
 	}
 
-	// Show statefulset status
-	fmt.Printf("📦 StatefulSet status:\n")
+	// Show squid statefulset status
+	fmt.Printf("📦 Squid statefulset status:\n")
 	err = sh.RunV("kubectl", "get", "statefulset", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
 	if err != nil {
-		fmt.Printf("⚠️  Could not get statefulset status: %v\n", err)
+		fmt.Printf("⚠️  Could not get squid statefulset status: %v\n", err)
+	}
+
+	// Show nginx pod status
+	fmt.Printf("🖥️  Nginx pod status:\n")
+	err = sh.RunV("kubectl", "get", "pods", "-n", "caching", "-l", "app.kubernetes.io/name=nginx")
+	if err != nil {
+		fmt.Printf("⚠️  Could not get nginx pod status: %v\n", err)
+	}
+
+	// Show nginx service status
+	fmt.Printf("🌐 Nginx service status:\n")
+	err = sh.RunV("kubectl", "get", "svc", "-n", "caching", "-l", "app.kubernetes.io/name=nginx")
+	if err != nil {
+		fmt.Printf("⚠️  Could not get nginx service status: %v\n", err)
+	}
+
+	// Show nginx statefulset status
+	fmt.Printf("📦 Nginx statefulset status:\n")
+	err = sh.RunV("kubectl", "get", "statefulset", "-n", "caching", "-l", "app.kubernetes.io/name=nginx")
+	if err != nil {
+		fmt.Printf("⚠️  Could not get nginx statefulset status: %v\n", err)
 	}
 
 	fmt.Printf("✅ Deployment status check completed!\n")
@@ -482,13 +504,14 @@ func All() error {
 		return fmt.Errorf("helm tests failed: %w", err)
 	}
 	fmt.Println("✅ All helm tests passed!")
-	// Reset squid to values.yaml defaults after tests complete
+	// Reset squid helm chart to values.yaml defaults after tests complete
 	resetSquidToDefaults()
 	fmt.Println()
 	fmt.Println("🎉 Complete automation workflow finished successfully!")
 	fmt.Println("Your local dev/test environment is ready:")
 	fmt.Println("  • Kind cluster: 'caching'")
-	fmt.Println("  • Squid caching: http://squid.caching.svc.cluster.local:3128")
+	fmt.Println("  • Squid forward proxy: http://squid.caching.svc.cluster.local:3128")
+	fmt.Println("  • Nginx reverse proxy: http://nginx.caching.svc.cluster.local:8080")
 	fmt.Println("  • Helm tests: ✅ All passing")
 	fmt.Println("  • Ready for development and testing!")
 	return nil
@@ -582,6 +605,7 @@ func resetSquidToDefaults() {
 		"squid",
 		"./squid",
 		"--set", "environment=dev",
+		"--set", "nginx.enabled=true",
 		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
 		"--wait",
 		"--timeout=300s",
@@ -623,6 +647,7 @@ func (Test) ClusterMultiReplica() error {
 	}, "helm", "upgrade", "squid", "./squid",
 		"-n=default", "--wait", "--timeout=300s",
 		"--set", "replicaCount=3",
+		"--set", "nginx.enabled=true",
 		"--set", "environment=dev")
 	if err != nil {
 		return fmt.Errorf("failed to set replica count to 3: %w", err)

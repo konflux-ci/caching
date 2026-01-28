@@ -1,4 +1,4 @@
-{{- if .Values.test.enabled }}
+{{- if and .Values.test.enabled .Values.nginx.enabled }}
 ---
 apiVersion: apps/v1
 kind: Deployment

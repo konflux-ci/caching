@@ -1,0 +1,17 @@
+{{- if .Values.nginx.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nginx.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nginx.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.nginx.service.type }}
+  selector:
+    {{- include "nginx.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.nginx.service.port }}
+      targetPort: http
+{{- end }}
