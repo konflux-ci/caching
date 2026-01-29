@@ -172,13 +172,13 @@ arches:
     name: libxkbcommon
     evr: 1.7.0-4.el10
     sourcerpm: libxkbcommon-1.7.0-4.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/o/openssl-devel-3.5.1-5.el10_1.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/o/openssl-devel-3.5.1-7.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 4386787
-    checksum: sha256:d6d6ba504145eb6cfcd1e6e173d7627bf595d9e7beac644afa8e6443cab6beb4
+    size: 4394854
+    checksum: sha256:71ceb09df978afbbe787f9326bdc2f0ac85319527b42b837c0f80fa204ec3efa
     name: openssl-devel
-    evr: 1:3.5.1-5.el10_1
-    sourcerpm: openssl-3.5.1-5.el10_1.src.rpm
+    evr: 1:3.5.1-7.el10_1
+    sourcerpm: openssl-3.5.1-7.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-AutoLoader-5.74-512.2.el10_0.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 22487
@@ -844,34 +844,6 @@ arches:
     name: gdbm-libs
     evr: 1:1.23-12.el10_0
     sourcerpm: gdbm-1.23-12.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/g/glibc-2.39-58.el10_1.7.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 2199426
-    checksum: sha256:9187086e796873c92a6d24abc17a2901a0f3a24f81ea87e87bc1d365cd385689
-    name: glibc
-    evr: 2.39-58.el10_1.7
-    sourcerpm: glibc-2.39-58.el10_1.7.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/g/glibc-common-2.39-58.el10_1.7.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 333510
-    checksum: sha256:cac198ca1fe2e55ca70e06ccf9f753adb569dcb7c029b87fa4266dda326edb69
-    name: glibc-common
-    evr: 2.39-58.el10_1.7
-    sourcerpm: glibc-2.39-58.el10_1.7.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/g/glibc-langpack-en-2.39-58.el10_1.7.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 686657
-    checksum: sha256:af4821188e8338e7513c33566c13dba4b4cbe164b9e8cb733c12d09f193ca2d3
-    name: glibc-langpack-en
-    evr: 2.39-58.el10_1.7
-    sourcerpm: glibc-2.39-58.el10_1.7.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/g/glibc-minimal-langpack-2.39-58.el10_1.7.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 31861
-    checksum: sha256:f3fdc8a8bff9f87d529d6ff8b0aa8c933e1fb9eb6277ba1bab4d8bac98ed2e1f
-    name: glibc-minimal-langpack
-    evr: 2.39-58.el10_1.7
-    sourcerpm: glibc-2.39-58.el10_1.7.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/g/groff-base-1.23.0-10.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 1182753
@@ -1047,6 +1019,13 @@ arches:
     name: openssh-clients
     evr: 9.9p1-12.el10_1
     sourcerpm: openssh-9.9p1-12.el10_1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/o/openssl-libs-3.5.1-7.el10_1.x86_64.rpm
+    repoid: ubi-10-for-x86_64-baseos-rpms
+    size: 2369541
+    checksum: sha256:f45efed30998502d25c9f87bd4ab0133cca96c6cd74b774b92f9f4342ad4733e
+    name: openssl-libs
+    evr: 1:3.5.1-7.el10_1
+    sourcerpm: openssl-3.5.1-7.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/p/pam-1.6.1-8.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 599726
