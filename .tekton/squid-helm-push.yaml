@@ -223,7 +223,7 @@ spec:
             - name: name
               value: build-helm-chart-oci-ta
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-build-helm-chart-oci-ta:0.3@sha256:5fd0d485e271637cf8904080ff67bff84c84f0bdd2c4a002fd13c370f06df481
+              value: quay.io/konflux-ci/tekton-catalog/task-build-helm-chart-oci-ta:0.3@sha256:cc54817e215bbd727f0c32f6ec4d586443f4a7ad288ab16221dcffb88abfd7de
             - name: kind
               value: task
           resolver: bundles
