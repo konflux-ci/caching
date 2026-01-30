@@ -4,6 +4,15 @@
   "lockFileMaintenance": {
     "enabled": true
   },
+  "customDatasources": {
+    "golang-with-checksum": {
+      "defaultRegistryUrlTemplate": "https://go.dev/dl/?mode=json&include=all",
+      "format": "json",
+      "transformTemplates": [
+        "{\"releases\": $[stable=true].files[os='linux' and arch='amd64' and kind='archive'].{\"version\": $substring(version, 2), \"digest\": sha256}}"
+      ]
+    }
+  },
   "tekton": {
     "schedule": [
       "* * * * *"
@@ -24,6 +33,18 @@
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "helm/helm",
       "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "description": "Track Go version and SHA256 in devcontainer Containerfile",
+      "fileMatch": [
+        "^\\.devcontainer/Containerfile$"
+      ],
+      "matchStrings": [
+        "ARG GO_VERSION=(?<currentValue>.*?)\\s+ARG GO_SHA256=(?<currentDigest>\\S+)"
+      ],
+      "datasourceTemplate": "custom.golang-with-checksum",
+      "depNameTemplate": "{{currentValue}}",
+      "versioningTemplate": "loose"
     }
   ],
   "packageRules": [
@@ -74,12 +95,10 @@
       ]
     },
     {
-      "description": "Auto-merge Go toolchain patch updates only",
-      "matchPackageNames": [
-        "go"
-      ],
+      "description": "Auto-merge Go toolchain patch updates (go.mod and Containerfile)",
       "matchDatasources": [
-        "golang-version"
+        "golang-version",
+        "custom.golang-with-checksum"
       ],
       "matchUpdateTypes": [
         "patch"
