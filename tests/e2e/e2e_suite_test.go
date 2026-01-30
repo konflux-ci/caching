@@ -25,8 +25,8 @@ var (
 
 const (
 	namespace          = testhelpers.Namespace
-	deploymentName     = testhelpers.DeploymentName
-	serviceName        = testhelpers.ServiceName
+	deploymentName     = testhelpers.SquidStatefulSetName
+	serviceName        = testhelpers.SquidServiceName
 	timeout            = testhelpers.Timeout
 	interval           = testhelpers.Interval
 	squidContainerName = testhelpers.SquidContainerName
@@ -119,7 +119,7 @@ var _ = BeforeSuite(func() {
 	} else {
 		// No env var set, try to read from existing deployment
 		fmt.Printf("DEBUG: SQUID_REPLICA_COUNT not set, reading from statefulset...\n")
-		statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.Namespace).Get(ctx, testhelpers.DeploymentName, metav1.GetOptions{})
+		statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.Namespace).Get(ctx, testhelpers.SquidStatefulSetName, metav1.GetOptions{})
 		if err == nil && statefulSet != nil && statefulSet.Spec.Replicas != nil {
 			suiteReplicaCount = *statefulSet.Spec.Replicas
 			fmt.Printf("DEBUG: Using replica count from existing statefulset: %d\n", suiteReplicaCount)
@@ -133,9 +133,6 @@ var _ = BeforeSuite(func() {
 	err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 		ReplicaCount: int(suiteReplicaCount),
 	})
-	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
-
-	err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{})
 	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
 
 	// Verify we can connect to the cluster

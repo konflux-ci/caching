@@ -82,7 +82,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, Serial, func() {
 		fmt.Printf("DEBUG: Trusted client created successfully\n")
 		statefulSet, err = clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
-		squidPods, err = testhelpers.GetSquidPods(ctx, clientset, namespace, *statefulSet.Spec.Replicas)
+		squidPods, err = testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
 		Expect(err).NotTo(HaveOccurred(), "Failed to get Squid pods")
 		podNames := make([]string, len(squidPods))
 		for i, pod := range squidPods {

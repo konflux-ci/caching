@@ -33,6 +33,8 @@ spec:
       value: {{ .Values.namespace.name | quote }}
     - name: SQUID_SERVICE
       value: "{{ include "squid.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}"
+    - name: NGINX_SERVICE
+      value: "{{ include "nginx.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.nginx.service.port }}"
     - name: LABEL_FILTER
       value: {{ .Values.test.labelFilter | quote }}
     # Pass environment to test binary so it knows which image repos to use

@@ -1,0 +1,127 @@
+{{- if .Values.nginx.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nginx.fullname" . }}-config
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nginx.labels" . | nindent 4 }}
+data:
+  nginx.conf: |
+    # Automatically spawn one worker process per CPU core for optimal performance
+    worker_processes auto;
+
+    # Send error logs to container stderr so they appear in 'kubectl logs'.
+    # 'warn' level includes warn, error, crit, alert, and emerg messages.
+    error_log /dev/stderr warn;
+
+    # Store PID file in /tmp since default /var/run is not writable by non-root
+    pid /tmp/nginx.pid;
+
+    events {
+        # Maximum number of simultaneous connections each worker can handle.
+        # Total max connections = worker_processes * worker_connections
+        worker_connections 1024;
+    }
+
+    http {
+        # Temporary storage for buffering proxied responses.
+        # Required when downloading artifacts larger than proxy_buffer_size.
+        # Located in /tmp since default path is not writable by non-root.
+        proxy_temp_path /tmp/proxy;
+
+        # Temporary storage for buffering incoming request bodies.
+        # Only used if clients upload artifacts through this proxy.
+        # Located in /tmp since default path is not writable by non-root.
+        client_body_temp_path /tmp/client_body;
+
+        # The following temp paths are not used by this proxy configuration,
+        # but nginx requires write access to them at startup. Setting them to
+        # /tmp prevents startup failures when running as non-root.
+        fastcgi_temp_path /tmp/fastcgi;
+        uwsgi_temp_path /tmp/uwsgi;
+        scgi_temp_path /tmp/scgi;
+
+        # Send access logs to container stdout so they appear in 'kubectl logs'
+        access_log /dev/stdout;
+
+        # Configure the disk cache for proxied artifact responses:
+        # - levels=1:2: Two-level directory hierarchy for cached files
+        # - keys_zone: 10MB shared memory zone for cache keys and metadata
+        # - max_size: Maximum disk space for cached files
+        # - inactive=7d: Remove cached items not accessed in 7 days
+        # - use_temp_path=off: Write directly to cache dir (faster, avoids copy)
+        proxy_cache_path /var/cache/nginx levels=1:2
+                         keys_zone=backend_cache:10m
+                         max_size={{ .Values.nginx.cache.size }}m
+                         inactive=7d
+                         use_temp_path=off;
+
+        server {
+            # Listen on port 8080 (non-privileged port for non-root operation)
+            listen 8080;
+
+            # Health check endpoint for Kubernetes liveness/readiness probes.
+            # Returns 200 OK without proxying the request or logging.
+            location = /health {
+                return 200 "OK\n";
+                add_header Content-Type text/plain;
+                access_log off;
+            }
+
+            {{- range .Values.nginx.cache.allowList }}
+            # Cached location matching pattern: {{ . }}
+            location ~ {{ . }} {
+                # Forward requests to the upstream server
+                proxy_pass {{ $.Values.nginx.upstream.url }};
+
+                # Preserve original request headers for proper routing
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                {{- if $.Values.nginx.auth.enabled }}
+
+                # Inject authentication header (replaced at deploy time)
+                proxy_set_header Authorization "__AUTH_HEADER__";
+                {{- end }}
+
+                # Use the disk cache defined in proxy_cache_path
+                proxy_cache backend_cache;
+
+                # Cache successful responses (200 OK) for 1 day
+                proxy_cache_valid 200 1d;
+
+                # Serve stale cached content when the upstream server is unavailable or slow,
+                # improving resilience during upstream outages
+                proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+
+                # Prevent multiple simultaneous requests for the same uncached
+                # artifact from all hitting the upstream server; only one fetches, others wait
+                proxy_cache_lock on;
+
+                # Add header showing cache status (HIT/MISS/EXPIRED/etc) for debugging
+                add_header X-Cache-Status $upstream_cache_status always;
+            }
+            {{- end }}
+
+            # Default location: proxy to the upstream server without caching.
+            # Handles paths not matching any allowList patterns.
+            location / {
+                proxy_pass {{ .Values.nginx.upstream.url }};
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                {{- if .Values.nginx.auth.enabled }}
+                proxy_set_header Authorization "__AUTH_HEADER__";
+                {{- end }}
+
+                # Force bypass of cache - always fetch fresh from the upstream server
+                proxy_no_cache 1;
+                proxy_cache_bypass 1;
+
+                # Indicate this response was not eligible for caching
+                add_header X-Cache-Status "BYPASS" always;
+            }
+        }
+    }
+{{- end }}

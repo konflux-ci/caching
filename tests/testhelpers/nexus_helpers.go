@@ -2,6 +2,7 @@ package testhelpers
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	nxrm "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v3"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -97,6 +99,30 @@ func ConfigureNexus(ctx context.Context, k8sClient kubernetes.Interface, restCon
 	}
 
 	fmt.Println("Nexus configuration complete!")
+	return nil
+}
+
+// CreateNexusAuthSecret creates a Kubernetes secret with authorization header value for authentication to Nexus
+func CreateNexusAuthSecret(ctx context.Context, client kubernetes.Interface, secretName string, cfg NexusConfig) error {
+	authValue := fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString(
+		[]byte(fmt.Sprintf("%s:%s", cfg.ProxyUser, cfg.ProxyPassword))))
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: Namespace,
+		},
+		StringData: map[string]string{
+			"authorization": authValue,
+		},
+	}
+
+	_, err := client.CoreV1().Secrets(Namespace).Create(ctx, secret, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create Nexus auth secret: %w", err)
+	}
+
+	fmt.Printf("Created Nexus auth secret '%s' in namespace '%s'\n", secretName, Namespace)
 	return nil
 }
 
