@@ -96,6 +96,7 @@
     },
     {
       "description": "Auto-merge Go toolchain patch updates (go.mod and Containerfile)",
+      "groupName": "go-toolchain",
       "matchDatasources": [
         "golang-version",
         "custom.golang-with-checksum"
