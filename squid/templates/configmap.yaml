@@ -1,3 +1,4 @@
+{{- if .Values.squid.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -204,3 +205,4 @@ data:
     #
     refresh_pattern . 0 20% 4320
     pid_filename none
+{{- end }}

@@ -26,8 +26,8 @@ if [ -z "$SOCKET_PATH" ] || [ ! -S "$SOCKET_PATH" ]; then
 fi
 
 # Check required sysctl settings for inotify limits (skip if unable to read values)
-REQUIRED_MAX_USER_WATCHES=524288
-REQUIRED_MAX_USER_INSTANCES=512
+REQUIRED_MAX_USER_WATCHES=1048576
+REQUIRED_MAX_USER_INSTANCES=1024
 
 CURRENT_MAX_USER_WATCHES=$(sysctl -n fs.inotify.max_user_watches 2>/dev/null || echo "")
 CURRENT_MAX_USER_INSTANCES=$(sysctl -n fs.inotify.max_user_instances 2>/dev/null || echo "")

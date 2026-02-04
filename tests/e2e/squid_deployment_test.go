@@ -163,7 +163,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			// Verify label selector targets correct pods
 			labels := rule.PodAffinityTerm.LabelSelector.MatchLabels
 			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/name", deploymentName))
-			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/component", deploymentName+"-"+namespace))
+			Expect(labels).To(HaveKeyWithValue("app.kubernetes.io/component", testhelpers.SquidComponentLabel))
 			// Note: instance label will be "squid" in actual statefulset vs "test-release" in template tests
 			Expect(labels).To(HaveKey("app.kubernetes.io/instance"))
 		})
@@ -183,7 +183,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 			// Verify pods are actually running (not stuck in pending due to anti-affinity)
 			pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-				LabelSelector: "app.kubernetes.io/name=" + deploymentName + ",app.kubernetes.io/component=" + deploymentName + "-" + namespace,
+				LabelSelector: "app.kubernetes.io/name=" + deploymentName + ",app.kubernetes.io/component=" + testhelpers.SquidComponentLabel,
 			})
 			Expect(err).NotTo(HaveOccurred())
 
@@ -272,11 +272,9 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 		BeforeEach(func() {
 			var err error
-			statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 			// GetSquidPods also checks that the all defined replicas are running and ready
 			// It returns the list of pods
-			pods, err = testhelpers.GetSquidPods(ctx, clientset, namespace, *statefulSet.Spec.Replicas)
+			pods, err = testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pod")
 		})
 
@@ -542,14 +540,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 	Describe("Cache Recovery", func() {
 		It("should clean cache on restart when cache is full", func() {
 			By("Getting the current Squid pod")
-			statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(
-				ctx,
-				deploymentName,
-				metav1.GetOptions{},
-			)
-			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
-
-			pods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *statefulSet.Spec.Replicas)
+			pods, err := testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods")
 			Expect(pods).NotTo(BeEmpty(), "Expected at least one pod")
 			// Select one pod to test (works with single or multiple replicas)
@@ -651,7 +642,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 			// Now wait for pod to be Ready using GetSquidPods (same as other tests)
 			// This ensures the container has fully restarted and is ready
-			restartedPods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *statefulSet.Spec.Replicas)
+			restartedPods, err := testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods after restart")
 
 			// Find the pod with the same name (ensure it's the same pod, not recreated)

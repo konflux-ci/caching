@@ -1,0 +1,123 @@
+{{- if .Values.nginx.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "nginx.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nginx.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "nginx.fullname" . }}-headless
+  replicas: {{ .Values.nginx.replicaCount }}
+  minReadySeconds: 30
+  selector:
+    matchLabels:
+      {{- include "nginx.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        # Config checksum to trigger redeployment on config changes
+        checksum/config: {{ include (print $.Template.BasePath "/nginx-configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "nginx.selectorLabels" . | nindent 8 }}
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              {{- include "nginx.selectorLabels" . | nindent 14 }}
+      {{- with .Values.nginx.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.nginx.auth.enabled }}
+      initContainers:
+        - name: init-config
+          image: {{ .Values.nginx.image }}
+          command: ['sh', '-c']
+          args:
+            - |
+              set -e
+              AUTH_VALUE=$(cat /secrets/authorization)
+              sed "s|__AUTH_HEADER__|${AUTH_VALUE}|g" /config-template/nginx.conf > /config/nginx.conf
+          securityContext:
+            {{- toYaml .Values.nginx.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: config-template
+              mountPath: /config-template
+              readOnly: true
+            - name: config
+              mountPath: /config
+            - name: auth-secret
+              mountPath: /secrets
+              readOnly: true
+      {{- end }}
+      containers:
+        - name: nginx
+          image: {{ .Values.nginx.image }}
+          command: ["nginx"]
+          args: ["-e", "/dev/stderr", "-g", "daemon off;"]
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.nginx.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.nginx.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: cache
+              mountPath: /var/cache/nginx
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+            {{- if .Values.nginx.auth.enabled }}
+            - name: config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            {{- else }}
+            - name: config-template
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+            {{- end }}
+      volumes:
+        - name: config-template
+          configMap:
+            name: {{ include "nginx.fullname" . }}-config
+        {{- if .Values.nginx.auth.enabled }}
+        - name: config
+          emptyDir: {}
+        - name: auth-secret
+          secret:
+            secretName: {{ .Values.nginx.auth.secretName }}
+        {{- end }}
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: cache
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.nginx.cache.size }}Mi
+{{- end }}

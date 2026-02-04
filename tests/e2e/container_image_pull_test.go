@@ -123,7 +123,7 @@ func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 
 	statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, deploymentName, metav1.GetOptions{})
 	Expect(err).NotTo(HaveOccurred(), "Failed to get statefulset")
-	pods, err := testhelpers.GetSquidPods(ctx, clientset, namespace, *statefulSet.Spec.Replicas)
+	pods, err := testhelpers.GetPods(ctx, clientset, namespace, deploymentName)
 	Expect(err).NotTo(HaveOccurred(), "Failed to get squid pods")
 
 	maxAttempts := int(*statefulSet.Spec.Replicas) + 1
@@ -205,7 +205,7 @@ func pullAndVerifyContainerImageCDN(imageRef, cdnRegexPattern, cdnName string) {
 				break // Found it, no need to check other pods
 			}
 		}
-		
+
 		if foundMiss {
 			fmt.Printf("DEBUG: Cache was warm from previous test, but caching is working correctly (MISS happened earlier, HIT in current test)\n")
 		}
