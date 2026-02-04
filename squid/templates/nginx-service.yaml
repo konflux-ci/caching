@@ -8,7 +8,7 @@ metadata:
     {{- include "nginx.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.nginx.service.type }}
-  {{- if .Values.nginx.service.trafficDistribution }}
+  {{- if and .Values.nginx.service.trafficDistribution (semverCompare ">= 1.30.0-0" .Capabilities.KubeVersion.Version) }}
   trafficDistribution: {{ .Values.nginx.service.trafficDistribution }}
   {{- end }}
   selector:

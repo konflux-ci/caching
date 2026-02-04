@@ -28,5 +28,17 @@ var _ = Describe("Helm Template Squid Service Configuration", func() {
 			service := extractSquidServiceSection(output)
 			Expect(service).To(ContainSubstring("trafficDistribution: PreferSameZone"), "Regular service should have trafficDistribution: PreferSameZone")
 		})
+
+		It("should not include trafficDistribution when set but kube version is before 1.30", func() {
+			output, err := testhelpers.RenderHelmTemplateWithKubeVersion(chartPath, testhelpers.SquidHelmValues{
+				Service: &testhelpers.ServiceValues{
+					TrafficDistribution: "PreferSameZone",
+				},
+			}, "1.29.0")
+			Expect(err).NotTo(HaveOccurred())
+
+			service := extractSquidServiceSection(output)
+			Expect(service).NotTo(ContainSubstring("trafficDistribution"), "Regular service must not have trafficDistribution on K8s < 1.30")
+		})
 	})
 })

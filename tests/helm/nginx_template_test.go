@@ -363,6 +363,24 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			service := extractNginxServiceSection(output)
 			Expect(service).To(ContainSubstring("trafficDistribution: PreferSameZone"), "Regular service should have trafficDistribution: PreferSameZone")
 		})
+
+		It("should not include trafficDistribution when set but kube version is before 1.30", func() {
+			output, err := testhelpers.RenderHelmTemplateWithKubeVersion(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Service: &testhelpers.NginxServiceValues{
+						TrafficDistribution: "PreferSameZone",
+					},
+				},
+			}, "1.29.0")
+			Expect(err).NotTo(HaveOccurred())
+
+			service := extractNginxServiceSection(output)
+			Expect(service).NotTo(ContainSubstring("trafficDistribution"), "Regular service must not have trafficDistribution on K8s < 1.30")
+		})
 	})
 
 	Describe("Nginx ConfigMap Upstream Configuration", func() {

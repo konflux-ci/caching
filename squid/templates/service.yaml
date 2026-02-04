@@ -14,7 +14,7 @@ metadata:
   {{- end }}
 spec:
   type: {{ .Values.service.type }}
-  {{- if .Values.service.trafficDistribution }}
+  {{- if and .Values.service.trafficDistribution (semverCompare ">= 1.30.0-0" .Capabilities.KubeVersion.Version) }}
   trafficDistribution: {{ .Values.service.trafficDistribution }}
   {{- end }}
   ports:
