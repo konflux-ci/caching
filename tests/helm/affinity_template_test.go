@@ -2,7 +2,6 @@ package helm_test
 
 import (
 	"encoding/json"
-	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -12,8 +11,6 @@ import (
 )
 
 var _ = Describe("Helm Template Affinity Configuration", func() {
-	const chartPath = "./squid"
-
 	Describe("Default Configuration", func() {
 		It("should include pod anti-affinity rules by default", func() {
 			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
@@ -221,29 +218,3 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 		})
 	})
 })
-
-// extractSquidDeploymentSection extracts just the squid statefulset YAML for more precise testing
-func extractSquidDeploymentSection(helmOutput string) string {
-	lines := strings.Split(helmOutput, "\n")
-	var squidDeploymentLines []string
-	inSquidDeployment := false
-
-	for _, line := range lines {
-		// Start capturing when we find the squid statefulset
-		if strings.Contains(line, "# Source: squid/templates/deployment.yaml") {
-			inSquidDeployment = true
-			continue
-		}
-
-		// Stop capturing when we hit the next resource
-		if inSquidDeployment && strings.HasPrefix(line, "---") {
-			break
-		}
-
-		if inSquidDeployment {
-			squidDeploymentLines = append(squidDeploymentLines, line)
-		}
-	}
-
-	return strings.Join(squidDeploymentLines, "\n")
-}
