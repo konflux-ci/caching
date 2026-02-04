@@ -8,10 +8,12 @@ import (
 // NginxValues holds Helm values for nginx configuration
 type NginxValues struct {
 	// Enabled must NOT have omitempty since we need to explicitly set false to disable
-	Enabled  bool                 `json:"enabled"`
-	Upstream *NginxUpstreamValues `json:"upstream,omitempty"`
-	Auth     *NginxAuthValues     `json:"auth,omitempty"`
-	Cache    *NginxCacheValues    `json:"cache,omitempty"`
+	Enabled      bool                   `json:"enabled"`
+	ReplicaCount int                    `json:"replicaCount,omitempty"`
+	Upstream     *NginxUpstreamValues   `json:"upstream,omitempty"`
+	Auth         *NginxAuthValues       `json:"auth,omitempty"`
+	Cache        *NginxCacheValues      `json:"cache,omitempty"`
+	Service      *NginxServiceValues    `json:"service,omitempty"`
 }
 
 // NginxUpstreamValues holds upstream server configuration
@@ -29,6 +31,13 @@ type NginxAuthValues struct {
 type NginxCacheValues struct {
 	AllowList []string `json:"allowList,omitempty"`
 	Size      int      `json:"size,omitempty"`
+}
+
+// NginxServiceValues holds service configuration
+type NginxServiceValues struct {
+	Type                string `json:"type,omitempty"`
+	Port                int    `json:"port,omitempty"`
+	TrafficDistribution string `json:"trafficDistribution,omitempty"`
 }
 
 // NewNginxClient creates an HTTP client for requests to nginx
