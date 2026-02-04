@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:380da76bb8a69e333b6c11341d600f5d3aab9ee5b8c95ceb64aae2457f5c1c6e AS squid-base
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:a74a7a92d3069bfac09c6882087771fc7db59fa9d8e16f14f4e012fe7288554c AS squid-base
 
 # default port providing cache service
 EXPOSE 3128
@@ -20,7 +20,7 @@ RUN chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /ru
 # ==========================================
 # Stage 2: Combined Go builder (toolchain + exporters + helpers)
 # ==========================================
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:380da76bb8a69e333b6c11341d600f5d3aab9ee5b8c95ceb64aae2457f5c1c6e AS go-builder
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:a74a7a92d3069bfac09c6882087771fc7db59fa9d8e16f14f4e012fe7288554c AS go-builder
 
 # Install required packages for Go build
 # go-toolset already declared in rpms.in.yaml (prefetched by Cachi2)
