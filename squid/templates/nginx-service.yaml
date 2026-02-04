@@ -8,6 +8,9 @@ metadata:
     {{- include "nginx.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.nginx.service.type }}
+  {{- if .Values.nginx.service.trafficDistribution }}
+  trafficDistribution: {{ .Values.nginx.service.trafficDistribution }}
+  {{- end }}
   selector:
     {{- include "nginx.selectorLabels" . | nindent 4 }}
   ports:

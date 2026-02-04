@@ -1054,6 +1054,11 @@
           "minimum": 1,
           "maximum": 65535,
           "description": "Service port number"
+        },
+        "trafficDistribution": {
+          "type": "string",
+          "enum": ["", "PreferClose", "PreferSameZone", "PreferSameNode"],
+          "description": "Traffic distribution policy (requires Kubernetes 1.30+)"
         }
       },
       "additionalProperties": false,
