@@ -56,3 +56,13 @@ func extractNginxServiceSection(helmOutput string) string {
 func extractNginxHeadlessServiceSection(helmOutput string) string {
 	return extractSection(helmOutput, "# Source: squid/templates/nginx-headless-service.yaml")
 }
+
+// extractSquidServiceSection extracts just the squid service YAML (non-headless) for precise testing
+func extractSquidServiceSection(helmOutput string) string {
+	return extractSection(helmOutput, "# Source: squid/templates/service.yaml")
+}
+
+// extractSquidHeadlessServiceSection extracts just the squid headless service YAML for precise testing
+func extractSquidHeadlessServiceSection(helmOutput string) string {
+	return extractSection(helmOutput, "# Source: squid/templates/headless-service.yaml")
+}

@@ -386,6 +386,12 @@ type TLSOutgoingOptionsValues struct {
 	CAFile string `json:"caFile,omitempty"`
 }
 
+type ServiceValues struct {
+	Type                string `json:"type,omitempty"`
+	Port                int    `json:"port,omitempty"`
+	TrafficDistribution string `json:"trafficDistribution,omitempty"`
+}
+
 type SquidHelmValues struct {
 	Cache              *CacheValues              `json:"cache,omitempty"`
 	Environment        string                    `json:"environment,omitempty"`
@@ -395,6 +401,7 @@ type SquidHelmValues struct {
 	Volumes            []corev1.Volume           `json:"volumes,omitempty"`
 	VolumeMounts       []corev1.VolumeMount      `json:"volumeMounts,omitempty"`
 	Nginx              *NginxValues              `json:"nginx,omitempty"`
+	Service            *ServiceValues            `json:"service,omitempty"`
 }
 
 // parseImageReference extracts repository and tag from an image reference
