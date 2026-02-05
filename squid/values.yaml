@@ -290,20 +290,20 @@ cert-manager:
   replicaCount: 1
   image:
     repository: quay.io/jetstack/cert-manager-controller
-    tag: v1.19.2
+    tag: v1.19.3
     pullPolicy: IfNotPresent
   webhook:
     replicaCount: 1
     image:
       repository: quay.io/jetstack/cert-manager-webhook
-      tag: v1.19.2
+      tag: v1.19.3
       pullPolicy: IfNotPresent
   cainjector:
     enabled: true # Enable the CA injector component
     replicaCount: 1
     image:
       repository: quay.io/jetstack/cert-manager-cainjector
-      tag: v1.19.2
+      tag: v1.19.3
       pullPolicy: IfNotPresent
   resources:
     requests:
