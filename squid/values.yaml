@@ -425,7 +425,7 @@ nginx:
     size: 1024
 
   # Image configuration
-  image: registry.access.redhat.com/ubi10/nginx-126@sha256:32ddb5455a72fe75f708f71ac2e7915107168f975d43fa5a97baf7bbcd5658aa
+  image: registry.access.redhat.com/ubi10/nginx-126@sha256:f51afbf00a86bb1fdaeaf320f73c3386a18456ed6823adb877ec9439c2f8ede6
 
   # Service configuration
   service:
