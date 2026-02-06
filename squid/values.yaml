@@ -431,6 +431,7 @@ nginx:
   service:
     type: ClusterIP
     port: 8080
+    trafficDistribution: ""
 
   # Resource limits
   resources:

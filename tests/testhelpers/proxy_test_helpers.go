@@ -386,6 +386,12 @@ type TLSOutgoingOptionsValues struct {
 	CAFile string `json:"caFile,omitempty"`
 }
 
+type ServiceValues struct {
+	Type                string `json:"type,omitempty"`
+	Port                int    `json:"port,omitempty"`
+	TrafficDistribution string `json:"trafficDistribution,omitempty"`
+}
+
 type SquidHelmValues struct {
 	Cache              *CacheValues              `json:"cache,omitempty"`
 	Environment        string                    `json:"environment,omitempty"`
@@ -395,6 +401,7 @@ type SquidHelmValues struct {
 	Volumes            []corev1.Volume           `json:"volumes,omitempty"`
 	VolumeMounts       []corev1.VolumeMount      `json:"volumeMounts,omitempty"`
 	Nginx              *NginxValues              `json:"nginx,omitempty"`
+	Service            *ServiceValues            `json:"service,omitempty"`
 }
 
 // parseImageReference extracts repository and tag from an image reference
@@ -585,6 +592,13 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 
 // RenderHelmTemplate renders the Helm template with the given values and returns the YAML output
 func RenderHelmTemplate(chartPath string, values SquidHelmValues) (string, error) {
+	return RenderHelmTemplateWithKubeVersion(chartPath, values, "")
+}
+
+// RenderHelmTemplateWithKubeVersion renders the Helm template with the given values and optional kube version.
+// If kubeVersion is non-empty, helm template is run with --kube-version to simulate that cluster version
+// (e.g. "1.29.0" to test behavior on pre-1.30 clusters).
+func RenderHelmTemplateWithKubeVersion(chartPath string, values SquidHelmValues, kubeVersion string) (string, error) {
 	// Environment is passed from test pod via SQUID_ENVIRONMENT env var
 	environment := os.Getenv("SQUID_ENVIRONMENT")
 	if environment == "" {
@@ -599,6 +613,9 @@ func RenderHelmTemplate(chartPath string, values SquidHelmValues) (string, error
 	defer os.Remove(valuesFile)
 
 	cmdParts := []string{"helm", "template", "test-release", chartPath, "--values", valuesFile}
+	if kubeVersion != "" {
+		cmdParts = append(cmdParts, "--kube-version", kubeVersion)
+	}
 
 	cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
 	// Set working directory to chart parent directory to ensure relative paths work
