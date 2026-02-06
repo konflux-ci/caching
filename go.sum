@@ -38,8 +38,6 @@ github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK3
 github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1xcsSM=
 github.com/cenkalti/backoff/v5 v5.0.3/go.mod h1:rkhZdG3JZukswDf7f0cwqPNk4K0sa+F97BxZthm/crw=
-github.com/cert-manager/cert-manager v1.19.2 h1:jSprN1h5pgNDSl7HClAmIzXuTxic/5FXJ32kbQHqjlM=
-github.com/cert-manager/cert-manager v1.19.2/go.mod h1:e9NzLtOKxTw7y99qLyWGmPo6mrC1Nh0EKKcMkRfK+GE=
 github.com/cert-manager/cert-manager v1.19.3 h1:3d0Nk/HO3BOmAdBJNaBh+6YgaO3Ciey3xCpOjiX5Obs=
 github.com/cert-manager/cert-manager v1.19.3/go.mod h1:e9NzLtOKxTw7y99qLyWGmPo6mrC1Nh0EKKcMkRfK+GE=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
@@ -298,8 +296,8 @@ github.com/peterbourgon/diskv v2.0.1+incompatible h1:UBdAOUP5p4RWqPBg048CAvpKN+v
 github.com/peterbourgon/diskv v2.0.1+incompatible/go.mod h1:uqqh8zWWbv1HBMNONnaR/tNboyR3/BZd58JJSHlUSCU=
 github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5 h1:Ii+DKncOVM8Cu1Hc+ETb5K+23HdAMvESYE3ZJ5b5cMI=
 github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5/go.mod h1:iIss55rKnNBTvrwdmkUpLnDpZoAHvWaiq5+iMmen4AE=
-github.com/pires/go-proxyproto v0.9.2 h1:H1UdHn695zUVVmB0lQ354lOWHOy6TZSpzBl3tgN0s1U=
-github.com/pires/go-proxyproto v0.9.2/go.mod h1:ZKAAyp3cgy5Y5Mo4n9AlScrkCZwUy0g3Jf+slqQVcuU=
+github.com/pires/go-proxyproto v0.10.0 h1:08wrdt9NQYTjLWeag3EBIS7ZNi6Vwl3rGsEjVLaAhvU=
+github.com/pires/go-proxyproto v0.10.0/go.mod h1:ZKAAyp3cgy5Y5Mo4n9AlScrkCZwUy0g3Jf+slqQVcuU=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
