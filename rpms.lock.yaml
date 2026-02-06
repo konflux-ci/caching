@@ -11,27 +11,27 @@ arches:
     name: apr
     evr: 1.7.5-2.el10
     sourcerpm: apr-1.7.5-2.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/a/apr-util-1.6.3-21.el10.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/a/apr-util-1.6.3-23.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 103881
-    checksum: sha256:7fc6733f2a2f52ba71c93ae6c6b4548192e328d123fbc9753d9c3496cc3073ce
+    size: 105897
+    checksum: sha256:4f5b154b4b969d98a72d70c7ee8135ee4ba872af715d0ab24d316557b258ef88
     name: apr-util
-    evr: 1.6.3-21.el10
-    sourcerpm: apr-util-1.6.3-21.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/a/apr-util-lmdb-1.6.3-21.el10.x86_64.rpm
+    evr: 1.6.3-23.el10_1
+    sourcerpm: apr-util-1.6.3-23.el10_1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/a/apr-util-lmdb-1.6.3-23.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 16810
-    checksum: sha256:92b9d9eedfbf7afca3ad2c417a26bf16909764036c36b00a68d75b72c316e1b9
+    size: 20157
+    checksum: sha256:7bd27a05c21d46baaaf55a77f1776a5f06069882603af84141a4710b138a3771
     name: apr-util-lmdb
-    evr: 1.6.3-21.el10
-    sourcerpm: apr-util-1.6.3-21.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/a/apr-util-openssl-1.6.3-21.el10.x86_64.rpm
+    evr: 1.6.3-23.el10_1
+    sourcerpm: apr-util-1.6.3-23.el10_1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/a/apr-util-openssl-1.6.3-23.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 18911
-    checksum: sha256:813a498ab7c787b89632227336322566c95b476a48f12a1fe50aceb6608efced
+    size: 22022
+    checksum: sha256:4f5c0ae99cb6c139759084b36e625b3aa5172c2af1923544604650d20fc51c25
     name: apr-util-openssl
-    evr: 1.6.3-21.el10
-    sourcerpm: apr-util-1.6.3-21.el10.src.rpm
+    evr: 1.6.3-23.el10_1
+    sourcerpm: apr-util-1.6.3-23.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/c/cpp-14.3.1-2.1.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 13442056
@@ -879,13 +879,6 @@ arches:
     name: less
     evr: 661-3.el10
     sourcerpm: less-661-3.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libblkid-2.40.2-15.el10_1.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 133201
-    checksum: sha256:ff7914961b7976be1d3444d5315a6e5fcf9cdbb45d4903ff72fb306739612ce0
-    name: libblkid
-    evr: 2.40.2-15.el10_1
-    sourcerpm: util-linux-2.40.2-15.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libbpf-1.6.0-3.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 195899
@@ -935,13 +928,6 @@ arches:
     name: libgomp
     evr: 14.3.1-2.1.el10
     sourcerpm: gcc-14.3.1-2.1.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libmount-2.40.2-15.el10_1.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 164456
-    checksum: sha256:26dc3d665c189f495f7fb8f9b7470a296754cf94906f267fcf1f587733c96b13
-    name: libmount
-    evr: 2.40.2-15.el10_1
-    sourcerpm: util-linux-2.40.2-15.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libpkgconf-2.1.0-3.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 41667
@@ -970,13 +956,6 @@ arches:
     name: libsemanage
     evr: 3.9-1.el10
     sourcerpm: libsemanage-3.9-1.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libsmartcols-2.40.2-15.el10_1.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 90964
-    checksum: sha256:2a63fd6b4c702ece46833e8c0546f6db1eb3817845d4c6b85595ae5a472021a4
-    name: libsmartcols
-    evr: 2.40.2-15.el10_1
-    sourcerpm: util-linux-2.40.2-15.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libtdb-1.4.13-100.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 56927
@@ -991,13 +970,6 @@ arches:
     name: libutempter
     evr: 1.2.1-15.el10
     sourcerpm: libutempter-1.2.1-15.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libuuid-2.40.2-15.el10_1.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 34761
-    checksum: sha256:ad0da246d711e5678893898098617c17c57c6d618d6a9c674faef9fa8224a9a1
-    name: libuuid
-    evr: 2.40.2-15.el10_1
-    sourcerpm: util-linux-2.40.2-15.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libxcrypt-4.4.36-10.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 127002
