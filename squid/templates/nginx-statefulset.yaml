@@ -63,16 +63,31 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+            {{- if .Values.nginx.tls.enabled }}
+            - name: https
+              containerPort: 8443
+              protocol: TCP
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /health
+              {{- if .Values.nginx.tls.enabled }}
+              port: https
+              scheme: HTTPS
+              {{- else }}
               port: http
+              {{- end }}
             initialDelaySeconds: 10
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /health
+              {{- if .Values.nginx.tls.enabled }}
+              port: https
+              scheme: HTTPS
+              {{- else }}
               port: http
+              {{- end }}
             initialDelaySeconds: 5
             periodSeconds: 5
           resources:
@@ -86,6 +101,11 @@ spec:
               mountPath: /tmp
             - name: run
               mountPath: /var/run
+            {{- if .Values.nginx.tls.enabled }}
+            - name: tls
+              mountPath: /etc/nginx/tls
+              readOnly: true
+            {{- end }}
             {{- if .Values.nginx.auth.enabled }}
             - name: config
               mountPath: /etc/nginx/nginx.conf
@@ -101,6 +121,11 @@ spec:
         - name: config-template
           configMap:
             name: {{ include "nginx.fullname" . }}-config
+        {{- if .Values.nginx.tls.enabled }}
+        - name: tls
+          secret:
+            secretName: {{ .Values.nginx.tls.secretName }}
+        {{- end }}
         {{- if .Values.nginx.auth.enabled }}
         - name: config
           emptyDir: {}

@@ -404,4 +404,91 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			Expect(strings.Count(configMap, "proxy_pass http://nexus.example.com:8081")).To(Equal(2), "Should have upstream URL in both locations")
 		})
 	})
+
+	Describe("Nginx TLS Configuration", func() {
+		It("should not include TLS resources when disabled", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// No HTTPS port in services
+			service := extractNginxServiceSection(output)
+			Expect(service).NotTo(ContainSubstring("targetPort: https"), "Service should not target HTTPS container port")
+
+			headless := extractNginxHeadlessServiceSection(output)
+			Expect(headless).NotTo(ContainSubstring("targetPort: https"), "Headless service should not target HTTPS container port")
+
+			// No TLS volume in StatefulSet
+			statefulSet := extractNginxStatefulSetSection(output)
+			Expect(statefulSet).NotTo(ContainSubstring("mountPath: /etc/nginx/tls"), "StatefulSet should not mount TLS volume when TLS disabled")
+
+			// No HTTPS server block in ConfigMap
+			configMap := extractNginxConfigMapSection(output)
+			Expect(configMap).NotTo(ContainSubstring("listen 8443 ssl"), "ConfigMap should not have HTTPS server block when TLS disabled")
+		})
+
+		It("should include TLS resources when enabled", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Service: &testhelpers.NginxServiceValues{
+						Port: 443,
+					},
+					TLS: &testhelpers.NginxTLSValues{
+						Enabled:    true,
+						SecretName: "nginx-tls",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Service should expose HTTPS on configured port
+			service := extractNginxServiceSection(output)
+			Expect(service).To(ContainSubstring("targetPort: https"), "Service should target HTTPS container port")
+
+			// Headless service should also target HTTPS when TLS enabled
+			headless := extractNginxHeadlessServiceSection(output)
+			Expect(headless).To(ContainSubstring("targetPort: https"), "Headless service should target HTTPS container port")
+
+			// TLS volume in StatefulSet
+			statefulSet := extractNginxStatefulSetSection(output)
+			Expect(statefulSet).To(ContainSubstring("mountPath: /etc/nginx/tls"), "StatefulSet should mount TLS volume")
+
+			// HTTPS server block in ConfigMap
+			configMap := extractNginxConfigMapSection(output)
+			Expect(configMap).To(ContainSubstring("listen 8443 ssl"), "ConfigMap should have HTTPS server block")
+		})
+	})
+
+	Describe("Nginx Service Configuration", func() {
+		It("should include service annotations when configured", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Service: &testhelpers.NginxServiceValues{
+						Annotations: map[string]string{
+							"foo": "bar",
+						},
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Service annotation should be present
+			service := extractNginxServiceSection(output)
+			Expect(service).To(ContainSubstring("foo: bar"), "Service should have configured annotation")
+		})
+	})
 })

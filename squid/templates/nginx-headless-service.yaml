@@ -11,7 +11,13 @@ spec:
   selector:
     {{- include "nginx.selectorLabels" . | nindent 4 }}
   ports:
-    - name: http
-      port: {{ .Values.nginx.service.port }}
+    - port: {{ .Values.nginx.service.port }}
+      protocol: TCP
+      {{- if .Values.nginx.tls.enabled }}
+      targetPort: https
+      name: https
+      {{- else }}
       targetPort: http
+      name: http
+      {{- end }}
 {{- end }}

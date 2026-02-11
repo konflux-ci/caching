@@ -650,6 +650,22 @@
           "minimum": 1,
           "description": "Number of replicas for the nginx StatefulSet"
         },
+        "tls": {
+          "type": "object",
+          "description": "TLS/HTTPS configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable HTTPS support"
+            },
+            "secretName": {
+              "type": "string",
+              "description": "Secret name containing tls.crt and tls.key"
+            }
+          },
+          "required": ["enabled"],
+          "additionalProperties": false
+        },
         "upstream": {
           "type": "object",
           "properties": {
@@ -1053,12 +1069,19 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 65535,
-          "description": "Service port number"
+          "description": "Service port number (maps to HTTP when tls.enabled=false, HTTPS when tls.enabled=true)"
         },
         "trafficDistribution": {
           "type": "string",
           "enum": ["", "PreferClose", "PreferSameZone", "PreferSameNode"],
           "description": "Traffic distribution policy (requires Kubernetes 1.30+)"
+        },
+        "annotations": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Annotations to add to the service"
         }
       },
       "additionalProperties": false,
