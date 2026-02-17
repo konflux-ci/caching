@@ -1,4 +1,4 @@
-{{- if or .Values.installCertManagerComponents (eq .Values.environment "prerelease") }}
+{{- if .Values.installCertManagerComponents }}
 apiVersion: v1
 kind: Namespace
 metadata:
