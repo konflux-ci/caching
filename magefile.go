@@ -347,6 +347,7 @@ func (SquidHelm) Up() error {
 		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
 		"--wait",
 		"--timeout=300s",
+		"--debug",
 	)
 	if err != nil {
 		return fmt.Errorf("failed to install/upgrade helm chart: %w", err)
