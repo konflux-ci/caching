@@ -31,15 +31,15 @@ spec:
           protocol: TCP
         env:
         - name: INSTALL4J_ADD_VM_PARAMS
-          value: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=512m"
+          value: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=256m"
         volumeMounts:
         - name: nexus-data
           mountPath: /nexus-data
         resources:
           requests:
-            memory: 768Mi
+            memory: 1024Mi
           limits:
-            memory: 768Mi
+            memory: 1024Mi
         livenessProbe:
           httpGet:
             path: /service/rest/v1/status
