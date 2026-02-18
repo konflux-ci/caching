@@ -18,9 +18,9 @@ spec:
     spec:
       containers:
       - name: nginx
-        # Use nginxinc/nginx-unprivileged for OpenShift compatibility
-        # This image runs as UID 101 and doesn't require root privileges
-        image: nginxinc/nginx-unprivileged:alpine
+        image: registry.access.redhat.com/ubi10/nginx-126@sha256:f51afbf00a86bb1fdaeaf320f73c3386a18456ed6823adb877ec9439c2f8ede6
+        command: ["nginx"]
+        args: ["-e", "/dev/stderr", "-g", "daemon off;"]
         ports:
         # Port 8443 instead of 443: OpenShift runs containers as non-root,
         # which cannot bind to privileged ports (<1024). Service still exposes 443 externally.
@@ -30,7 +30,7 @@ spec:
           mountPath: "/etc/nginx/tls"
           readOnly: true
         - name: nginx-conf
-          mountPath: "/etc/nginx/conf.d/default.conf"
+          mountPath: "/opt/app-root/etc/nginx.d/default.conf"
           subPath: "default.conf"
           readOnly: true
         # Override the default entrypoint to ensure proper permissions
