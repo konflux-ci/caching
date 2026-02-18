@@ -44,6 +44,10 @@ spec:
       valueFrom:
         fieldRef:
           fieldPath: status.podIP
+    # Pass the test image to the test binary so it knows which image to preserve when calling
+    # helm install/upgrade commands.
+    - name: SQUID_TEST_IMAGE
+      value: "{{ include "squid.test.image" . }}"
     resources:
       {{- toYaml .Values.test.resources | nindent 6 }}
 {{- end }}

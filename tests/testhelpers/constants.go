@@ -18,7 +18,8 @@ const (
 	// Nginx constants
 	NginxServiceName     = "nginx"
 	NginxStatefulSetName = "nginx"
-	NginxPort            = 8080
+	NginxPort            = 80
+	NginxHTTPSPort       = 443
 	NginxComponentLabel  = "nginx-caching"
 
 	// Nexus constants

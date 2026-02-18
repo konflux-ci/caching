@@ -436,30 +436,39 @@ func IsOpenShiftPlatform(client kubernetes.Interface) (bool, error) {
 	return false, nil
 }
 
-// buildPrereleaseHelmArgs builds Helm arguments for prerelease environment
-// This preserves pipeline-deployed images and disables mirrord (not available in EaaS)
-func buildPrereleaseHelmArgs(environment string, statefulSet *v1.StatefulSet) []string {
-	// In prerelease (OpenShift EaaS), disable mirrord which is not available
-	// Skip managing cert-manager during test reconfigurations to avoid reconciliation timeouts
-	extraArgs := []string{
-		"--set", "mirrord.enabled=false",
-		"--set", "installCertManagerComponents=false",
-	}
-
+// buildExtraHelmArgs builds extra Helm arguments to be passed to the helm upgrade command
+func buildExtraHelmArgs(environment string, openshift bool, statefulSet *v1.StatefulSet) []string {
+	var extraArgs []string
 	// Preserve pipeline-deployed image tags to prevent reverting to :latest
 	if statefulSet != nil && len(statefulSet.Spec.Template.Spec.Containers) > 0 {
 		currentImage := statefulSet.Spec.Template.Spec.Containers[0].Image
 		imageRepo, imageTag := parseImageReference(currentImage)
 
-		// Derive test image (squid → squid-tester in prerelease)
-		testImageRepo := strings.Replace(imageRepo, "/squid", "/squid-tester", 1)
-
-		// Pass to helm to prevent reverting to :latest defaults
+		// The test image doesn't need to be overridden because it only gets deployed
+		// via the helm test command.
 		extraArgs = append(extraArgs,
 			"--set", fmt.Sprintf("envSettings.%s.squid.image.repository=%s", environment, imageRepo),
 			"--set", fmt.Sprintf("envSettings.%s.squid.image.tag=%s", environment, imageTag),
+		)
+	}
+
+	// Preserve the test image used (allows for repeated `helm test` runs)
+	testImage := os.Getenv("SQUID_TEST_IMAGE")
+	if testImage != "" {
+		testImageRepo, testImageTagOrDigest := parseImageReference(testImage)
+		extraArgs = append(extraArgs,
 			"--set", fmt.Sprintf("envSettings.%s.test.image.repository=%s", environment, testImageRepo),
-			"--set", fmt.Sprintf("envSettings.%s.test.image.tag=%s", environment, imageTag),
+			"--set", fmt.Sprintf("envSettings.%s.test.image.tag=%s", environment, testImageTagOrDigest),
+		)
+	}
+
+	if openshift {
+		extraArgs = append(extraArgs,
+			"--set", "mirrord.enabled=false",
+			"--set", "cert-manager.securityContext.runAsUser=null",
+			"--set", "cert-manager.securityContext.runAsGroup=null",
+			"--set", "cert-manager.securityContext.fsGroup=null",
+			"--set", "nexus.securityContext.runAsUser=null",
 		)
 	}
 
@@ -526,16 +535,8 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		chartPath = "./squid"
 	}
 
-	// Build helm arguments based on environment
-	var extraArgs []string
-	if environment == "prerelease" {
-		extraArgs = buildPrereleaseHelmArgs(environment, statefulSet)
-	}
-
-	// Allow OpenShift SCC to manage the nexus user ID
-	if openshift {
-		extraArgs = append(extraArgs, "--set", "nexus.securityContext.runAsUser=null")
-	}
+	// Build helm arguments based on environment and platform
+	extraArgs := buildExtraHelmArgs(environment, openshift, statefulSet)
 
 	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
 	if err != nil {

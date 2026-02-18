@@ -402,6 +402,13 @@ nginx:
   # Replica count for the nginx proxy StatefulSet
   replicaCount: 1
 
+  # TLS/HTTPS configuration
+  tls:
+    # Enable HTTPS support
+    enabled: false
+    # Secret name containing `tls.crt` and `tls.key` keys
+    secretName: "nginx-tls"
+
   # Backend server configuration
   upstream:
     # URL of the upstream server to proxy to
@@ -430,7 +437,10 @@ nginx:
   # Service configuration
   service:
     type: ClusterIP
-    port: 8080
+    # Service port (HTTP when tls.enabled=false, HTTPS when tls.enabled=true)
+    port: 80
+    # Annotations to add to the service
+    annotations: {}
     trafficDistribution: ""
 
   # Resource limits

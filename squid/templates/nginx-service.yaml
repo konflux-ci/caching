@@ -6,6 +6,10 @@ metadata:
   namespace: {{ .Values.namespace.name }}
   labels:
     {{- include "nginx.labels" . | nindent 4 }}
+  {{- with .Values.nginx.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.nginx.service.type }}
   {{- if and .Values.nginx.service.trafficDistribution (semverCompare ">= 1.30.0-0" .Capabilities.KubeVersion.Version) }}
@@ -14,7 +18,13 @@ spec:
   selector:
     {{- include "nginx.selectorLabels" . | nindent 4 }}
   ports:
-    - name: http
-      port: {{ .Values.nginx.service.port }}
+    - port: {{ .Values.nginx.service.port }}
+      protocol: TCP
+      {{- if .Values.nginx.tls.enabled }}
+      targetPort: https
+      name: https
+      {{- else }}
       targetPort: http
+      name: http
+      {{- end }}
 {{- end }}
