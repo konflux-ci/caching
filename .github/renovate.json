@@ -21,11 +21,12 @@
       ".tekton/**"
     ]
   },
-  "regexManagers": [
+  "customManagers": [
     {
+      "customType": "regex",
       "description": "Track Helm version in Tekton pipelines",
-      "fileMatch": [
-        "^\\.tekton/.*\\.ya?ml$"
+      "managerFilePatterns": [
+        "/^\\.tekton/.*\\.ya?ml$/"
       ],
       "matchStrings": [
         "name:\\s+helm-version\\s+description:.*?\\s+type:.*?\\s+default:\\s+\"(?<currentValue>[^\"]+)\""
@@ -35,9 +36,10 @@
       "extractVersionTemplate": "^v?(?<version>.*)$"
     },
     {
+      "customType": "regex",
       "description": "Track Go version and SHA256 in devcontainer Containerfile",
-      "fileMatch": [
-        "^\\.devcontainer/Containerfile$"
+      "managerFilePatterns": [
+        "/^\\.devcontainer/Containerfile$/"
       ],
       "matchStrings": [
         "ARG GO_VERSION=(?<currentValue>.*?)\\s+ARG GO_SHA256=(?<currentDigest>\\S+)"
