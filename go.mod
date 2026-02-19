@@ -20,7 +20,7 @@ require (
 	github.com/sonatype-nexus-community/nexus-repo-api-client-go/v3 v3.89.2
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
-	helm.sh/helm/v3 v3.19.2
+	helm.sh/helm/v3 v3.20.0
 	k8s.io/api v0.35.1
 	k8s.io/apimachinery v0.35.1
 	k8s.io/client-go v0.35.1
