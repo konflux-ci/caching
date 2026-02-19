@@ -43,7 +43,7 @@
         "ARG GO_VERSION=(?<currentValue>.*?)\\s+ARG GO_SHA256=(?<currentDigest>\\S+)"
       ],
       "datasourceTemplate": "custom.golang-with-checksum",
-      "depNameTemplate": "{{currentValue}}",
+      "depNameTemplate": "go",
       "versioningTemplate": "loose"
     }
   ],
