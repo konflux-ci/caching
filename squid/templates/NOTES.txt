@@ -2,15 +2,15 @@ Your Squid proxy has been deployed to the '{{ .Values.namespace.name }}' namespa
 
 To connect from other pods within the Kubernetes cluster:
 - From inside the '{{ .Values.namespace.name }}' namespace:
-  http://{{ include "squid.fullname" . }}:{{ .Values.service.port }}
+  http://{{ .Values.squid.name }}:{{ .Values.service.port }}
 
 - From any namespace:
-  http://{{ include "squid.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}
+  http://{{ .Values.squid.name }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}
 
 
 For local testing, you can forward the service port to your machine:
 1. Get the pod name:
-   export POD_NAME=$(kubectl get pods --namespace {{ .Values.namespace.name }} -l "app.kubernetes.io/name={{ include "squid.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+   export POD_NAME=$(kubectl get pods --namespace {{ .Values.namespace.name }} -l "app.kubernetes.io/name={{ .Values.squid.name }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
 
 2. Forward the port:
    echo "Forwarding Squid proxy to http://127.0.0.1:3128"

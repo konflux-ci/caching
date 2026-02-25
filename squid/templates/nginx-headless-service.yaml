@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "nginx.fullname" . }}-headless
+  name: {{ .Values.nginx.name }}-headless
   namespace: {{ .Values.namespace.name }}
   labels:
     {{- include "nginx.labels" . | nindent 4 }}

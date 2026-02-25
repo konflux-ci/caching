@@ -5,18 +5,6 @@ SQUID HELPERS
 */}}
 
 {{/*
-Expand the name of the chart.
-*/}}
-{{- define "squid.name" -}}
-squid
-{{- end }}
-
-{{/*fully qualified app name.*/}}
-{{- define "squid.fullname" -}}
-squid
-{{- end }}
-
-{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "squid.chart" -}}
@@ -39,7 +27,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Selector labels
 */}}
 {{- define "squid.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "squid.name" . }}
+app.kubernetes.io/name: {{ .Values.squid.name }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: squid-caching
 {{- end }}
@@ -49,7 +37,7 @@ Create the name of the service account to use
 */}}
 {{- define "squid.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "squid.fullname" .) .Values.serviceAccount.name }}
+{{- default .Values.squid.name .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
@@ -109,20 +97,6 @@ NGINX HELPERS
 */}}
 
 {{/*
-Expand the name of nginx.
-*/}}
-{{- define "nginx.name" -}}
-nginx
-{{- end }}
-
-{{/*
-Fully qualified nginx app name.
-*/}}
-{{- define "nginx.fullname" -}}
-nginx
-{{- end }}
-
-{{/*
 Common labels
 */}}
 {{- define "nginx.labels" -}}
@@ -138,7 +112,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Selector labels
 */}}
 {{- define "nginx.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "nginx.fullname" . }}
+app.kubernetes.io/name: {{ .Values.nginx.name }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: nginx-caching
 {{- end }}

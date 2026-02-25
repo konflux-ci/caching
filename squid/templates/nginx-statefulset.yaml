@@ -2,12 +2,12 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "nginx.fullname" . }}
+  name: {{ .Values.nginx.name }}
   namespace: {{ .Values.namespace.name }}
   labels:
     {{- include "nginx.labels" . | nindent 4 }}
 spec:
-  serviceName: {{ include "nginx.fullname" . }}-headless
+  serviceName: {{ .Values.nginx.name }}-headless
   replicas: {{ .Values.nginx.replicaCount }}
   minReadySeconds: 30
   selector:
@@ -120,7 +120,7 @@ spec:
       volumes:
         - name: config-template
           configMap:
-            name: {{ include "nginx.fullname" . }}-config
+            name: {{ .Values.nginx.name }}-config
         {{- if .Values.nginx.tls.enabled }}
         - name: tls
           secret:

@@ -392,7 +392,12 @@ type ServiceValues struct {
 	TrafficDistribution string `json:"trafficDistribution,omitempty"`
 }
 
+type SquidValues struct {
+	Name string `json:"name,omitempty"`
+}
+
 type SquidHelmValues struct {
+	Squid              *SquidValues              `json:"squid,omitempty"`
 	Cache              *CacheValues              `json:"cache,omitempty"`
 	Environment        string                    `json:"environment,omitempty"`
 	ReplicaCount       int                       `json:"replicaCount,omitempty"`

@@ -2,12 +2,12 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "squid.fullname" . }}
+  name: {{ .Values.squid.name }}
   namespace: {{ .Values.namespace.name }}
   labels:
     {{- include "squid.labels" . | nindent 4 }}
 spec:
-  serviceName: {{ include "squid.fullname" . }}-headless
+  serviceName: {{ .Values.squid.name }}-headless
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
@@ -188,7 +188,7 @@ spec:
       volumes:
         - name: squid-config
           configMap:
-            name: {{ include "squid.fullname" . }}-config
+            name: {{ .Values.squid.name }}-config
         # Mount the secret created by cert-manager
         - name: squid-certs-secret
           secret:

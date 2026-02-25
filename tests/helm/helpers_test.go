@@ -66,3 +66,8 @@ func extractSquidServiceSection(helmOutput string) string {
 func extractSquidHeadlessServiceSection(helmOutput string) string {
 	return extractSection(helmOutput, "# Source: squid/templates/headless-service.yaml")
 }
+
+// extractSquidConfigMapSection extracts just the squid configmap YAML for precise testing
+func extractSquidConfigMapSection(helmOutput string) string {
+	return extractSection(helmOutput, "# Source: squid/templates/configmap.yaml")
+}

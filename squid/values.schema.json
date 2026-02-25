@@ -632,9 +632,13 @@
         "enabled": {
           "type": "boolean",
           "description": "Enable/disable the Squid forward proxy component"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name used for all squid resources and labels"
         }
       },
-      "required": ["enabled"],
+      "required": ["enabled", "name"],
       "additionalProperties": false
     },
     "nginx": {
@@ -644,6 +648,10 @@
         "enabled": {
           "type": "boolean",
           "description": "Enable/disable the Nginx reverse proxy component"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name used for all nginx resources and labels"
         },
         "replicaCount": {
           "type": "integer",

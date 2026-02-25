@@ -2,12 +2,12 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "{{ include "squid.fullname" . }}-test"
+  name: "{{ .Values.squid.name }}-test"
   namespace: {{ .Values.namespace.name }}
   labels:
     # Use different app name to avoid service selector conflicts
     app.kubernetes.io/name: squid
-    app.kubernetes.io/instance: {{ include "squid.fullname" . }}
+    app.kubernetes.io/instance: {{ .Values.squid.name }}
     app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/component: test
@@ -20,7 +20,7 @@ metadata:
     "helm.sh/hook-timeout": "9000" # 15 minutes
 spec:
   restartPolicy: Never
-  serviceAccountName: {{ include "squid.fullname" . }}-test
+  serviceAccountName: {{ .Values.squid.name }}-test
   containers:
   - name: ginkgo-test
     image: "{{ include "squid.test.image" . }}"
@@ -32,9 +32,9 @@ spec:
     - name: TARGET_NAMESPACE
       value: {{ .Values.namespace.name | quote }}
     - name: SQUID_SERVICE
-      value: "{{ include "squid.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}"
+      value: "{{ .Values.squid.name }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}"
     - name: NGINX_SERVICE
-      value: "{{ include "nginx.fullname" . }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.nginx.service.port }}"
+      value: "{{ .Values.nginx.name }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.nginx.service.port }}"
     - name: LABEL_FILTER
       value: {{ .Values.test.labelFilter | quote }}
     # Pass environment to test binary so it knows which image repos to use
