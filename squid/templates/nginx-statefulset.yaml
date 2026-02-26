@@ -42,6 +42,13 @@ spec:
               set -e
               AUTH_VALUE=$(cat /secrets/authorization)
               sed "s|__AUTH_HEADER__|${AUTH_VALUE}|g" /config-template/nginx.conf > /config/nginx.conf
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 10m
+              memory: 32Mi
           securityContext:
             {{- toYaml .Values.nginx.securityContext | nindent 12 }}
           volumeMounts:
