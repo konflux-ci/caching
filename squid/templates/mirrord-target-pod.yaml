@@ -7,14 +7,14 @@ metadata:
   labels:
     # Use different app name to avoid service selector conflicts
     app.kubernetes.io/name: mirrord-target
-    app.kubernetes.io/instance: {{ include "squid.fullname" . }}
+    app.kubernetes.io/instance: {{ .Values.squid.name }}
     app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/component: mirrord-target
     app: {{ .Values.mirrord.targetPod.name }}
     helm.sh/chart: {{ include "squid.chart" . }}
 spec:
-  serviceAccountName: {{ include "squid.fullname" . }}-test
+  serviceAccountName: {{ .Values.squid.name }}-test
   restartPolicy: Always  # Keep the target pod running for development
   containers:
     - name: testserver

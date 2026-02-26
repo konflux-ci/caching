@@ -2,7 +2,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "squid.fullname" . }}
+  name: {{ .Values.squid.name }}
   namespace: {{ .Values.prometheus.serviceMonitor.namespace | default .Values.namespace.name }}
   labels:
     {{- include "squid.labels" . | nindent 4 }}
@@ -40,7 +40,7 @@ spec:
       {{- if .Values.prometheus.serviceMonitor.perSiteTLS.enabled }}
       tlsConfig:
         {{- $clusterDomain := (default "cluster.local" .Values.clusterDomain) }}
-        {{- $svcFQDN := printf "%s.%s.svc.%s" (include "squid.fullname" .) .Values.namespace.name $clusterDomain }}
+        {{- $svcFQDN := printf "%s.%s.svc.%s" .Values.squid.name .Values.namespace.name $clusterDomain }}
         serverName: {{ .Values.prometheus.serviceMonitor.perSiteTLS.serverName | default $svcFQDN }}
         insecureSkipVerify: {{ .Values.prometheus.serviceMonitor.perSiteTLS.insecureSkipVerify | default false }}
         {{- with .Values.prometheus.serviceMonitor.perSiteTLS.ca }}

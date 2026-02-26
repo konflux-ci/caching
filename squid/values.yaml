@@ -62,6 +62,8 @@ envSettings:
 # Enable/disable the Squid forward proxy component
 squid:
   enabled: true
+  # Name used for all squid resources (services, statefulset, configmap) and labels.
+  name: "squid"
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
@@ -398,6 +400,9 @@ tlsOutgoingOptions:
 nginx:
   # Enable/disable the Nginx reverse proxy component
   enabled: false
+
+  # Name used for all nginx resources (services, statefulset, configmap) and labels.
+  name: "nginx"
 
   # Replica count for the nginx proxy StatefulSet
   replicaCount: 1

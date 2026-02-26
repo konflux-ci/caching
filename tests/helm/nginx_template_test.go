@@ -491,4 +491,34 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			Expect(service).To(ContainSubstring("foo: bar"), "Service should have configured annotation")
 		})
 	})
+
+	Describe("Nginx Custom Name Configuration", func() {
+		It("should use custom name for all nginx resource names and labels", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled:      true,
+					Name: "my-custom-proxy",
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			service := extractNginxServiceSection(output)
+			Expect(service).To(ContainSubstring("name: my-custom-proxy"), "Service should use custom name")
+			Expect(service).To(ContainSubstring("app.kubernetes.io/name: my-custom-proxy"), "Service label should use custom name")
+
+			headless := extractNginxHeadlessServiceSection(output)
+			Expect(headless).To(ContainSubstring("name: my-custom-proxy-headless"), "Headless service should use custom name with -headless suffix")
+
+			statefulSet := extractNginxStatefulSetSection(output)
+			Expect(statefulSet).To(ContainSubstring("name: my-custom-proxy"), "StatefulSet should use custom name")
+			Expect(statefulSet).To(ContainSubstring("serviceName: my-custom-proxy-headless"), "StatefulSet serviceName should reference custom headless name")
+
+			configMap := extractNginxConfigMapSection(output)
+			Expect(configMap).To(ContainSubstring("name: my-custom-proxy-config"), "ConfigMap should use custom name with -config suffix")
+		})
+
+	})
 })

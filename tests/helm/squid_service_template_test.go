@@ -41,4 +41,29 @@ var _ = Describe("Helm Template Squid Service Configuration", func() {
 			Expect(service).NotTo(ContainSubstring("trafficDistribution"), "Regular service must not have trafficDistribution on K8s < 1.30")
 		})
 	})
+
+	Describe("Squid Custom Name Configuration", func() {
+		It("should use custom name for all squid resource names and labels", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Squid: &testhelpers.SquidValues{
+					Name: "my-proxy",
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			service := extractSquidServiceSection(output)
+			Expect(service).To(ContainSubstring("name: my-proxy"), "Service should use custom name")
+			Expect(service).To(ContainSubstring("app.kubernetes.io/name: my-proxy"), "Service label should use custom name")
+
+			headless := extractSquidHeadlessServiceSection(output)
+			Expect(headless).To(ContainSubstring("name: my-proxy-headless"), "Headless service should use custom name with -headless suffix")
+
+			statefulSet := extractSquidDeploymentSection(output)
+			Expect(statefulSet).To(ContainSubstring("name: my-proxy"), "StatefulSet should use custom name")
+			Expect(statefulSet).To(ContainSubstring("serviceName: my-proxy-headless"), "StatefulSet serviceName should reference custom headless name")
+
+			configMap := extractSquidConfigMapSection(output)
+			Expect(configMap).To(ContainSubstring("name: my-proxy-config"), "ConfigMap should use custom name with -config suffix")
+		})
+	})
 })
