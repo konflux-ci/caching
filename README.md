@@ -2,7 +2,7 @@
 
 This repository contains a Helm chart for deploying a Squid HTTP proxy server in Kubernetes. The chart is designed to be self-contained and deploys into a dedicated `caching` namespace.
 
-## Deveoplment Prerequisites
+## Development Prerequisites
 
 Increase the `inotify` resource limits to avoid Kind issues related to
 [too many open files in](https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files).
@@ -101,8 +101,9 @@ mage kind:down        # Remove cluster
 mage kind:upClean     # Force recreate cluster
 
 # Image management
-mage build:squid         # Build consolidated squid image (includes integrated squid-exporter)
-mage build:loadSquid     # Load squid image into cluster
+mage build:squid               # Build squid image (squid + squid-exporter + per-site-exporter + store-id + icap-server)
+mage build:accessLogExporter   # Build access-log-exporter image (for use as sidecar with nginx monitoring)
+mage build:loadSquid           # Load squid image into cluster
 
 # Deployment management
 mage squidHelm:up     # Deploy/upgrade helm chart
@@ -140,12 +141,21 @@ kubectl cluster-info --context kind-caching
 
 #### 2. Build and Load the Squid Container Image
 
+The Containerfile has multiple stages (squid and access-log-exporter). Use `--target squid` to build the Squid image:
+
 ```bash
-# Build the container image (or use: mage build:squid)
-podman build -t localhost/konflux-ci/squid:latest -f Containerfile .
+# Build the squid image (or use: mage build:squid)
+podman build --target squid -t localhost/konflux-ci/squid:latest -f Containerfile .
 
 # Load the image into kind (or use: mage build:loadSquid)
 kind load image-archive --name caching <(podman save localhost/konflux-ci/squid:latest)
+```
+
+To build the access-log-exporter image (minimal image for use as sidecar with NGINX) instead:
+
+```bash
+# Build the access-log-exporter image (or use: mage build:accessLogExporter)
+podman build --target access-log-exporter -t localhost/konflux-ci/access-log-exporter:latest -f Containerfile .
 ```
 
 #### 3. Build and Load the "Testing" Container Image
@@ -1042,6 +1052,7 @@ kind delete cluster --name caching
 ```bash
 # Remove the local container images
 podman rmi localhost/konflux-ci/squid:latest
+podman rmi localhost/konflux-ci/access-log-exporter:latest
 podman rmi localhost/konflux-ci/squid-test:latest
 ```
 

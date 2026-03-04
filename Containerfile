@@ -53,6 +53,10 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     CGO_ENABLED=0 GOOS=linux go build -o /workspace/squid-exporter github.com/boynux/squid-exporter
 
+# 2b. Build external access-log-exporter (using prefetched modules)
+RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
+    CGO_ENABLED=0 GOOS=linux go build -o /workspace/access-log-exporter github.com/jkroepke/access-log-exporter/cmd/access-log-exporter
+
 # 3. Copy source and build the per-site exporter
 COPY ./cmd/squid-per-site-exporter ./cmd/squid-per-site-exporter
 RUN --mount=type=cache,target=/tmp/go-cache \
@@ -71,9 +75,47 @@ RUN --mount=type=cache,target=/tmp/go-cache \
     CGO_ENABLED=0 GOOS=linux go build -o /workspace/icap-server ./cmd/icap-server
 
 # ==========================================
-# Final Stage: Squid with integrated exporters and helpers
+# Stage: access-log-exporter only (for use as sidecar with nginx monitoring).
+# Build with: podman build --target access-log-exporter -t access-log-exporter .
 # ==========================================
-FROM squid-base
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:29599cb2a44f3275232bc5fc48d26e069e8ba72b710229bed6652633725aa31a AS access-log-exporter
+
+ENV NAME="konflux-ci/access-log-exporter"
+ENV SUMMARY="Access-log-exporter for Prometheus metrics from NGINX access logs (Konflux CI)"
+ENV DESCRIPTION="\
+    Minimal image containing only the access-log-exporter binary for use as a \
+    sidecar with NGINX. Exposes Prometheus metrics from NGINX access logs."
+
+LABEL name="$NAME"
+LABEL summary="$SUMMARY"
+LABEL description="$DESCRIPTION"
+LABEL usage="podman run -d --name access-log-exporter $NAME"
+LABEL maintainer="hmariset@redhat.com"
+LABEL com.redhat.component="konflux-ci-access-log-exporter-container"
+LABEL io.k8s.description="$DESCRIPTION"
+LABEL io.k8s.display-name="konflux-ci-access-log-exporter"
+LABEL io.openshift.tags="exporter,metrics"
+LABEL version="1.0"
+LABEL release="1"
+LABEL vendor="Red Hat, Inc."
+LABEL distribution-scope="public"
+LABEL url="https://github.com/konflux-ci/caching"
+
+# Copy access-log-exporter binary from builder stage
+COPY --from=go-builder /workspace/access-log-exporter /usr/local/bin/
+
+# Set permissions
+RUN chmod +x /usr/local/bin/access-log-exporter
+
+USER 1001
+
+ENTRYPOINT ["/usr/local/bin/access-log-exporter"]
+
+# ==========================================
+# Final stage (default build target): Squid with integrated exporters and helpers.
+# CI builds this image when building Containerfile without --target.
+# ==========================================
+FROM squid-base AS squid
 
 ENV NAME="konflux-ci/squid"
 ENV SUMMARY="The Squid proxy caching server for Konflux CI"
