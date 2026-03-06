@@ -130,10 +130,17 @@ var _ = BeforeSuite(func() {
 		}
 	}
 
-	err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
-		ReplicaCount: int(suiteReplicaCount),
-	})
-	Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+	// When running inside the helm test pod (Tekton or "mage all"), the chart is already installed.
+	// Skipping helm upgrade avoids replacing the release secret and breaking the parent "helm test"
+	// which updates the release after the test pod completes.
+	if os.Getenv("SKIP_SUITE_HELM_UPGRADE") != "1" {
+		err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
+			ReplicaCount: int(suiteReplicaCount),
+		})
+		Expect(err).NotTo(HaveOccurred(), "Failed to configure squid")
+	} else {
+		fmt.Printf("DEBUG: SKIP_SUITE_HELM_UPGRADE=1, skipping helm upgrade (chart already installed)\n")
+	}
 
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})
