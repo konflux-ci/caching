@@ -48,6 +48,11 @@ spec:
     # helm install/upgrade commands.
     - name: SQUID_TEST_IMAGE
       value: "{{ include "squid.test.image" . }}"
+    # When running inside the helm test pod, the chart was already installed (by pipeline or mage).
+    # Skipping helm upgrade in BeforeSuite avoids replacing the release secret and breaking the
+    # parent "helm test" process which updates the release after the pod completes.
+    - name: SKIP_SUITE_HELM_UPGRADE
+      value: "1"
     resources:
       {{- toYaml .Values.test.resources | nindent 6 }}
 {{- end }}
