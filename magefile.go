@@ -366,8 +366,11 @@ func (SquidHelm) Up() error {
 		"squid",
 		"./squid",
 		"--install",
+		"--cleanup-on-fail",
 		"--set", "environment=dev",
 		"--set", "nginx.enabled=true",
+		"--set", "nginx.cache.allowList={^/}",
+		"--set", "nginx.upstream.url=http://nexus.caching.svc.cluster.local:8081",
 		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
 		"--wait",
 		"--timeout=300s",
@@ -631,6 +634,8 @@ func resetSquidToDefaults() {
 		"./squid",
 		"--set", "environment=dev",
 		"--set", "nginx.enabled=true",
+		"--set", "nginx.cache.allowList={^/}",
+		"--set", "nginx.upstream.url=http://nexus.caching.svc.cluster.local:8081",
 		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
 		"--wait",
 		"--timeout=300s",
@@ -673,6 +678,8 @@ func (Test) ClusterMultiReplica() error {
 		"-n=default", "--wait", "--timeout=300s",
 		"--set", "replicaCount=3",
 		"--set", "nginx.enabled=true",
+		"--set", "nginx.cache.allowList={^/}",
+		"--set", "nginx.upstream.url=http://nexus.caching.svc.cluster.local:8081",
 		"--set", "environment=dev")
 	if err != nil {
 		return fmt.Errorf("failed to set replica count to 3: %w", err)
