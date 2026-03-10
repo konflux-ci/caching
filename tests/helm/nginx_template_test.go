@@ -402,6 +402,9 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 
 			// Upstream URL should appear in both cached location and default location
 			Expect(strings.Count(configMap, "proxy_pass http://nexus.example.com:8081")).To(Equal(2), "Should have upstream URL in both locations")
+
+			// Host header should be derived from the upstream URL
+			Expect(strings.Count(configMap, "proxy_set_header Host nexus.example.com:8081")).To(Equal(2), "Should derive Host header from upstream URL in both locations")
 		})
 	})
 
