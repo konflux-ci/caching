@@ -39,13 +39,13 @@ arches:
     name: cpp
     evr: 14.3.1-2.1.el10
     sourcerpm: gcc-14.3.1-2.1.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/d/delve-1.25.2-1.el10_1.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/d/delve-1.25.2-2.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 5488878
-    checksum: sha256:218f5cfc64180fc25e5c4d244756739ae90161a96ba9ff89e2371c531a57d7e1
+    size: 5563202
+    checksum: sha256:c3212b9a0c337b87f09ffe91c8e779253891270461ee50f30c01b3901d3fb426
     name: delve
-    evr: 1.25.2-1.el10_1
-    sourcerpm: delve-1.25.2-1.el10_1.src.rpm
+    evr: 1.25.2-2.el10_1
+    sourcerpm: delve-1.25.2-2.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/gcc-14.3.1-2.1.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 39857423
@@ -123,13 +123,13 @@ arches:
     name: httpd-filesystem
     evr: 2.4.63-4.el10_1.3
     sourcerpm: httpd-2.4.63-4.el10_1.3.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-124.40.1.el10_1.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-124.43.1.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 3410261
-    checksum: sha256:5bc3e5a2924a6cb4f94e09fb4cc49f47cd99273ff39f96371c9e072c3c3336c5
+    size: 3414681
+    checksum: sha256:2d29eead3ba308c8bec86f0e41a0d76602b50494aa6634243cd327e02fbc1e47
     name: kernel-headers
-    evr: 6.12.0-124.40.1.el10_1
-    sourcerpm: kernel-6.12.0-124.40.1.el10_1.src.rpm
+    evr: 6.12.0-124.43.1.el10_1
+    sourcerpm: kernel-6.12.0-124.43.1.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/l/libecap-1.0.1-19.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 29616
