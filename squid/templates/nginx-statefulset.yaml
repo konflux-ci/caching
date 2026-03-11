@@ -32,7 +32,6 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.nginx.auth.enabled }}
       initContainers:
         - name: init-config
           image: {{ .Values.nginx.image }}
@@ -40,8 +39,12 @@ spec:
           args:
             - |
               set -e
-              AUTH_VALUE=$(cat /secrets/authorization)
-              sed "s|__AUTH_HEADER__|${AUTH_VALUE}|g" /config-template/nginx.conf > /config/nginx.conf
+              RESOLVER=$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf)
+              sed -e "s|__RESOLVER__|${RESOLVER}|g" \
+              {{- if .Values.nginx.auth.enabled }}
+                  -e "s|__AUTH_HEADER__|$(cat /secrets/authorization)|g" \
+              {{- end }}
+                  /config-template/nginx.conf > /config/nginx.conf
           resources:
             requests:
               cpu: 10m
@@ -57,10 +60,11 @@ spec:
               readOnly: true
             - name: config
               mountPath: /config
+            {{- if .Values.nginx.auth.enabled }}
             - name: auth-secret
               mountPath: /secrets
               readOnly: true
-      {{- end }}
+            {{- end }}
       containers:
         - name: nginx
           image: {{ .Values.nginx.image }}
@@ -113,17 +117,10 @@ spec:
               mountPath: /etc/nginx/tls
               readOnly: true
             {{- end }}
-            {{- if .Values.nginx.auth.enabled }}
             - name: config
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
               readOnly: true
-            {{- else }}
-            - name: config-template
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx.conf
-              readOnly: true
-            {{- end }}
       volumes:
         - name: config-template
           configMap:
@@ -133,9 +130,9 @@ spec:
           secret:
             secretName: {{ .Values.nginx.tls.secretName }}
         {{- end }}
-        {{- if .Values.nginx.auth.enabled }}
         - name: config
           emptyDir: {}
+        {{- if .Values.nginx.auth.enabled }}
         - name: auth-secret
           secret:
             secretName: {{ .Values.nginx.auth.secretName }}
