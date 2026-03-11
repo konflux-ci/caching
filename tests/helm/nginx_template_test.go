@@ -127,7 +127,7 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 	})
 
 	Describe("Nginx Auth Configuration", func() {
-		It("should not include init container when auth is disabled", func() {
+		It("should not include auth secret in init container when auth is disabled", func() {
 			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
 				Nginx: &testhelpers.NginxValues{
 					Enabled: true,
@@ -142,11 +142,12 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			statefulSet := extractNginxStatefulSetSection(output)
-			Expect(statefulSet).NotTo(ContainSubstring("initContainers"), "Should not have init containers when auth disabled")
+			Expect(statefulSet).To(ContainSubstring("initContainers"), "Should have init container for resolver substitution")
 			Expect(statefulSet).NotTo(ContainSubstring("auth-secret"), "Should not mount auth secret when auth disabled")
+			Expect(statefulSet).NotTo(ContainSubstring("__AUTH_HEADER__"), "Should not substitute auth header when auth disabled")
 		})
 
-		It("should include init container and auth volumes when auth is enabled", func() {
+		It("should substitute auth header and mount auth secret when auth is enabled", func() {
 			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
 				Nginx: &testhelpers.NginxValues{
 					Enabled: true,
@@ -166,7 +167,7 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			// Verify init container
 			Expect(statefulSet).To(ContainSubstring("initContainers"), "Should have init containers when auth enabled")
 			Expect(statefulSet).To(ContainSubstring("name: init-config"), "Should have init-config container")
-			Expect(statefulSet).To(ContainSubstring("sed \"s|__AUTH_HEADER__|${AUTH_VALUE}|g\""), "Should replace auth header placeholder")
+			Expect(statefulSet).To(ContainSubstring(`s|__AUTH_HEADER__|$(cat /secrets/authorization)|g`), "Should replace auth header placeholder")
 
 			// Verify auth secret volume
 			Expect(statefulSet).To(ContainSubstring("auth-secret"), "Should have auth-secret volume")
@@ -177,9 +178,8 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			Expect(statefulSet).To(ContainSubstring("emptyDir: {}"), "Config volume should be emptyDir")
 		})
 
-		It("should mount config differently based on auth setting", func() {
-			// Without auth - mount config-template directly
-			outputNoAuth, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+		It("should always mount processed config from init container", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
 				Nginx: &testhelpers.NginxValues{
 					Enabled: true,
 					Upstream: &testhelpers.NginxUpstreamValues{
@@ -189,27 +189,9 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			statefulSet := extractNginxStatefulSetSection(outputNoAuth)
-			Expect(statefulSet).To(ContainSubstring("name: config-template"), "Should mount config-template when auth disabled")
-
-			// With auth - mount processed config
-			outputWithAuth, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
-				Nginx: &testhelpers.NginxValues{
-					Enabled: true,
-					Upstream: &testhelpers.NginxUpstreamValues{
-						URL: "http://backend:8080",
-					},
-					Auth: &testhelpers.NginxAuthValues{
-						Enabled:    true,
-						SecretName: "my-secret",
-					},
-				},
-			})
-			Expect(err).NotTo(HaveOccurred())
-
-			statefulSet = extractNginxStatefulSetSection(outputWithAuth)
-			// Should mount the processed config from emptyDir, not config-template
-			Expect(statefulSet).To(MatchRegexp(`-\s+name: config\s+mountPath: /etc/nginx/nginx.conf`), "Should mount processed config when auth enabled")
+			statefulSet := extractNginxStatefulSetSection(output)
+			// Should always mount the processed config from emptyDir
+			Expect(statefulSet).To(MatchRegexp(`-\s+name: config\s+mountPath: /etc/nginx/nginx.conf`), "Should mount processed config")
 		})
 	})
 
@@ -384,7 +366,7 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 	})
 
 	Describe("Nginx ConfigMap Upstream Configuration", func() {
-		It("should configure upstream URL in all proxy_pass directives", func() {
+		It("should configure upstream URL in all locations via variable for DNS re-resolution", func() {
 			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
 				Nginx: &testhelpers.NginxValues{
 					Enabled: true,
@@ -400,8 +382,9 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 
 			configMap := extractNginxConfigMapSection(output)
 
-			// Upstream URL should appear in both cached location and default location
-			Expect(strings.Count(configMap, "proxy_pass http://nexus.example.com:8081")).To(Equal(2), "Should have upstream URL in both locations")
+			// Upstream URL should be set via variable once at server level
+			Expect(strings.Count(configMap, `set $upstream_url "http://nexus.example.com:8081"`)).To(Equal(1), "Should set upstream_url variable once at server level")
+			Expect(strings.Count(configMap, "proxy_pass $upstream_url")).To(Equal(2), "Should use upstream_url variable in proxy_pass in both locations")
 
 			// Host header should be derived from the upstream URL
 			Expect(strings.Count(configMap, "proxy_set_header Host nexus.example.com:8081")).To(Equal(2), "Should derive Host header from upstream URL in both locations")

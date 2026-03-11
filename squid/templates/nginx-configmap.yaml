@@ -57,6 +57,13 @@ data:
                          inactive=7d
                          use_temp_path=off;
 
+        # Re-resolve DNS on the specified interval rather than only at startup.
+        # Nginx has no built-in default resolver for runtime DNS resolution, so
+        # one must be explicitly configured. The init container populates this
+        # from /etc/resolv.conf to ensure portability across clusters.
+        resolver __RESOLVER__ valid=60s;
+        resolver_timeout 5s;
+
         server {
             {{- if .Values.nginx.tls.enabled }}
             # HTTPS server on port 8443
@@ -81,6 +88,12 @@ data:
             listen 8080;
             {{- end }}
 
+            # Store the upstream URL in a variable so nginx periodically re-resolves
+            # DNS via the resolver directive. A static proxy_pass URL is only
+            # resolved once at config load; using a variable enables re-resolution
+            # based on the resolver's valid interval.
+            set $upstream_url "{{ .Values.nginx.upstream.url }}";
+
             # Health check endpoint for Kubernetes liveness/readiness probes.
             # Returns 200 OK without proxying the request or logging.
             location = /health {
@@ -93,7 +106,7 @@ data:
             # Cached location matching pattern: {{ . }}
             location ~ {{ . }} {
                 # Forward requests to the upstream server
-                proxy_pass {{ $.Values.nginx.upstream.url }};
+                proxy_pass $upstream_url;
 
                 # Send the upstream hostname so the backend receives the correct Host header
                 proxy_set_header Host {{ (urlParse $.Values.nginx.upstream.url).host }};
@@ -128,7 +141,7 @@ data:
             # Default location: proxy to the upstream server without caching.
             # Handles paths not matching any allowList patterns.
             location / {
-                proxy_pass {{ .Values.nginx.upstream.url }};
+                proxy_pass $upstream_url;
                 proxy_set_header Host {{ (urlParse .Values.nginx.upstream.url).host }};
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
