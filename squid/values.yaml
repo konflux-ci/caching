@@ -468,6 +468,11 @@ nginx:
     readOnlyRootFilesystem: true
     runAsNonRoot: true
 
+  # Affinity rules for pod scheduling
+  # By default, pod anti-affinity rules are applied to spread pods across nodes
+  # Uncomment the affinity section below to customize or disable these defaults
+  # affinity: {}
+
   # Pod security context
   podSecurityContext:
     runAsNonRoot: true

@@ -28,6 +28,15 @@ spec:
           labelSelector:
             matchLabels:
               {{- include "nginx.selectorLabels" . | nindent 14 }}
+      {{- if hasKey .Values.nginx "affinity" }}
+      {{- with .Values.nginx.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      affinity:
+        {{- include "nginx.defaultAffinity" . | nindent 8 }}
+      {{- end }}
       {{- with .Values.nginx.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}

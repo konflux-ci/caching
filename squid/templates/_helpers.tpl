@@ -116,3 +116,17 @@ app.kubernetes.io/name: {{ .Values.nginx.name }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: nginx-caching
 {{- end }}
+
+{{/*
+Default affinity rules when none are specified
+*/}}
+{{- define "nginx.defaultAffinity" -}}
+podAntiAffinity:
+  preferredDuringSchedulingIgnoredDuringExecution:
+  - weight: 100
+    podAffinityTerm:
+      labelSelector:
+        matchLabels:
+          {{- include "nginx.selectorLabels" . | nindent 10 }}
+      topologyKey: kubernetes.io/hostname
+{{- end }}
