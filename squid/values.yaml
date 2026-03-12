@@ -414,6 +414,12 @@ nginx:
     # Secret name containing `tls.crt` and `tls.key` keys
     secretName: "nginx-tls"
 
+  # Access-log-exporter sidecar (jkroepke). When enabled, NGINX sends access logs to syslog.
+  # Set to true only when the access-log-exporter sidecar is deployed (listening on 127.0.0.1:8514).
+  accessLogExporter:
+    syslog:
+      enabled: false
+
   # Backend server configuration
   upstream:
     # URL of the upstream server to proxy to

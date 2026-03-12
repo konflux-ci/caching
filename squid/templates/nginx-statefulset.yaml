@@ -79,6 +79,9 @@ spec:
               containerPort: 8443
               protocol: TCP
             {{- end }}
+            - name: metrics
+              containerPort: 8081
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /health

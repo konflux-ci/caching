@@ -658,6 +658,23 @@
           "minimum": 1,
           "description": "Number of replicas for the nginx StatefulSet"
         },
+        "accessLogExporter": {
+          "type": "object",
+          "description": "Access-log-exporter sidecar (jkroepke). When syslog.enabled is true, NGINX sends access logs to syslog.",
+          "properties": {
+            "syslog": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Send access logs to syslog (127.0.0.1:8514). Set true only when the access-log-exporter sidecar is deployed."
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
         "tls": {
           "type": "object",
           "description": "TLS/HTTPS configuration",

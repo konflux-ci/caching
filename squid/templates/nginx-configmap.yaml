@@ -42,8 +42,26 @@ data:
         uwsgi_temp_path /tmp/uwsgi;
         scgi_temp_path /tmp/scgi;
 
-        # Send access logs to container stdout so they appear in 'kubectl logs'
-        access_log /dev/stdout;
+        # Detailed log format for metrics extraction by access-log-exporter.
+        # Fields: request method, status code, request URI, request time, upstream response time, cache status
+        # - http_requests_total{method, status, cache_status, path}
+        # - http_request_duration_seconds{method, status, path}
+        # - http_upstream_request_duration_seconds{method, status, path}
+        log_format detailed '$request_method\t'
+                            '$status\t'
+                            '$request_uri\t'
+                            '$request_time\t'
+                            '$upstream_response_time\t'
+                            '$upstream_cache_status';
+
+        {{- if .Values.nginx.accessLogExporter.syslog.enabled }}
+        # Send logs to syslog for access-log-exporter sidecar (jkroepke/access-log-exporter)
+        # Only enable when the sidecar is deployed and listening on localhost:8514
+        access_log syslog:server=127.0.0.1:8514 detailed;
+        {{- end }}
+
+        # Also send logs to stdout for 'kubectl logs' and log aggregation
+        access_log /dev/stdout detailed;
 
         # Configure the disk cache for proxied artifact responses:
         # - levels=1:2: Two-level directory hierarchy for cached files
@@ -63,6 +81,21 @@ data:
         # from /etc/resolv.conf to ensure portability across clusters.
         resolver __RESOLVER__ valid=60s;
         resolver_timeout 5s;
+        
+        # Metrics endpoint for access-log-exporter to scrape basic NGINX stats.
+        # Provides connection and request counts for the nginx_up metric.
+        server {
+            listen 8081;
+
+            # NGINX stub_status endpoint exposes basic server metrics
+            location /stub_status {
+                stub_status;
+                # Only accessible from localhost (sidecar container)
+                allow 127.0.0.1;
+                deny all;
+                access_log off;
+            }
+        }
 
         server {
             {{- if .Values.nginx.tls.enabled }}
