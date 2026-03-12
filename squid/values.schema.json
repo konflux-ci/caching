@@ -733,6 +733,10 @@
         },
         "podSecurityContext": {
           "$ref": "#/$defs/podSecurityContext"
+        },
+        "affinity": {
+          "type": "object",
+          "description": "Affinity rules for nginx pod scheduling"
         }
       },
       "required": ["enabled"],
