@@ -1,13 +1,13 @@
 module github.com/konflux-ci/caching
 
-go 1.25.0
+go 1.25.6
 
 toolchain go1.25.7
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
 	github.com/cert-manager/cert-manager v1.19.4
-	github.com/google/go-containerregistry v0.20.7
+	github.com/google/go-containerregistry v0.21.2
 	github.com/intra-sh/icap v0.1.1
 	github.com/jkroepke/access-log-exporter v0.3.6
 	github.com/magefile/mage v1.16.0
