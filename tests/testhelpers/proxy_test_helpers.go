@@ -573,7 +573,8 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	// Build helm command as a shell string
 	// Use default namespace for Helm release metadata (matches magefile.go)
 	// Resources created in caching namespace (from chart's namespace templates)
-	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=300s", "--debug"}
+	// Increase history-max to prevent "secret not found" errors when multiple tests upgrade
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=300s", "--history-max=50", "--debug"}
 
 	// Values file is provided by callers
 	cmdParts = append(cmdParts, "--values", valuesFile)

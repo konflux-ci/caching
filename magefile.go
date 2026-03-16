@@ -670,7 +670,7 @@ func (Test) ClusterMultiReplica() error {
 	err := sh.RunWith(map[string]string{
 		"SQUID_REPLICA_COUNT": "3",
 	}, "helm", "upgrade", "squid", "./squid",
-		"-n=default", "--wait", "--timeout=300s",
+		"-n=default", "--wait", "--timeout=300s", "--history-max=50",
 		"--set", "replicaCount=3",
 		"--set", "nginx.enabled=true",
 		"--set", "environment=dev")

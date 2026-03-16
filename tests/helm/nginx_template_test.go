@@ -478,6 +478,70 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 		})
 	})
 
+	Describe("Nginx access log format and stub_status", func() {
+		// Required variables in order for access-log-exporter; changing order or names breaks metrics.
+		detailedLogFormatVariables := []string{
+			"$request_method", "$status", "$request_uri",
+			"$request_time", "$upstream_response_time", "$upstream_cache_status",
+		}
+
+		It("should use the stable detailed log format for access-log-exporter", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+			Expect(configMap).To(ContainSubstring("log_format detailed"),
+				"must define the detailed log format")
+			for _, v := range detailedLogFormatVariables {
+				Expect(configMap).To(ContainSubstring(v), "detailed format must include "+v+" for access-log-exporter")
+			}
+			Expect(configMap).To(ContainSubstring("access_log /dev/stdout detailed"),
+				"stdout access log must use the detailed format")
+		})
+
+		It("should not expose stub_status port (8081) on the nginx Service", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			service := extractNginxServiceSection(output)
+			// Service must only expose the main app port (http/https), not the metrics port 8081.
+			// stub_status is on 8081 and must be reachable only from inside the pod (localhost).
+			Expect(service).NotTo(ContainSubstring("8081"), "Service must not expose port 8081 (stub_status); it must only be accessible from localhost inside the pod")
+			Expect(service).NotTo(ContainSubstring("name: metrics"), "Service must not expose the metrics port")
+		})
+
+		It("should restrict stub_status to localhost in nginx config", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+			Expect(configMap).To(ContainSubstring("location /stub_status"))
+			Expect(configMap).To(ContainSubstring("allow 127.0.0.1"))
+			Expect(configMap).To(ContainSubstring("deny all"))
+		})
+	})
+
 	Describe("Nginx Custom Name Configuration", func() {
 		It("should use custom name for all nginx resource names and labels", func() {
 			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
