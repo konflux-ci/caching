@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -25,6 +26,7 @@ type NginxValues struct {
 	Auth         *NginxAuthValues     `json:"auth,omitempty"`
 	Cache        *NginxCacheValues    `json:"cache,omitempty"`
 	Service      *NginxServiceValues  `json:"service,omitempty"`
+	Affinity     json.RawMessage      `json:"affinity,omitempty"`
 }
 
 // NginxTLSValues holds TLS configuration
