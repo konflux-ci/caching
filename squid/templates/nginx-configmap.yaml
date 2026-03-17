@@ -44,9 +44,6 @@ data:
 
         # Detailed log format for metrics extraction by access-log-exporter.
         # Fields: request method, status code, request URI, request time, upstream response time, cache status
-        # - http_requests_total{method, status, cache_status, path}
-        # - http_request_duration_seconds{method, status, path}
-        # - http_upstream_request_duration_seconds{method, status, path}
         log_format detailed '$request_method\t'
                             '$status\t'
                             '$request_uri\t'
@@ -55,7 +52,7 @@ data:
                             '$upstream_cache_status';
 
         # Send logs to syslog for access-log-exporter sidecar
-        access_log syslog:server=127.0.0.1:8514 detailed;
+        access_log syslog:server=127.0.0.1:{{ .Values.nginx.exporter.syslogPort }} detailed;
 
         # Send logs to stdout for 'kubectl logs' and log aggregation
         access_log /dev/stdout detailed;

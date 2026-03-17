@@ -133,6 +133,44 @@ spec:
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
               readOnly: true
+        {{- if .Values.nginx.exporter.enabled }}
+        # Access-log-exporter sidecar: exposes Prometheus metrics from NGINX access logs
+        - name: access-log-exporter
+          image: {{ include "nginx.exporter.image" . }}
+          imagePullPolicy: {{ .Values.nginx.exporter.imagePullPolicy | default "IfNotPresent" }}
+          args:
+            - "--config=/etc/exporter/config.yaml"
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.nginx.exporter.port }}
+              protocol: TCP
+          {{- if .Values.nginx.exporter.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.nginx.exporter.metricsPath }}
+              port: metrics
+            initialDelaySeconds: {{ .Values.nginx.exporter.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.nginx.exporter.livenessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.nginx.exporter.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.nginx.exporter.metricsPath }}
+              port: metrics
+            initialDelaySeconds: {{ .Values.nginx.exporter.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.nginx.exporter.readinessProbe.periodSeconds }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.nginx.exporter.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.nginx.exporter.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: exporter-config
+              mountPath: /etc/exporter
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+        {{- end }}
       volumes:
         - name: config-template
           configMap:
@@ -150,9 +188,15 @@ spec:
             secretName: {{ .Values.nginx.auth.secretName }}
         {{- end }}
         - name: tmp
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: {{ .Values.nginx.tmpVolumeSizeLimit | default "100Mi" }}
         - name: run
           emptyDir: {}
+        {{- if .Values.nginx.exporter.enabled }}
+        - name: exporter-config
+          configMap:
+            name: {{ .Values.nginx.name }}-exporter-config
+        {{- end }}
   volumeClaimTemplates:
     - metadata:
         name: cache

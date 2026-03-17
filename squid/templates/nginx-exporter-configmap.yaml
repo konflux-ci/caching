@@ -1,0 +1,91 @@
+{{- if and .Values.nginx.enabled .Values.nginx.exporter.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.nginx.name }}-exporter-config
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "nginx.labels" . | nindent 4 }}
+data:
+  config.yaml: |
+    # access-log-exporter configuration
+    # Receives NGINX access logs via syslog and exposes Prometheus metrics
+    # Includes cache status and upstream response time metrics per Jira requirements
+    
+    preset: "caching"
+    
+    syslog:
+      listenAddress: "udp://0.0.0.0:{{ .Values.nginx.exporter.syslogPort }}"
+    
+    web:
+      listenAddress: ":{{ .Values.nginx.exporter.port }}"
+    
+    nginx:
+      scrapeUri: "http://127.0.0.1:8081/stub_status"
+    
+    bufferSize: 1000
+    workerCount: 4
+    
+    # Custom preset for caching proxy metrics
+    # Log format: '$request_method\t$status\t$request_uri\t$request_time\t$upstream_response_time\t$upstream_cache_status'
+    # Fields: 0=method, 1=status, 2=request_uri, 3=request_time, 4=upstream_response_time, 5=cache_status
+    presets:
+      caching:
+        metrics:
+          - name: "http_requests_total"
+            type: "counter"
+            help: "The total number of client requests."
+            labels:
+              - name: "method"
+                lineIndex: 0
+              - name: "status"
+                lineIndex: 1
+              - name: "cache_status"
+                lineIndex: 5
+                replacements:
+                  - regexp: "^(HIT|MISS|BYPASS|EXPIRED|STALE|UPDATING|REVALIDATED)$"
+                    replacement: "$1"
+                  - regexp: ".*"
+                    replacement: "NONE"
+          
+          - name: "http_request_duration_seconds"
+            type: "histogram"
+            buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+            help: "The total time spent processing the request"
+            valueIndex: 3
+            labels:
+              - name: "method"
+                lineIndex: 0
+              - name: "status"
+                lineIndex: 1
+          
+          - name: "http_cache_status_total"
+            type: "counter"
+            help: "Total requests by cache status (HIT, MISS, BYPASS, EXPIRED, etc.)"
+            labels:
+              - name: "cache_status"
+                lineIndex: 5
+                replacements:
+                  - regexp: "^(HIT|MISS|BYPASS|EXPIRED|STALE|UPDATING|REVALIDATED)$"
+                    replacement: "$1"
+                  - regexp: ".*"
+                    replacement: "NONE"
+          
+          - name: "http_upstream_response_time_seconds"
+            type: "histogram"
+            buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+            help: "Time spent waiting for upstream server response"
+            valueIndex: 4
+            labels:
+              - name: "method"
+                lineIndex: 0
+              - name: "status"
+                lineIndex: 1
+              - name: "cache_status"
+                lineIndex: 5
+                replacements:
+                  - regexp: "^(HIT|MISS|BYPASS|EXPIRED|STALE|UPDATING|REVALIDATED)$"
+                    replacement: "$1"
+                  - regexp: ".*"
+                    replacement: "NONE"
+{{- end }}
