@@ -1,4 +1,4 @@
-{{- if and .Values.nginx.enabled .Values.nginx.exporter.enabled }}
+{{- if .Values.nginx.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -15,10 +15,10 @@ data:
     preset: "caching"
     
     syslog:
-      listenAddress: "udp://0.0.0.0:{{ .Values.nginx.exporter.syslogPort }}"
+      listenAddress: "udp://0.0.0.0:8514"
     
     web:
-      listenAddress: ":{{ .Values.nginx.exporter.port }}"
+      listenAddress: ":9113"
     
     nginx:
       scrapeUri: "http://127.0.0.1:8081/stub_status"

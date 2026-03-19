@@ -27,10 +27,8 @@ spec:
       targetPort: http
       name: http
       {{- end }}
-    {{- if .Values.nginx.exporter.enabled }}
-    - port: {{ .Values.nginx.exporter.port }}
+    - port: 9113
       targetPort: metrics
       protocol: TCP
       name: metrics
-    {{- end }}
 {{- end }}

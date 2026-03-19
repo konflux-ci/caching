@@ -33,7 +33,7 @@ envSettings:
     nginx:
       exporter:
         image:
-          repository: localhost/konflux-ci/access-log-exporter
+          repository: quay.io/konflux-ci/caching/access-log-exporter
           tag: "latest"
   prerelease:
     squid:
@@ -49,7 +49,7 @@ envSettings:
     nginx:
       exporter:
         image:
-          repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/access-log-exporter
+          repository: quay.io/konflux-ci/caching/access-log-exporter
           tag: "latest"
   release:
     squid:
@@ -494,25 +494,10 @@ nginx:
     seccompProfile:
       type: RuntimeDefault
 
-  # Shared /tmp volume size limit (used by both nginx and exporter containers)
-  tmpVolumeSizeLimit: "100Mi"
-
   # Access-log-exporter sidecar configuration (Prometheus metrics from NGINX access logs)
-  # Uses github.com/jkroepke/access-log-exporter with syslog input
-  # Note: Image is defined in envSettings for environment-specific configuration
+  # The exporter is always deployed with nginx to receive syslog access logs.
+  # Image is defined in envSettings for environment-specific configuration.
   exporter:
-    # Enable or disable the access-log-exporter sidecar
-    # Enabled by default - when nginx is deployed, the exporter should always be present
-    # to receive syslog traffic (otherwise logs are sent to non-existent listener)
-    enabled: true
-    # Image pull policy (Always, IfNotPresent, Never)
-    imagePullPolicy: IfNotPresent
-    # Port for Prometheus metrics endpoint
-    port: 9113
-    # Path for Prometheus metrics
-    metricsPath: "/metrics"
-    # Syslog port for receiving NGINX access logs
-    syslogPort: 8514
     # Security context for the exporter container
     securityContext:
       allowPrivilegeEscalation: false
@@ -531,16 +516,6 @@ nginx:
       limits:
         cpu: 100m
         memory: 64Mi
-    # Liveness probe for the exporter
-    livenessProbe:
-      enabled: true
-      initialDelaySeconds: 10
-      periodSeconds: 30
-    # Readiness probe for the exporter
-    readinessProbe:
-      enabled: true
-      initialDelaySeconds: 5
-      periodSeconds: 10
 
 # ============================================================================
 # TEST-SPECIFIC CONFIGURATION

@@ -52,7 +52,7 @@ data:
                             '$upstream_cache_status';
 
         # Send logs to syslog for access-log-exporter sidecar
-        access_log syslog:server=127.0.0.1:{{ .Values.nginx.exporter.syslogPort }} detailed;
+        access_log syslog:server=127.0.0.1:8514 detailed;
 
         # Send logs to stdout for 'kubectl logs' and log aggregation
         access_log /dev/stdout detailed;

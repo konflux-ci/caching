@@ -738,62 +738,15 @@
           "type": "object",
           "description": "Affinity rules for nginx pod scheduling"
         },
-        "tmpVolumeSizeLimit": {
-          "type": "string",
-          "description": "Size limit for shared /tmp volume (used by both nginx and exporter)",
-          "default": "100Mi"
-        },
         "exporter": {
           "type": "object",
-          "description": "Access-log-exporter sidecar configuration for Prometheus metrics",
+          "description": "Access-log-exporter sidecar configuration (always deployed with nginx)",
           "properties": {
-            "enabled": {
-              "type": "boolean",
-              "description": "Enable or disable the access-log-exporter sidecar (enabled by default when nginx is deployed)",
-              "default": true
-            },
-            "imagePullPolicy": {
-              "type": "string",
-              "enum": ["Always", "IfNotPresent", "Never"],
-              "description": "Image pull policy",
-              "default": "IfNotPresent"
-            },
-            "port": {
-              "type": "integer",
-              "description": "Port for Prometheus metrics endpoint",
-              "default": 9113
-            },
-            "metricsPath": {
-              "type": "string",
-              "description": "Path for Prometheus metrics",
-              "default": "/metrics"
-            },
-            "syslogPort": {
-              "type": "integer",
-              "description": "Syslog port for receiving NGINX access logs",
-              "default": 8514
-            },
             "securityContext": {
               "$ref": "#/$defs/securityContext"
             },
             "resources": {
               "$ref": "#/$defs/resources"
-            },
-            "livenessProbe": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean", "default": true },
-                "initialDelaySeconds": { "type": "integer", "default": 10 },
-                "periodSeconds": { "type": "integer", "default": 30 }
-              }
-            },
-            "readinessProbe": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean", "default": true },
-                "initialDelaySeconds": { "type": "integer", "default": 5 },
-                "periodSeconds": { "type": "integer", "default": 10 }
-              }
             }
           }
         }

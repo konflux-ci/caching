@@ -88,7 +88,7 @@ spec:
               containerPort: 8443
               protocol: TCP
             {{- end }}
-            - name: metrics
+            - name: stub-status
               containerPort: 8081
               protocol: TCP
           livenessProbe:
@@ -133,33 +133,28 @@ spec:
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
               readOnly: true
-        {{- if .Values.nginx.exporter.enabled }}
         # Access-log-exporter sidecar: exposes Prometheus metrics from NGINX access logs
         - name: access-log-exporter
           image: {{ include "nginx.exporter.image" . }}
-          imagePullPolicy: {{ .Values.nginx.exporter.imagePullPolicy | default "IfNotPresent" }}
+          imagePullPolicy: IfNotPresent
           args:
             - "--config=/etc/exporter/config.yaml"
           ports:
             - name: metrics
-              containerPort: {{ .Values.nginx.exporter.port }}
+              containerPort: 9113
               protocol: TCP
-          {{- if .Values.nginx.exporter.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
-              path: {{ .Values.nginx.exporter.metricsPath }}
+              path: /metrics
               port: metrics
-            initialDelaySeconds: {{ .Values.nginx.exporter.livenessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.nginx.exporter.livenessProbe.periodSeconds }}
-          {{- end }}
-          {{- if .Values.nginx.exporter.readinessProbe.enabled }}
+            initialDelaySeconds: 10
+            periodSeconds: 30
           readinessProbe:
             httpGet:
-              path: {{ .Values.nginx.exporter.metricsPath }}
+              path: /metrics
               port: metrics
-            initialDelaySeconds: {{ .Values.nginx.exporter.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.nginx.exporter.readinessProbe.periodSeconds }}
-          {{- end }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
             {{- toYaml .Values.nginx.exporter.resources | nindent 12 }}
           securityContext:
@@ -170,7 +165,6 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
-        {{- end }}
       volumes:
         - name: config-template
           configMap:
@@ -189,14 +183,12 @@ spec:
         {{- end }}
         - name: tmp
           emptyDir:
-            sizeLimit: {{ .Values.nginx.tmpVolumeSizeLimit | default "100Mi" }}
+            sizeLimit: 100Mi
         - name: run
           emptyDir: {}
-        {{- if .Values.nginx.exporter.enabled }}
         - name: exporter-config
           configMap:
             name: {{ .Values.nginx.name }}-exporter-config
-        {{- end }}
   volumeClaimTemplates:
     - metadata:
         name: cache
