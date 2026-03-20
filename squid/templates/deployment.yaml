@@ -81,6 +81,9 @@ spec:
             # Mount the SSL database volume
             - name: squid-spool-ssl
               mountPath: /var/spool/squid/ssl
+            # Writable scratch space for the entrypoint
+            - name: squid-tmp
+              mountPath: /tmp
             {{- if .Values.test.enabled }}
             # Mount the test-server's CA bundle for upstream trust
             - name: test-server-ca-bundle-vol
@@ -195,6 +198,9 @@ spec:
             secretName: {{ .Values.namespace.name }}-tls
         # Volume for Squid's SSL database
         - name: squid-spool-ssl
+          emptyDir: {}
+        # Writable scratch space for the entrypoint
+        - name: squid-tmp
           emptyDir: {}
         {{- if .Values.test.enabled }}
         # This volume makes the ConfigMap created by the test-server-bundle available
