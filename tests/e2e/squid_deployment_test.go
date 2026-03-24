@@ -496,7 +496,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 				Expect(cachingCert.Name).To(Equal(namespace + "-cert"))
 
 				// Verify the certificate spec
-				Expect(cachingCert.Spec.SecretName).To(Equal(namespace + "-tls"))
+				Expect(cachingCert.Spec.SecretName).To(Equal(testhelpers.SquidTLSSecretName))
 				Expect(cachingCert.Spec.IssuerRef.Name).To(Equal(namespace + "-ca-issuer"))
 				Expect(cachingCert.Spec.IssuerRef.Kind).To(Equal("ClusterIssuer"))
 				Expect(cachingCert.Spec.IsCA).To(BeTrue(), "Caching certificate should have isCA set to true")
@@ -522,10 +522,10 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 			It("should have the TLS secret created with certificate data", func() {
 				// Get the TLS secret from the caching namespace
-				tlsSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, namespace+"-tls", metav1.GetOptions{})
+				tlsSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, testhelpers.SquidTLSSecretName, metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred(), "Failed to get TLS secret")
 				Expect(tlsSecret).NotTo(BeNil(), "TLS Secret should not be nil")
-				Expect(tlsSecret.Name).To(Equal(namespace + "-tls"))
+				Expect(tlsSecret.Name).To(Equal(testhelpers.SquidTLSSecretName))
 				Expect(tlsSecret.Type).To(Equal(corev1.SecretTypeTLS), "Secret should be of type TLS")
 
 				// Verify the secret contains the required data

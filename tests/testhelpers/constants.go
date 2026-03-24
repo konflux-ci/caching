@@ -14,6 +14,7 @@ const (
 	SquidStatefulSetName = "squid"
 	SquidContainerName   = "squid"
 	SquidComponentLabel  = "squid-caching"
+	SquidTLSSecretName   = Namespace + "-tls"
 
 	// Nginx constants
 	NginxServiceName     = "nginx"
