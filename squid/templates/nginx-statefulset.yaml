@@ -147,12 +147,14 @@ spec:
             httpGet:
               path: /metrics
               port: metrics
+              scheme: HTTPS
             initialDelaySeconds: 10
             periodSeconds: 30
           readinessProbe:
             httpGet:
               path: /metrics
               port: metrics
+              scheme: HTTPS
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
@@ -162,6 +164,9 @@ spec:
           volumeMounts:
             - name: exporter-config
               mountPath: /etc/exporter
+              readOnly: true
+            - name: exporter-tls
+              mountPath: /etc/exporter/tls
               readOnly: true
             - name: tmp
               mountPath: /tmp
@@ -189,6 +194,9 @@ spec:
         - name: exporter-config
           configMap:
             name: {{ .Values.nginx.name }}-exporter-config
+        - name: exporter-tls
+          secret:
+            secretName: {{ .Values.namespace.name }}-tls
   volumeClaimTemplates:
     - metadata:
         name: cache

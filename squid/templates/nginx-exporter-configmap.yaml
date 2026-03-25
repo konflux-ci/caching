@@ -19,6 +19,8 @@ data:
     
     web:
       listenAddress: ":9113"
+      tlsCertFile: "/etc/exporter/tls/tls.crt"
+      tlsKeyFile: "/etc/exporter/tls/tls.key"
     
     nginx:
       scrapeUri: "http://127.0.0.1:8081/stub_status"
