@@ -27,4 +27,8 @@ spec:
       targetPort: http
       name: http
       {{- end }}
+    - port: 9113
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
 {{- end }}

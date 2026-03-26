@@ -44,9 +44,6 @@ data:
 
         # Detailed log format for metrics extraction by access-log-exporter.
         # Fields: request method, status code, request URI, request time, upstream response time, cache status
-        # - http_requests_total{method, status, cache_status, path}
-        # - http_request_duration_seconds{method, status, path}
-        # - http_upstream_request_duration_seconds{method, status, path}
         log_format detailed '$request_method\t'
                             '$status\t'
                             '$request_uri\t'
