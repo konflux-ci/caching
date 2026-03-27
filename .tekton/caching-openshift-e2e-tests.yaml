@@ -11,12 +11,10 @@ metadata:
     appstudio.openshift.io/application: caching
     appstudio.openshift.io/component: squid
     pipelines.appstudio.openshift.io/type: test
-  name: squid-e2e-eaas-test
+  name: caching-openshift-e2e-tests
   namespace: konflux-vanguard-tenant
 spec:
   params:
-    - name: test-name
-      value: squid-openshift-e2e
     - name: ocp-version
       value: "4.17"
     - name: test-event-type
@@ -27,16 +25,13 @@ spec:
   pipelineSpec:
     description: |-
       This pipeline automates the process of running end-to-end tests for Squid
-      on an ephemeral OpenShift cluster using EaaS (Environment as a Service).
+      on an ephemeral OpenShift cluster provisioned via OpenShift CI.
       It runs on pull_request events and uses PR build images directly.
     params:
       - name: SNAPSHOT
         description: 'JSON string containing the application components and their container images'
         default: '{"components": []}'
         type: string
-      - name: test-name
-        description: 'The name of the test corresponding to a defined Konflux integration test.'
-        default: 'squid-e2e'
       - name: ocp-version
         description: 'The OpenShift version to use for the ephemeral cluster deployment.'
         type: string
@@ -63,12 +58,10 @@ spec:
             - name: revision
               value: main
             - name: pathInRepo
-              value: tasks/test-metadata/0.1/test-metadata.yaml
+              value: tasks/test-metadata/0.4/test-metadata.yaml
         params:
           - name: SNAPSHOT
             value: $(params.SNAPSHOT)
-          - name: test-name
-            value: $(context.pipelineRun.name)
 
       # Extract component images from the snapshot
       # The snapshot contains all built component images for this PR
@@ -116,139 +109,117 @@ spec:
           - name: SNAPSHOT
             value: $(params.SNAPSHOT)
 
-      # Provision EaaS namespace
-      - name: provision-eaas-space
+      # Construct the PR event data needed by the provision task.
+      # The reconciler needs org/repo/PR to fetch PR metadata from GitHub.
+      # PaC template variables ({{ body }}/{{ headers }}) are not resolved
+      # when the integration service creates the PipelineRun, so we construct
+      # the payload from the SNAPSHOT and PipelineRun annotations instead.
+      - name: build-pr-event
+        runAfter:
+          - test-metadata
+        taskSpec:
+          results:
+            - name: pr-event-payload
+            - name: pr-event-headers
+          steps:
+            - name: build
+              image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:deabe80a01dca3a8a0edb709324e30cbf0baa176f7a181bbb695323f506f7aac
+              env:
+                - name: GROUP_TEST_INFO
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['test.appstudio.openshift.io/group-test-info']
+              script: |
+                #!/bin/bash
+                set -euo pipefail
+
+                repo_url=$(echo "$GROUP_TEST_INFO" | jq -r '.[0].repoUrl // empty')
+                pr_number=$(echo "$GROUP_TEST_INFO" | jq -r '.[0].pullRequestNumber // empty')
+
+                if [ -z "$repo_url" ] || [ -z "$pr_number" ]; then
+                  echo "ERROR: Could not extract repoUrl or pullRequestNumber from group-test-info"
+                  echo "group-test-info: $GROUP_TEST_INFO"
+                  exit 1
+                fi
+
+                repo_path=$(echo "$repo_url" | sed 's|https://github.com/||; s|\.git$||')
+
+                # The reconciler expects valid JSON for the payload. It first
+                # unmarshals into PullRequestEvent (pull_request will be null),
+                # then falls back to regex-matching /org/repo/pulls/NUMBER from
+                # the raw string to fetch PR metadata via the GitHub API.
+                payload="{\"pr_url\": \"/${repo_path}/pulls/${pr_number}\"}"
+                headers="{\"X-Github-Delivery\": \"$(cat /proc/sys/kernel/random/uuid)\"}"
+
+                echo "PR event payload: $payload"
+                echo "PR event headers: $headers"
+                echo -n "$payload" > $(results.pr-event-payload.path)
+                echo -n "$headers" > $(results.pr-event-headers.path)
+
+      # Provision ephemeral cluster via OpenShift CI
+      - name: provision-ephemeral-cluster
         when:
           - input: "$(tasks.test-metadata.results.test-event-type)"
             operator: in
             values: ["pull_request", "push", ""]
         runAfter:
-          - test-metadata
+          - build-pr-event
         taskRef:
           resolver: git
           params:
             - name: url
-              value: https://github.com/konflux-ci/build-definitions.git
+              value: https://github.com/amisstea/konflux-tasks
             - name: revision
-              value: main
+              value: KFLUXVNGD-836
             - name: pathInRepo
-              value: task/eaas-provision-space/0.1/eaas-provision-space.yaml
+              value: tasks/provision-ephemeral-cluster/0.1/provision-ephemeral-cluster.yaml
         params:
           - name: ownerName
             value: $(context.pipelineRun.name)
           - name: ownerUid
             value: $(context.pipelineRun.uid)
+          - name: prEventPayload
+            value: $(tasks.build-pr-event.results.pr-event-payload)
+          - name: prEventHeaders
+            value: $(tasks.build-pr-event.results.pr-event-headers)
+          - name: workflow
+            value: hypershift-hostedcluster-workflow
+          - name: env
+            value: '{"COMPUTE_NODE_TYPE": "$(params.machine-type)", "HYPERSHIFT_NODE_COUNT": "3"}'
+          - name: releases
+            value: |
+              {"latest":{"release":{"channel":"stable","version":"$(params.ocp-version)","architecture":"multi"}}}
+          - name: timeout
+            value: 30m
 
-      # Provision ephemeral cluster
-      - name: provision-cluster
+      # Create namespace on the ephemeral cluster for secret copying and deployment
+      - name: create-namespace
         when:
           - input: "$(tasks.test-metadata.results.test-event-type)"
             operator: in
             values: ["pull_request", "push", ""]
         runAfter:
-          - provision-eaas-space
-        taskSpec:
-          results:
-            - name: clusterName
-              value: "$(steps.create-cluster.results.clusterName)"
-          steps:
-            - name: get-supported-versions
-              ref:
-                resolver: git
-                params:
-                  - name: url
-                    value: https://github.com/konflux-ci/build-definitions.git
-                  - name: revision
-                    value: main
-                  - name: pathInRepo
-                    value: stepactions/eaas-get-supported-ephemeral-cluster-versions/0.1/eaas-get-supported-ephemeral-cluster-versions.yaml
-              params:
-                - name: eaasSpaceSecretRef
-                  value: $(tasks.provision-eaas-space.results.secretRef)
-            - name: get-latest-version
-              ref:
-                resolver: git
-                params:
-                  - name: url
-                    value: https://github.com/konflux-ci/build-definitions.git
-                  - name: revision
-                    value: main
-                  - name: pathInRepo
-                    value: stepactions/eaas-get-latest-openshift-version-by-prefix/0.1/eaas-get-latest-openshift-version-by-prefix.yaml
-              params:
-                - name: prefix
-                  value: "$(steps.get-supported-versions.results.versions[0])."
-            - name: create-cluster
-              ref:
-                resolver: git
-                params:
-                  - name: url
-                    value: https://github.com/konflux-ci/build-definitions.git
-                  - name: revision
-                    value: main
-                  - name: pathInRepo
-                    value: stepactions/eaas-create-ephemeral-cluster-hypershift-aws/0.1/eaas-create-ephemeral-cluster-hypershift-aws.yaml
-              params:
-                - name: eaasSpaceSecretRef
-                  value: $(tasks.provision-eaas-space.results.secretRef)
-                - name: version
-                  value: "$(steps.get-latest-version.results.version)"
-                - name: instanceType
-                  value: $(params.machine-type)
-                - name: timeout
-                  value: "45m"
-
-      # Run E2E tests
-      - name: squid-e2e-tests
-        timeout: 2h
-        when:
-          - input: "$(tasks.test-metadata.results.test-event-type)"
-            operator: in
-            values: ["pull_request", "push", ""]
-        runAfter:
-          - provision-cluster
-          - extract-snapshot-images
+          - provision-ephemeral-cluster
         taskSpec:
           params:
-            - name: squid-image
-            - name: tester-image
-            - name: git-url
-            - name: git-revision
-            - name: helm-version
-          volumes:
-            - name: credentials
-              emptyDir: {}
+            - name: clusterCredentialsSecretRef
           steps:
-            - name: get-kubeconfig
-              ref:
-                resolver: git
-                params:
-                  - name: url
-                    value: https://github.com/konflux-ci/build-definitions.git
-                  - name: revision
-                    value: main
-                  - name: pathInRepo
-                    value: stepactions/eaas-get-ephemeral-cluster-credentials/0.1/eaas-get-ephemeral-cluster-credentials.yaml
-              params:
-                - name: eaasSpaceSecretRef
-                  value: $(tasks.provision-eaas-space.results.secretRef)
-                - name: clusterName
-                  value: "$(tasks.provision-cluster.results.clusterName)"
-                - name: credentials
-                  value: credentials
             - name: create-namespace
               image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:deabe80a01dca3a8a0edb709324e30cbf0baa176f7a181bbb695323f506f7aac
               env:
-                - name: KUBECONFIG
-                  value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
-              volumeMounts:
-                - name: credentials
-                  mountPath: /credentials
+                - name: KUBECONFIG_VALUE
+                  valueFrom:
+                    secretKeyRef:
+                      name: $(params.clusterCredentialsSecretRef)
+                      key: kubeconfig
               script: |
                 #!/bin/bash
                 set -euo pipefail
+                KUBECONFIG="$(mktemp /tmp/kubeconfig.XXXXX)"
+                echo "$KUBECONFIG_VALUE" >"$KUBECONFIG"
+                export KUBECONFIG
                 echo "Creating caching namespace on ephemeral cluster..."
-                
+
                 cat <<EOF | oc apply -f -
                 apiVersion: v1
                 kind: Namespace
@@ -260,39 +231,72 @@ spec:
                     meta.helm.sh/release-name: squid
                     meta.helm.sh/release-namespace: default
                 EOF
-                
+
                 echo "Namespace created with Helm ownership labels"
-            - name: copy-secrets
-              ref:
-                resolver: git
-                params:
-                  - name: url
-                    value: https://github.com/konflux-ci/build-definitions.git
-                  - name: revision
-                    value: main
-                  - name: pathInRepo
-                    value: stepactions/eaas-copy-secrets-to-ephemeral-cluster/0.1/eaas-copy-secrets-to-ephemeral-cluster.yaml
-              params:
-                - name: credentials
-                  value: credentials
-                - name: kubeconfig
-                  value: "$(steps.get-kubeconfig.results.kubeconfig)"
-                - name: namespace
-                  value: "caching"
-                - name: labelSelector
-                  value: "appstudio.redhat.com/internal=true"
+        params:
+          - name: clusterCredentialsSecretRef
+            value: $(tasks.provision-ephemeral-cluster.results.secretRef)
+
+      # Copy secrets from Konflux namespace to the ephemeral cluster
+      - name: copy-secrets
+        when:
+          - input: "$(tasks.test-metadata.results.test-event-type)"
+            operator: in
+            values: ["pull_request", "push", ""]
+        runAfter:
+          - create-namespace
+        taskRef:
+          resolver: git
+          params:
+            - name: url
+              value: https://github.com/amisstea/konflux-tasks
+            - name: revision
+              value: KFLUXVNGD-836
+            - name: pathInRepo
+              value: tasks/copy-secrets-to-ephemeral-cluster/0.1/copy-secrets-to-ephemeral-cluster.yaml
+        params:
+          - name: clusterCredentialsSecretRef
+            value: $(tasks.provision-ephemeral-cluster.results.secretRef)
+          - name: namespace
+            value: caching
+          - name: labelSelector
+            value: "appstudio.redhat.com/internal=true"
+
+      # Run E2E tests
+      - name: e2e-tests
+        timeout: 2h
+        when:
+          - input: "$(tasks.test-metadata.results.test-event-type)"
+            operator: in
+            values: ["pull_request", "push", ""]
+        runAfter:
+          - copy-secrets
+          - extract-snapshot-images
+        taskSpec:
+          params:
+            - name: squid-image
+            - name: tester-image
+            - name: git-url
+            - name: git-revision
+            - name: helm-version
+            - name: clusterCredentialsSecretRef
+          steps:
             - name: deploy-and-test
               image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:deabe80a01dca3a8a0edb709324e30cbf0baa176f7a181bbb695323f506f7aac
               env:
-                - name: KUBECONFIG
-                  value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
-              volumeMounts:
-                - name: credentials
-                  mountPath: /credentials
+                - name: KUBECONFIG_VALUE
+                  valueFrom:
+                    secretKeyRef:
+                      name: $(params.clusterCredentialsSecretRef)
+                      key: kubeconfig
               script: |
                 #!/bin/bash
                 set -euo pipefail
-                
+
+                KUBECONFIG="$(mktemp /tmp/kubeconfig.XXXXX)"
+                echo "$KUBECONFIG_VALUE" >"$KUBECONFIG"
+                export KUBECONFIG
+
                 echo "Using kubeconfig at: $KUBECONFIG"
                 
                 # Install helm with pinned version
@@ -408,14 +412,22 @@ spec:
             value: "$(tasks.test-metadata.results.git-revision)"
           - name: helm-version
             value: "$(params.helm-version)"
+          - name: clusterCredentialsSecretRef
+            value: "$(tasks.provision-ephemeral-cluster.results.secretRef)"
 
     finally:
-      - name: cleanup-report
-        taskSpec:
-          steps:
-            - name: report
-              image: registry.redhat.io/ubi9/ubi-minimal:latest
-              script: |
-                #!/bin/bash
-                echo "Cleanup complete"
-                echo "Ephemeral cluster will auto-delete after 2 hours"
+      - name: deprovision-ephemeral-cluster
+        taskRef:
+          resolver: git
+          params:
+            - name: url
+              value: https://github.com/openshift/konflux-tasks
+            - name: revision
+              value: main
+            - name: pathInRepo
+              value: tasks/deprovision-ephemeral-cluster/0.1/deprovision-ephemeral-cluster.yaml
+        params:
+          - name: testPlatformClusterClaimName
+            value: $(tasks.provision-ephemeral-cluster.results.testPlatformClusterClaimName)
+          - name: testPlatformClusterClaimNamespace
+            value: $(tasks.provision-ephemeral-cluster.results.testPlatformClusterClaimNamespace)
