@@ -1,0 +1,44 @@
+{{- if and .Values.nginx.enabled .Values.prometheus.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Values.nginx.name }}
+  namespace: {{ .Values.prometheus.serviceMonitor.namespace | default .Values.namespace.name }}
+  labels:
+    {{- include "nginx.labels" . | nindent 4 }}
+    {{- with .Values.prometheus.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.prometheus.serviceMonitor.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "nginx.selectorLabels" . | nindent 6 }}
+  namespaceSelector:
+    matchNames:
+      - {{ .Values.namespace.name }}
+  endpoints:
+    - port: metrics
+      path: {{ .Values.prometheus.serviceMonitor.path }}
+      scheme: https
+      interval: {{ .Values.prometheus.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.prometheus.serviceMonitor.scrapeTimeout }}
+      honorLabels: true
+      tlsConfig:
+        {{- $clusterDomain := (default "cluster.local" .Values.clusterDomain) }}
+        {{- $svcFQDN := printf "%s.%s.svc.%s" .Values.nginx.name .Values.namespace.name $clusterDomain }}
+        serverName: {{ .Values.prometheus.serviceMonitor.nginxTLS.serverName | default $svcFQDN }}
+        insecureSkipVerify: {{ .Values.prometheus.serviceMonitor.nginxTLS.insecureSkipVerify | default false }}
+        {{- with .Values.prometheus.serviceMonitor.nginxTLS.ca }}
+        ca:
+          secret:
+            name: {{ .secretName }}
+            key: {{ .key | default "ca.crt" }}
+        {{- end }}
+        {{- with .Values.prometheus.serviceMonitor.nginxTLS.caFile }}
+        caFile: {{ . }}
+        {{- end }}
+{{- end }}
