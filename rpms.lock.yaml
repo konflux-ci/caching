@@ -81,41 +81,41 @@ arches:
     name: glibc-devel
     evr: 2.39-58.el10_1.7
     sourcerpm: glibc-2.39-58.el10_1.7.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/go-toolset-1.25.7-1.el10_1.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/go-toolset-1.25.8-1.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 13421
-    checksum: sha256:ecbb77545686df93974aee3381874b718b4633b59e0b0ff18da9ea9a60a1ad71
+    size: 13505
+    checksum: sha256:8596019fba44640c973194afe2040521f44b1f4f109e1dc34b9221007e5f6b5e
     name: go-toolset
-    evr: 1.25.7-1.el10_1
-    sourcerpm: golang-1.25.7-1.el10_1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-1.25.7-1.el10_1.x86_64.rpm
+    evr: 1.25.8-1.el10_1
+    sourcerpm: golang-1.25.8-1.el10_1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-1.25.8-1.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 1311941
-    checksum: sha256:23f233e97522bd3e25feaf2ab8b56b50df6818831f7c2c58887299f45213f6ab
+    size: 1311808
+    checksum: sha256:ab709e3342a410a7276ad681a862534b29b015dd7afb8a14ac85b3dce6f03d34
     name: golang
-    evr: 1.25.7-1.el10_1
-    sourcerpm: golang-1.25.7-1.el10_1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-bin-1.25.7-1.el10_1.x86_64.rpm
+    evr: 1.25.8-1.el10_1
+    sourcerpm: golang-1.25.8-1.el10_1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-bin-1.25.8-1.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 38329681
-    checksum: sha256:8ddd0d033246d0aa5ba367959342f038f3301754ce9c95e8454c70bdf4b19ae4
+    size: 38337008
+    checksum: sha256:ad00cbdd982055b1d9d9aeaa18036fa7b77d2a4b32794c7dcd52eed6a292fabf
     name: golang-bin
-    evr: 1.25.7-1.el10_1
-    sourcerpm: golang-1.25.7-1.el10_1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-race-1.25.7-1.el10_1.x86_64.rpm
+    evr: 1.25.8-1.el10_1
+    sourcerpm: golang-1.25.8-1.el10_1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-race-1.25.8-1.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 1715335
-    checksum: sha256:c7eae597f6d8535b02b6022da9dab7a6e1fdc9f4ecea37c4518762c792d1992f
+    size: 1715440
+    checksum: sha256:468e46495af71fb84cce7033a2f97f1729e85e5015a81c1366aee9660044f585
     name: golang-race
-    evr: 1.25.7-1.el10_1
-    sourcerpm: golang-1.25.7-1.el10_1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-src-1.25.7-1.el10_1.noarch.rpm
+    evr: 1.25.8-1.el10_1
+    sourcerpm: golang-1.25.8-1.el10_1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-src-1.25.8-1.el10_1.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 12176839
-    checksum: sha256:6e9b0d4c7362e894863ffd22fd56d55826022d3d4adc2bd19e34dec608a61f2a
+    size: 12181279
+    checksum: sha256:1bccae19005032a5cb988dde0e8da5facad2a47e3fa8c3a47d2f55c0b18b244f
     name: golang-src
-    evr: 1.25.7-1.el10_1
-    sourcerpm: golang-1.25.7-1.el10_1.src.rpm
+    evr: 1.25.8-1.el10_1
+    sourcerpm: golang-1.25.8-1.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/h/httpd-filesystem-2.4.63-4.el10_1.3.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 13792
@@ -123,13 +123,13 @@ arches:
     name: httpd-filesystem
     evr: 2.4.63-4.el10_1.3
     sourcerpm: httpd-2.4.63-4.el10_1.3.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-124.43.1.el10_1.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-124.45.1.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 3414681
-    checksum: sha256:2d29eead3ba308c8bec86f0e41a0d76602b50494aa6634243cd327e02fbc1e47
+    size: 3415777
+    checksum: sha256:94342b6a50a4b0b210719727dd0177125ee466edcc6f6ef35ffa32fde9e92362
     name: kernel-headers
-    evr: 6.12.0-124.43.1.el10_1
-    sourcerpm: kernel-6.12.0-124.43.1.el10_1.src.rpm
+    evr: 6.12.0-124.45.1.el10_1
+    sourcerpm: kernel-6.12.0-124.45.1.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/l/libecap-1.0.1-19.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 29616
@@ -991,13 +991,27 @@ arches:
     name: make
     evr: 1:4.4.1-9.el10
     sourcerpm: make-4.4.1-9.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/n/ncurses-6.4-14.20240127.el10.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/n/ncurses-6.4-15.20240127.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 437617
-    checksum: sha256:72771a1c49eb4ccf6c8b5c92ca1617ea2e32fce672ff62875222c7cce2c76d56
+    size: 437267
+    checksum: sha256:420a86b376c70f56cd06f8cea4614b7c4287223a4602b2d6e46e54cd7778e398
     name: ncurses
-    evr: 6.4-14.20240127.el10
-    sourcerpm: ncurses-6.4-14.20240127.el10.src.rpm
+    evr: 6.4-15.20240127.el10_1
+    sourcerpm: ncurses-6.4-15.20240127.el10_1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/n/ncurses-base-6.4-15.20240127.el10_1.noarch.rpm
+    repoid: ubi-10-for-x86_64-baseos-rpms
+    size: 107361
+    checksum: sha256:bfd174abe13d38f5515ef5d960d2cf57ef5c09b21a8a7ff589f6c6c6fd6d6fe6
+    name: ncurses-base
+    evr: 6.4-15.20240127.el10_1
+    sourcerpm: ncurses-6.4-15.20240127.el10_1.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/n/ncurses-libs-6.4-15.20240127.el10_1.x86_64.rpm
+    repoid: ubi-10-for-x86_64-baseos-rpms
+    size: 352152
+    checksum: sha256:a028e489c8b94812269f950affa4cca905658e31eca16f37d32f60cc26783762
+    name: ncurses-libs
+    evr: 6.4-15.20240127.el10_1
+    sourcerpm: ncurses-6.4-15.20240127.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/o/openldap-2.6.9-1.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 245450
@@ -1054,13 +1068,13 @@ arches:
     name: procps-ng
     evr: 4.0.4-8.el10
     sourcerpm: procps-ng-4.0.4-8.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/s/shadow-utils-4.15.0-8.el10.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/s/shadow-utils-4.15.0-10.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 1411048
-    checksum: sha256:8d7e3846a08b620dbde011b15b8e058f579fccf3a1989c4321beaaf68631cc87
+    size: 1417015
+    checksum: sha256:668c893ef1ec32a1ae685aa6fff720433c0e49cea0f7575241f4a70337c2c03e
     name: shadow-utils
-    evr: 2:4.15.0-8.el10
-    sourcerpm: shadow-utils-4.15.0-8.el10.src.rpm
+    evr: 2:4.15.0-10.el10_1
+    sourcerpm: shadow-utils-4.15.0-10.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/s/systemd-257-13.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 6009766
