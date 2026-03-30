@@ -450,6 +450,28 @@
                 { "required": ["caFile"] }
               ],
               "additionalProperties": false
+            },
+            "nginxTLS": {
+              "type": "object",
+              "properties": {
+                "serverName": { "type": "string" },
+                "insecureSkipVerify": { "type": "boolean" },
+                "ca": {
+                  "type": "object",
+                  "properties": {
+                    "secretName": { "type": "string" },
+                    "key": { "type": "string" }
+                  },
+                  "required": ["secretName"],
+                  "additionalProperties": false
+                },
+                "caFile": { "type": "string" }
+              },
+              "anyOf": [
+                { "required": ["ca"] },
+                { "required": ["caFile"] }
+              ],
+              "additionalProperties": false
             }
           },
           "required": ["enabled"],
