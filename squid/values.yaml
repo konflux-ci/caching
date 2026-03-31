@@ -50,7 +50,7 @@ envSettings:
       exporter:
         image:
           repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/access-log-exporter
-          tag: "8cc878287e07f54568debc7c5b85deac3ccd1b7d"
+          tag: "latest"
   release:
     squid:
       trust-manager:
