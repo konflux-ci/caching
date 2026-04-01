@@ -1,8 +1,6 @@
 module github.com/konflux-ci/caching
 
-go 1.25.0
-
-toolchain go1.25.7
+go 1.26.1
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
@@ -145,11 +143,8 @@ require (
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
-	go.opentelemetry.io/otel v1.42.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.42.0 // indirect
-	go.opentelemetry.io/otel/metric v1.42.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.42.0 // indirect
-	go.opentelemetry.io/otel/trace v1.42.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
@@ -187,4 +182,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 )
 
-replace github.com/jkroepke/access-log-exporter => github.com/kelchen123/access-log-exporter v0.0.0-20260326145038-549eccb14557
+replace github.com/jkroepke/access-log-exporter => github.com/kelchen123/access-log-exporter v0.0.0-20260321205655-d8cd024d0b6c
