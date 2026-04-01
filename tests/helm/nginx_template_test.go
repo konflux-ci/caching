@@ -506,7 +506,7 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 				"stdout access log must use the detailed format")
 		})
 
-		It("should not expose stub_status port (8081) on the nginx Service", func() {
+		It("should not expose stub_status port (8081) but should expose metrics port (9113) on the nginx Service", func() {
 			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
 				Nginx: &testhelpers.NginxValues{
 					Enabled: true,
@@ -518,10 +518,12 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			service := extractNginxServiceSection(output)
-			// Service must only expose the main app port (http/https), not the metrics port 8081.
+			// Service must only expose the main app port (http/https), not the stub_status port 8081.
 			// stub_status is on 8081 and must be reachable only from inside the pod (localhost).
 			Expect(service).NotTo(ContainSubstring("8081"), "Service must not expose port 8081 (stub_status); it must only be accessible from localhost inside the pod")
-			Expect(service).NotTo(ContainSubstring("name: metrics"), "Service must not expose the metrics port")
+			// The exporter metrics port (9113) should always be exposed since exporter is always deployed
+			Expect(service).To(ContainSubstring("port: 9113"), "Service must expose the exporter metrics port 9113")
+			Expect(service).To(ContainSubstring("name: metrics"), "Service must have a metrics port")
 		})
 
 		It("should restrict stub_status to localhost in nginx config", func() {

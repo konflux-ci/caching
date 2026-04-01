@@ -450,6 +450,28 @@
                 { "required": ["caFile"] }
               ],
               "additionalProperties": false
+            },
+            "nginxTLS": {
+              "type": "object",
+              "properties": {
+                "serverName": { "type": "string" },
+                "insecureSkipVerify": { "type": "boolean" },
+                "ca": {
+                  "type": "object",
+                  "properties": {
+                    "secretName": { "type": "string" },
+                    "key": { "type": "string" }
+                  },
+                  "required": ["secretName"],
+                  "additionalProperties": false
+                },
+                "caFile": { "type": "string" }
+              },
+              "anyOf": [
+                { "required": ["ca"] },
+                { "required": ["caFile"] }
+              ],
+              "additionalProperties": false
             }
           },
           "required": ["enabled"],
@@ -737,6 +759,18 @@
         "affinity": {
           "type": "object",
           "description": "Affinity rules for nginx pod scheduling"
+        },
+        "exporter": {
+          "type": "object",
+          "description": "Access-log-exporter sidecar configuration (always deployed with nginx)",
+          "properties": {
+            "securityContext": {
+              "$ref": "#/$defs/securityContext"
+            },
+            "resources": {
+              "$ref": "#/$defs/resources"
+            }
+          }
         }
       },
       "required": ["enabled"],
@@ -851,9 +885,29 @@
         },
         "test": {
           "$ref": "#/$defs/componentImageConfig"
+        },
+        "nginx": {
+          "$ref": "#/$defs/nginxEnvConfig"
         }
       },
-      "required": ["squid", "test"],
+      "required": ["squid", "test", "nginx"],
+      "additionalProperties": false
+    },
+    "nginxEnvConfig": {
+      "type": "object",
+      "properties": {
+        "exporter": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "$ref": "#/$defs/imageConfig"
+            }
+          },
+          "required": ["image"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["exporter"],
       "additionalProperties": false
     },
     "resources": {

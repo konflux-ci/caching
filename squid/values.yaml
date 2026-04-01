@@ -30,6 +30,11 @@ envSettings:
       image:
         repository: localhost/konflux-ci/squid-test
         tag: "latest"
+    nginx:
+      exporter:
+        image:
+          repository: quay.io/konflux-ci/caching/access-log-exporter
+          tag: "latest"
   prerelease:
     squid:
       trust-manager:
@@ -41,6 +46,11 @@ envSettings:
       image:
         repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester
         tag: "latest"
+    nginx:
+      exporter:
+        image:
+          repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/access-log-exporter
+          tag: "latest"
   release:
     squid:
       trust-manager:
@@ -54,6 +64,11 @@ envSettings:
       image:
         repository: quay.io/konflux-ci/caching/squid-test
         tag: "latest"
+    nginx:
+      exporter:
+        image:
+          repository: quay.io/konflux-ci/caching/access-log-exporter
+          tag: "latest"
 
 # ============================================================================
 # SQUID FORWARD PROXY CONFIGURATION
@@ -369,6 +384,20 @@ prometheus:
       # caFile: "/etc/prometheus/configmaps/proxy-ca/ca.crt"
       # As a last resort only (not recommended), you can skip verification
       insecureSkipVerify: false
+    # TLS options for nginx access-log-exporter scrape (9113). Prometheus will
+    # validate the HTTPS endpoint using the provided serverName and CA.
+    # Note: TLS is always enabled for nginx access-log-exporter (not optional).
+    nginxTLS:
+      # Leave empty to auto-derive: <service>.<namespace>.svc.<cluster-domain>
+      serverName: ""
+      # If you don't have a CA handy, you can point to a Secret with ca.crt
+      ca:
+        secretName: "caching-tls"
+        # key: "ca.crt" # optional, defaults to ca.crt
+      # Alternatively, reference a mounted CA file path inside Prometheus
+      # caFile: "/etc/prometheus/configmaps/proxy-ca/ca.crt"
+      # As a last resort only (not recommended), you can skip verification
+      insecureSkipVerify: false
 
 # Cache configuration
 cache:
@@ -478,6 +507,29 @@ nginx:
     runAsNonRoot: true
     seccompProfile:
       type: RuntimeDefault
+
+  # Access-log-exporter sidecar configuration (Prometheus metrics from NGINX access logs)
+  # The exporter is always deployed with nginx to receive syslog access logs.
+  # Image is defined in envSettings for environment-specific configuration.
+  exporter:
+    # Security context for the exporter container
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+          - "ALL"
+      seccompProfile:
+        type: RuntimeDefault
+      readOnlyRootFilesystem: true
+      runAsNonRoot: true
+    # Resource limits and requests for the exporter
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
 
 # ============================================================================
 # TEST-SPECIFIC CONFIGURATION

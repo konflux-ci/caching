@@ -130,3 +130,16 @@ podAntiAffinity:
           {{- include "nginx.selectorLabels" . | nindent 10 }}
       topologyKey: kubernetes.io/hostname
 {{- end }}
+
+{{/*
+Get nginx exporter image for current environment
+*/}}
+{{- define "nginx.exporter.image" -}}
+{{- $env := include "squid.environment" . -}}
+{{- $envSettings := index .Values.envSettings $env -}}
+{{- if hasPrefix "sha256:" $envSettings.nginx.exporter.image.tag -}}
+  {{- printf "%s@%s" $envSettings.nginx.exporter.image.repository $envSettings.nginx.exporter.image.tag -}}
+{{- else -}}
+  {{- printf "%s:%s" $envSettings.nginx.exporter.image.repository $envSettings.nginx.exporter.image.tag -}}
+{{- end -}}
+{{- end }}
