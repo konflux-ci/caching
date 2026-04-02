@@ -27,6 +27,8 @@ const (
 	clusterName = "caching"
 	// SquidImageTag is the tag used for the squid container image
 	squidImageTag = "localhost/konflux-ci/squid:latest"
+	// AccessLogExporterImageTag is the tag used for the access-log-exporter container image (sidecar with NGINX)
+	accessLogExporterImageTag = "localhost/konflux-ci/access-log-exporter:latest"
 	// SquidContainerfile is the path to the Containerfile for squid
 	squidContainerfile = "Containerfile"
 	// TestImageTag is the tag used for the test container image
@@ -227,9 +229,9 @@ func (Kind) Status() error {
 func (Build) Squid() error {
 	fmt.Println("🐳 Building Squid container image...")
 
-	// Build the squid image using podman
+	// Build the squid image using podman (--target squid so we build the squid stage)
 	fmt.Printf("📦 Building image with tag '%s'...\n", squidImageTag)
-	err := sh.Run("podman", "build", "-t", squidImageTag, "-f", squidContainerfile, ".")
+	err := sh.Run("podman", "build", "--target", "squid", "-t", squidImageTag, "-f", squidContainerfile, ".")
 	if err != nil {
 		return fmt.Errorf("failed to build squid image: %w", err)
 	}
@@ -244,6 +246,28 @@ func (Build) Squid() error {
 	}
 
 	fmt.Printf("✅ Squid image '%s' is ready!\n", squidImageTag)
+	return nil
+}
+
+// Build:AccessLogExporter builds the access-log-exporter container image (for use as sidecar with NGINX) from the Containerfile
+func (Build) AccessLogExporter() error {
+	fmt.Println("🐳 Building access-log-exporter container image...")
+
+	fmt.Printf("📦 Building image with tag '%s'...\n", accessLogExporterImageTag)
+	err := sh.Run("podman", "build", "--target", "access-log-exporter", "-t", accessLogExporterImageTag, "-f", squidContainerfile, ".")
+	if err != nil {
+		return fmt.Errorf("failed to build access-log-exporter image: %w", err)
+	}
+
+	fmt.Printf("✅ access-log-exporter image built successfully\n")
+
+	fmt.Printf("🔍 Verifying image exists...\n")
+	err = sh.Run("podman", "images", accessLogExporterImageTag)
+	if err != nil {
+		return fmt.Errorf("failed to verify access-log-exporter image: %w", err)
+	}
+
+	fmt.Printf("✅ access-log-exporter image '%s' is ready!\n", accessLogExporterImageTag)
 	return nil
 }
 
@@ -646,7 +670,7 @@ func (Test) ClusterMultiReplica() error {
 	err := sh.RunWith(map[string]string{
 		"SQUID_REPLICA_COUNT": "3",
 	}, "helm", "upgrade", "squid", "./squid",
-		"-n=default", "--wait", "--timeout=300s",
+		"-n=default", "--wait", "--timeout=300s", "--history-max=50",
 		"--set", "replicaCount=3",
 		"--set", "nginx.enabled=true",
 		"--set", "environment=dev")

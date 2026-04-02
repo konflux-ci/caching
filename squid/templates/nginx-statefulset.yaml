@@ -28,11 +28,19 @@ spec:
           labelSelector:
             matchLabels:
               {{- include "nginx.selectorLabels" . | nindent 14 }}
+      {{- if hasKey .Values.nginx "affinity" }}
+      {{- with .Values.nginx.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      affinity:
+        {{- include "nginx.defaultAffinity" . | nindent 8 }}
+      {{- end }}
       {{- with .Values.nginx.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.nginx.auth.enabled }}
       initContainers:
         - name: init-config
           image: {{ .Values.nginx.image }}
@@ -40,8 +48,12 @@ spec:
           args:
             - |
               set -e
-              AUTH_VALUE=$(cat /secrets/authorization)
-              sed "s|__AUTH_HEADER__|${AUTH_VALUE}|g" /config-template/nginx.conf > /config/nginx.conf
+              RESOLVER=$(awk '/^nameserver/{print $2; exit}' /etc/resolv.conf)
+              sed -e "s|__RESOLVER__|${RESOLVER}|g" \
+              {{- if .Values.nginx.auth.enabled }}
+                  -e "s|__AUTH_HEADER__|$(cat /secrets/authorization)|g" \
+              {{- end }}
+                  /config-template/nginx.conf > /config/nginx.conf
           resources:
             requests:
               cpu: 10m
@@ -57,10 +69,11 @@ spec:
               readOnly: true
             - name: config
               mountPath: /config
+            {{- if .Values.nginx.auth.enabled }}
             - name: auth-secret
               mountPath: /secrets
               readOnly: true
-      {{- end }}
+            {{- end }}
       containers:
         - name: nginx
           image: {{ .Values.nginx.image }}
@@ -75,6 +88,9 @@ spec:
               containerPort: 8443
               protocol: TCP
             {{- end }}
+            - name: stub-status
+              containerPort: 8081
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /health
@@ -113,17 +129,47 @@ spec:
               mountPath: /etc/nginx/tls
               readOnly: true
             {{- end }}
-            {{- if .Values.nginx.auth.enabled }}
             - name: config
               mountPath: /etc/nginx/nginx.conf
               subPath: nginx.conf
               readOnly: true
-            {{- else }}
-            - name: config-template
-              mountPath: /etc/nginx/nginx.conf
-              subPath: nginx.conf
+        # Access-log-exporter sidecar: exposes Prometheus metrics from NGINX access logs
+        - name: access-log-exporter
+          image: {{ include "nginx.exporter.image" . }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--config=/etc/exporter/config.yaml"
+          ports:
+            - name: metrics
+              containerPort: 9113
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.nginx.exporter.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.nginx.exporter.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: exporter-config
+              mountPath: /etc/exporter
               readOnly: true
-            {{- end }}
+            - name: exporter-tls
+              mountPath: /etc/exporter/tls
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: config-template
           configMap:
@@ -133,17 +179,24 @@ spec:
           secret:
             secretName: {{ .Values.nginx.tls.secretName }}
         {{- end }}
-        {{- if .Values.nginx.auth.enabled }}
         - name: config
           emptyDir: {}
+        {{- if .Values.nginx.auth.enabled }}
         - name: auth-secret
           secret:
             secretName: {{ .Values.nginx.auth.secretName }}
         {{- end }}
         - name: tmp
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 100Mi
         - name: run
           emptyDir: {}
+        - name: exporter-config
+          configMap:
+            name: {{ .Values.nginx.name }}-exporter-config
+        - name: exporter-tls
+          secret:
+            secretName: {{ .Values.namespace.name }}-tls
   volumeClaimTemplates:
     - metadata:
         name: cache

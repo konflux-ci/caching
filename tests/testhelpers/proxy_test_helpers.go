@@ -573,7 +573,8 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 	// Build helm command as a shell string
 	// Use default namespace for Helm release metadata (matches magefile.go)
 	// Resources created in caching namespace (from chart's namespace templates)
-	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=300s", "--debug"}
+	// Increase history-max to prevent "secret not found" errors when multiple tests upgrade
+	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=300s", "--history-max=50", "--debug"}
 
 	// Values file is provided by callers
 	cmdParts = append(cmdParts, "--values", valuesFile)
@@ -1018,6 +1019,46 @@ func GetPerPodMetrics(ctx context.Context, client kubernetes.Interface, metricsH
 	}
 
 	return podMetrics, nil
+}
+
+// GetContainerRestartCounts returns a map of pod name to restart count for the
+// given container across all pods in a statefulset.
+func GetContainerRestartCounts(ctx context.Context, client kubernetes.Interface, namespace, statefulSetName, containerName string) (map[string]int32, error) {
+	pods, err := GetPods(ctx, client, namespace, statefulSetName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pods: %w", err)
+	}
+
+	counts := make(map[string]int32, len(pods))
+	for _, pod := range pods {
+		for _, status := range pod.Status.ContainerStatuses {
+			if status.Name == containerName {
+				counts[pod.Name] = status.RestartCount
+				break
+			}
+		}
+	}
+	return counts, nil
+}
+
+// WaitForContainerRestart waits for a container's restart count to increase
+// beyond the initial counts for all pods.
+func WaitForContainerRestart(ctx context.Context, client kubernetes.Interface, namespace, containerName string, initialCounts map[string]int32) {
+	for name, count := range initialCounts {
+		Eventually(func() bool {
+			pod, err := client.CoreV1().Pods(namespace).Get(ctx, name, metav1.GetOptions{})
+			if err != nil {
+				return false
+			}
+			for _, status := range pod.Status.ContainerStatuses {
+				if status.Name == containerName {
+					return status.RestartCount > count
+				}
+			}
+			return false
+		}, 120*time.Second, 5*time.Second).Should(BeTrue(),
+			fmt.Sprintf("Pod %s container %s should restart", name, containerName))
+	}
 }
 
 // FindContainerByName finds a container by name in a pod's container spec

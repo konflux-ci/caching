@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -17,14 +18,23 @@ import (
 // NginxValues holds Helm values for nginx configuration
 type NginxValues struct {
 	// Enabled must NOT have omitempty since we need to explicitly set false to disable
-	Enabled      bool                 `json:"enabled"`
-	Name         string               `json:"name,omitempty"`
-	ReplicaCount int                  `json:"replicaCount,omitempty"`
-	TLS          *NginxTLSValues      `json:"tls,omitempty"`
-	Upstream     *NginxUpstreamValues `json:"upstream,omitempty"`
-	Auth         *NginxAuthValues     `json:"auth,omitempty"`
-	Cache        *NginxCacheValues    `json:"cache,omitempty"`
-	Service      *NginxServiceValues  `json:"service,omitempty"`
+	Enabled      bool                  `json:"enabled"`
+	Name         string                `json:"name,omitempty"`
+	ReplicaCount int                   `json:"replicaCount,omitempty"`
+	TLS          *NginxTLSValues       `json:"tls,omitempty"`
+	Upstream     *NginxUpstreamValues  `json:"upstream,omitempty"`
+	Auth         *NginxAuthValues      `json:"auth,omitempty"`
+	Cache        *NginxCacheValues     `json:"cache,omitempty"`
+	Service      *NginxServiceValues   `json:"service,omitempty"`
+	Affinity     json.RawMessage       `json:"affinity,omitempty"`
+	Exporter     *NginxExporterValues  `json:"exporter,omitempty"`
+}
+
+// NginxExporterValues holds access-log-exporter sidecar configuration
+// Note: The exporter is always deployed with nginx (no enabled flag)
+type NginxExporterValues struct {
+	// Resources can be customized if needed
+	Resources json.RawMessage `json:"resources,omitempty"`
 }
 
 // NginxTLSValues holds TLS configuration
