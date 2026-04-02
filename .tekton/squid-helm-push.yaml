@@ -187,12 +187,20 @@ spec:
                   "target": "quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester:{{revision}}"
                 },
                 {
+                  "source": "localhost/konflux-ci/access-log-exporter",
+                  "target": "quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/access-log-exporter:{{revision}}"
+                },
+                {
                   "source": "quay.io/konflux-ci/caching/squid",
                   "target": "quay.io/konflux-ci/caching/squid:{{revision}}"
                 },
                 {
                   "source": "quay.io/konflux-ci/caching/squid-test",
                   "target": "quay.io/konflux-ci/caching/squid-test:{{revision}}"
+                },
+                {
+                  "source": "quay.io/konflux-ci/caching/access-log-exporter",
+                  "target": "quay.io/konflux-ci/caching/access-log-exporter:{{revision}}"
                 }
               ]
           - name: VERSION_SUFFIX
