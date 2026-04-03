@@ -33,7 +33,7 @@ envSettings:
     nginx:
       exporter:
         image:
-          repository: quay.io/konflux-ci/caching/access-log-exporter
+          repository: localhost/konflux-ci/access-log-exporter
           tag: "latest"
   prerelease:
     squid:
