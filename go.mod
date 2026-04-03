@@ -1,13 +1,13 @@
 module github.com/konflux-ci/caching
 
-go 1.25.0
+go 1.25.7
 
 toolchain go1.25.8
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
 	github.com/cert-manager/cert-manager v1.19.4
-	github.com/google/go-containerregistry v0.20.7
+	github.com/google/go-containerregistry v0.21.3
 	github.com/intra-sh/icap v0.1.1
 	github.com/jkroepke/access-log-exporter v0.3.6
 	github.com/magefile/mage v1.16.1
@@ -54,7 +54,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/docker/cli v29.2.1+incompatible // indirect
+	github.com/docker/cli v29.3.0+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.5 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
@@ -170,6 +170,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gotest.tools/v3 v3.5.2 // indirect
 	k8s.io/apiextensions-apiserver v0.35.2 // indirect
 	k8s.io/apiserver v0.35.2 // indirect
 	k8s.io/cli-runtime v0.35.2 // indirect
