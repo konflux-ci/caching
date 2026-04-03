@@ -104,6 +104,7 @@ mage kind:upClean     # Force recreate cluster
 mage build:squid               # Build squid image (squid + squid-exporter + per-site-exporter + store-id + icap-server)
 mage build:accessLogExporter   # Build access-log-exporter image (for use as sidecar with nginx monitoring)
 mage build:loadSquid           # Load squid image into cluster
+mage build:loadAccessLogExporter # Load access-log-exporter image into cluster
 
 # Deployment management
 mage squidHelm:up     # Deploy/upgrade helm chart
