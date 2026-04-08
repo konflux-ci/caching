@@ -78,10 +78,18 @@ func (Test) UnitHelmTemplate() error {
 	return nil
 }
 
-// Test:Unit runs all unit tests (no cluster required)
+// Test:Unit runs all unit tests with coverage (no cluster required)
 func (Test) Unit() error {
-	fmt.Println("🧪 Running unit tests")
-	mg.SerialDeps(Test.UnitExporter, Test.UnitStoreID, Test.UnitICAPServer, Test.UnitHelmTemplate)
+	fmt.Println("🧪 Running unit tests with coverage")
+	if err := sh.RunV("go", "test", "-v",
+		"-coverprofile=coverage.out", "-covermode=atomic",
+		"./cmd/squid-per-site-exporter",
+		"./cmd/squid-store-id",
+		"./cmd/icap-server",
+		"./tests/helm/",
+	); err != nil {
+		return fmt.Errorf("unit tests failed: %w", err)
+	}
 	return nil
 }
 
