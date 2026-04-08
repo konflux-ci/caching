@@ -13,6 +13,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      id-token: write
 
     steps:
     - name: Free disk space
@@ -125,6 +126,14 @@ jobs:
     - name: Run unit tests
       run: |
         podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage test:unit
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        use_oidc: true
+        flags: unit-tests
+        files: coverage.out
+        fail_ci_if_error: false
 
     - name: Deploy Kind environment
       run: |
