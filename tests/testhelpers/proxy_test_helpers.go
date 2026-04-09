@@ -880,15 +880,16 @@ func PullContainerImage(t *http.RoundTripper, imageRef string) error {
 	return nil
 }
 
-// GetPerSiteMetricsValue extracts a metric value from Prometheus metrics content for a specific hostname.
-// It parses the Prometheus text format and returns the numeric value for the given metric and hostname.
+// GetMetricValue extracts a metric value from Prometheus metrics content with matching labels.
+// For HISTOGRAM and SUMMARY metrics, returns the sample count (number of observations).
+// For COUNTER, GAUGE, and UNTYPED metrics, returns the metric value.
 //
 // Example usage:
 //
-//	metricsContent := "squid_site_requests_total{hostname=\"example.com\",job=\"squid\"} 42"
-//	value, err := GetPerSiteMetricsValue(metricsContent, "squid_site_requests_total", "example.com")
+//	metricsContent := "http_requests_total{status=\"200\",method=\"GET\"} 42"
+//	value, err := GetMetricValue(metricsContent, "http_requests_total", map[string]string{"status": "200"})
 //	// value will be 42
-func GetPerSiteMetricsValue(metricsContent, metricName, hostname string) (float64, error) {
+func GetMetricValue(metricsContent, metricName string, labels map[string]string) (float64, error) {
 	// Parse the metrics using expfmt
 	parser := expfmt.NewTextParser(model.LegacyValidation)
 	metricFamilies, err := parser.TextToMetricFamilies(strings.NewReader(metricsContent))
@@ -902,27 +903,60 @@ func GetPerSiteMetricsValue(metricsContent, metricName, hostname string) (float6
 		return 0, fmt.Errorf("metric %s not found", metricName)
 	}
 
-	// Iterate through metrics in the family to find the one with matching hostname label
+	// Iterate through metrics in the family to find the one with matching labels
 	for _, metric := range metricFamily.Metric {
-		// Check if this metric has the hostname label matching our target
-		for _, label := range metric.Label {
-			if label.GetName() == "hostname" && label.GetValue() == hostname {
-				// Found the metric with matching hostname, extract the value
-				switch metricFamily.GetType() {
-				case dto.MetricType_COUNTER:
-					return metric.Counter.GetValue(), nil
-				case dto.MetricType_GAUGE:
-					return metric.Gauge.GetValue(), nil
-				case dto.MetricType_UNTYPED:
-					return metric.Untyped.GetValue(), nil
-				default:
-					return 0, fmt.Errorf("unsupported metric type: %s", metricFamily.GetType())
+		// If no labels specified, return the first metric
+		if len(labels) == 0 {
+			return extractMetricValue(metricFamily, metric)
+		}
+
+		// Check if this metric has all the required labels with matching values
+		allLabelsMatch := true
+		for requiredKey, requiredValue := range labels {
+			labelFound := false
+			for _, label := range metric.Label {
+				if label.GetName() == requiredKey && label.GetValue() == requiredValue {
+					labelFound = true
+					break
 				}
 			}
+			if !labelFound {
+				allLabelsMatch = false
+				break
+			}
+		}
+
+		if allLabelsMatch {
+			return extractMetricValue(metricFamily, metric)
 		}
 	}
 
-	return 0, fmt.Errorf("metric %s for hostname %s not found", metricName, hostname)
+	return 0, fmt.Errorf("metric %s with labels %v not found", metricName, labels)
+}
+
+// extractMetricValue extracts the numeric value from a Prometheus metric based on its type.
+// For HISTOGRAM and SUMMARY metrics, returns the sample count (total observations).
+func extractMetricValue(metricFamily *dto.MetricFamily, metric *dto.Metric) (float64, error) {
+	switch metricFamily.GetType() {
+	case dto.MetricType_COUNTER:
+		return metric.Counter.GetValue(), nil
+	case dto.MetricType_GAUGE:
+		return metric.Gauge.GetValue(), nil
+	case dto.MetricType_UNTYPED:
+		return metric.Untyped.GetValue(), nil
+	case dto.MetricType_HISTOGRAM:
+		return float64(metric.Histogram.GetSampleCount()), nil
+	case dto.MetricType_SUMMARY:
+		return float64(metric.Summary.GetSampleCount()), nil
+	default:
+		return 0, fmt.Errorf("unsupported metric type: %s", metricFamily.GetType())
+	}
+}
+
+// GetPerSiteMetricsValue extracts a metric value from Prometheus metrics content for a specific hostname.
+// This is a convenience wrapper around GetMetricValue for the common case of filtering by hostname.
+func GetPerSiteMetricsValue(metricsContent, metricName, hostname string) (float64, error) {
+	return GetMetricValue(metricsContent, metricName, map[string]string{"hostname": hostname})
 }
 
 // GetAggregatedMetrics retrieves and aggregates metrics from all squid pods by querying each pod's metrics endpoint.

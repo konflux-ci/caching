@@ -78,10 +78,18 @@ func (Test) UnitHelmTemplate() error {
 	return nil
 }
 
-// Test:Unit runs all unit tests (no cluster required)
+// Test:Unit runs all unit tests with coverage (no cluster required)
 func (Test) Unit() error {
-	fmt.Println("🧪 Running unit tests")
-	mg.SerialDeps(Test.UnitExporter, Test.UnitStoreID, Test.UnitICAPServer, Test.UnitHelmTemplate)
+	fmt.Println("🧪 Running unit tests with coverage")
+	if err := sh.RunV("go", "test", "-v",
+		"-coverprofile=coverage.out", "-covermode=atomic",
+		"./cmd/squid-per-site-exporter",
+		"./cmd/squid-store-id",
+		"./cmd/icap-server",
+		"./tests/helm/",
+	); err != nil {
+		return fmt.Errorf("unit tests failed: %w", err)
+	}
 	return nil
 }
 
@@ -271,6 +279,31 @@ func (Build) AccessLogExporter() error {
 	return nil
 }
 
+// Build:LoadAccessLogExporter loads the access-log-exporter image into the kind cluster
+func (Build) LoadAccessLogExporter() error {
+	// Ensure dependencies are met
+	mg.Deps(Kind.Up, Build.AccessLogExporter)
+
+	fmt.Println("📦 Loading access-log-exporter image into kind cluster...")
+
+	// Load image into kind cluster using process substitution
+	fmt.Printf("📤 Loading image into kind cluster '%s'...\n", clusterName)
+	err := sh.Run("bash", "-c", fmt.Sprintf("kind load image-archive --name %s <(podman save %s)", clusterName, accessLogExporterImageTag))
+	if err != nil {
+		return fmt.Errorf("failed to load access-log-exporter image into kind cluster: %w", err)
+	}
+
+	// Verify image is available in cluster
+	fmt.Printf("🔍 Verifying image is available in cluster...\n")
+	err = internal.GetNodeStatus(clusterName)
+	if err != nil {
+		return fmt.Errorf("failed to connect to cluster for verification: %w", err)
+	}
+
+	fmt.Printf("✅ Access-log-exporter image loaded successfully into kind cluster '%s'!\n", clusterName)
+	return nil
+}
+
 // Build:LoadSquid loads the Squid image into the kind cluster
 func (Build) LoadSquid() error {
 	// Ensure dependencies are met
@@ -340,8 +373,8 @@ func (Build) LoadTestImage() error {
 
 // SquidHelm:Up deploys the Squid Helm chart to the cluster
 func (SquidHelm) Up() error {
-	// Ensure dependencies are met (squid and test images needed)
-	mg.Deps(Build.LoadSquid, Build.LoadTestImage)
+	// Ensure dependencies are met (squid, test, and access-log-exporter images needed)
+	mg.Deps(Build.LoadSquid, Build.LoadTestImage, Build.LoadAccessLogExporter)
 
 	fmt.Println("⚓ Deploying Squid Helm chart...")
 
