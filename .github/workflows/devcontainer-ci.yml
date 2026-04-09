@@ -137,8 +137,8 @@ jobs:
 
     - name: Deploy Kind environment
       run: |
-        # Test that deploying our environment in Kind and our Helm chart works
-        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage squidHelm:up
+        # Build with coverage instrumentation and deploy to Kind
+        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -e ENABLE_COVERAGE=true -w /workspaces/caching devcontainer-test mage squidHelm:up
 
     - name: Run our test suite (via mirrord)
       run: |
@@ -148,7 +148,36 @@ jobs:
     - name: Retest Kind environment
       run: |
         # Test that our deployment is reentrant and that `helm test` works
-        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage all
+        # ENABLE_COVERAGE must be set to prevent mage all from rebuilding without instrumentation
+        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -e ENABLE_COVERAGE=true -w /workspaces/caching devcontainer-test mage all
+
+    - name: Collect e2e coverage
+      if: always()
+      run: |
+        mkdir -p coverage-output && chmod 777 coverage-output
+        # Extract kubeconfig from devcontainer and make it readable for rootless podman
+        podman exec devcontainer-test cat /home/vscode/.kube/config > /tmp/kubeconfig
+        chmod 644 /tmp/kubeconfig
+        podman run --rm \
+          --network host \
+          -v /tmp/kubeconfig:/kubeconfig:ro \
+          -v $PWD/coverage-output:/workspace/coverage-output \
+          -e KUBECONFIG=/kubeconfig \
+          quay.io/konflux-ci/konflux-devprod/coverport-cli \
+          collect \
+            --namespace=caching \
+            --label-selector="app.kubernetes.io/name=squid" \
+            --test-name=e2e-tests \
+            --output=/workspace/coverage-output || true
+
+    - name: Upload e2e coverage to Codecov
+      if: always()
+      uses: codecov/codecov-action@v5
+      with:
+        use_oidc: true
+        flags: e2e-tests
+        directory: coverage-output
+        fail_ci_if_error: false
 
     - name: Clean up Kind environment
       if: always()

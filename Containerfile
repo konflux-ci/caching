@@ -22,6 +22,8 @@ RUN chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /ru
 # ==========================================
 FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:c858c2eb5bd336d8c400f6ee976a9d731beccf3351fa7a6f485dced24ae4af17 AS go-builder
 
+ARG ENABLE_COVERAGE=false
+
 # Install required packages for Go build
 # go-toolset already declared in rpms.in.yaml (prefetched by Cachi2)
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
@@ -61,18 +63,33 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 COPY ./cmd/squid-per-site-exporter ./cmd/squid-per-site-exporter
 RUN --mount=type=cache,target=/tmp/go-cache \
     if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    CGO_ENABLED=0 GOOS=linux go build -o /workspace/per-site-exporter ./cmd/squid-per-site-exporter
+    if [ "$ENABLE_COVERAGE" = "true" ]; then \
+        echo "Building per-site-exporter with coverage instrumentation..."; \
+        CGO_ENABLED=0 GOOS=linux go build -cover -covermode=atomic -tags=coverage -o /workspace/per-site-exporter ./cmd/squid-per-site-exporter; \
+    else \
+        CGO_ENABLED=0 GOOS=linux go build -o /workspace/per-site-exporter ./cmd/squid-per-site-exporter; \
+    fi
 
 # 4. Copy source and build the store-id helper
 COPY ./cmd/squid-store-id ./cmd/squid-store-id
 RUN --mount=type=cache,target=/tmp/go-cache \
     if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    CGO_ENABLED=0 GOOS=linux go build -o /workspace/squid-store-id ./cmd/squid-store-id
+    if [ "$ENABLE_COVERAGE" = "true" ]; then \
+        echo "Building squid-store-id with coverage instrumentation..."; \
+        CGO_ENABLED=0 GOOS=linux go build -cover -covermode=atomic -tags=coverage -o /workspace/squid-store-id ./cmd/squid-store-id; \
+    else \
+        CGO_ENABLED=0 GOOS=linux go build -o /workspace/squid-store-id ./cmd/squid-store-id; \
+    fi
 
 COPY ./cmd/icap-server ./cmd/icap-server
 RUN --mount=type=cache,target=/tmp/go-cache \
     if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
-    CGO_ENABLED=0 GOOS=linux go build -o /workspace/icap-server ./cmd/icap-server
+    if [ "$ENABLE_COVERAGE" = "true" ]; then \
+        echo "Building icap-server with coverage instrumentation..."; \
+        CGO_ENABLED=0 GOOS=linux go build -cover -covermode=atomic -tags=coverage -o /workspace/icap-server ./cmd/icap-server; \
+    else \
+        CGO_ENABLED=0 GOOS=linux go build -o /workspace/icap-server ./cmd/icap-server; \
+    fi
 
 # ==========================================
 # Stage: access-log-exporter only (for use as sidecar with nginx monitoring).
@@ -163,6 +180,8 @@ EXPOSE 9301
 EXPOSE 9302
 # Expose ICAP port
 EXPOSE 1344
+# Expose coverage HTTP server port (only active when built with ENABLE_COVERAGE=true)
+EXPOSE 9095
 
 USER 1001
 

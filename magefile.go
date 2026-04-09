@@ -239,7 +239,13 @@ func (Build) Squid() error {
 
 	// Build the squid image using podman (--target squid so we build the squid stage)
 	fmt.Printf("📦 Building image with tag '%s'...\n", squidImageTag)
-	err := sh.Run("podman", "build", "--target", "squid", "-t", squidImageTag, "-f", squidContainerfile, ".")
+	args := []string{"build", "--target", "squid", "-t", squidImageTag}
+	if enableCoverage := os.Getenv("ENABLE_COVERAGE"); enableCoverage == "true" {
+		fmt.Println("📊 Coverage instrumentation enabled")
+		args = append(args, "--build-arg", "ENABLE_COVERAGE=true")
+	}
+	args = append(args, "-f", squidContainerfile, ".")
+	err := sh.Run("podman", args...)
 	if err != nil {
 		return fmt.Errorf("failed to build squid image: %w", err)
 	}
