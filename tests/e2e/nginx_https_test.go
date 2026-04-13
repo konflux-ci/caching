@@ -2,6 +2,7 @@ package e2e_test
 
 import (
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -54,6 +55,17 @@ var _ = Describe("Nginx HTTPS Tests", Label("nginx"), Ordered, Serial, func() {
 
 		httpsClient, err = testhelpers.NewNginxHTTPSClient(caCert)
 		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should serve metrics over HTTPS when TLS is enabled", func() {
+		metricsURL := fmt.Sprintf("https://%s.%s.svc.cluster.local:9113/metrics",
+			testhelpers.NginxServiceName, namespace)
+		resp, err := httpsClient.Get(metricsURL)
+		Expect(err).NotTo(HaveOccurred())
+		defer resp.Body.Close()
+
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		Expect(resp.TLS).NotTo(BeNil(), "TLS connection state should not be nil")
 	})
 
 	It("should serve HTTPS requests", func() {

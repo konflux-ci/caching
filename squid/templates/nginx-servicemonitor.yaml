@@ -23,10 +23,15 @@ spec:
   endpoints:
     - port: metrics
       path: {{ .Values.prometheus.serviceMonitor.path }}
+      {{- if .Values.nginx.tls.enabled }}
       scheme: https
+      {{- else }}
+      scheme: http
+      {{- end }}
       interval: {{ .Values.prometheus.serviceMonitor.interval }}
       scrapeTimeout: {{ .Values.prometheus.serviceMonitor.scrapeTimeout }}
       honorLabels: true
+      {{- if .Values.nginx.tls.enabled }}
       tlsConfig:
         {{- $clusterDomain := (default "cluster.local" .Values.clusterDomain) }}
         {{- $svcFQDN := printf "%s.%s.svc.%s" .Values.nginx.name .Values.namespace.name $clusterDomain }}
@@ -34,11 +39,9 @@ spec:
         insecureSkipVerify: {{ .Values.prometheus.serviceMonitor.nginxTLS.insecureSkipVerify | default false }}
         {{- with .Values.prometheus.serviceMonitor.nginxTLS.ca }}
         ca:
-          secret:
-            name: {{ .secretName }}
-            key: {{ .key | default "ca.crt" }}
+          configMap:
+            name: {{ .configMapName }}
+            key: {{ .key | default "service-ca.crt" }}
         {{- end }}
-        {{- with .Values.prometheus.serviceMonitor.nginxTLS.caFile }}
-        caFile: {{ . }}
-        {{- end }}
+      {{- end }}
 {{- end }}

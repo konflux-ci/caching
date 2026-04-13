@@ -459,18 +459,13 @@
                 "ca": {
                   "type": "object",
                   "properties": {
-                    "secretName": { "type": "string" },
+                    "configMapName": { "type": "string" },
                     "key": { "type": "string" }
                   },
-                  "required": ["secretName"],
+                  "required": ["configMapName"],
                   "additionalProperties": false
-                },
-                "caFile": { "type": "string" }
+                }
               },
-              "anyOf": [
-                { "required": ["ca"] },
-                { "required": ["caFile"] }
-              ],
               "additionalProperties": false
             }
           },
