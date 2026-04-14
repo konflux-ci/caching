@@ -14,12 +14,7 @@ spec:
   - {{ .Values.squid.name }}
   - {{ .Values.squid.name }}.{{ .Values.namespace.name }}.svc
   - {{ .Values.squid.name }}.{{ .Values.namespace.name }}.svc.cluster.local
-  {{- if .Values.nginx.enabled }}
-  - {{ .Values.nginx.name }}
-  - {{ .Values.nginx.name }}.{{ .Values.namespace.name }}.svc
-  - {{ .Values.nginx.name }}.{{ .Values.namespace.name }}.svc.cluster.local
-  {{- end }}
-  
+
   issuerRef:
     kind: ClusterIssuer
     name: {{ .Values.namespace.name }}-ca-issuer
