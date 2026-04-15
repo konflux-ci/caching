@@ -453,6 +453,91 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			configMap := extractNginxConfigMapSection(output)
 			Expect(configMap).To(ContainSubstring("listen 8443 ssl"), "ConfigMap should have HTTPS server block")
 		})
+
+		It("should configure access-log-exporter for HTTP when TLS is disabled", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			statefulSet := extractNginxStatefulSetSection(output)
+			Expect(statefulSet).NotTo(ContainSubstring("mountPath: /etc/exporter/tls"), "Exporter should not mount TLS when TLS disabled")
+
+			serviceMonitor := extractNginxServiceMonitorSection(output)
+			Expect(serviceMonitor).To(ContainSubstring("scheme: http"), "ServiceMonitor should use HTTP scheme when TLS disabled")
+			Expect(serviceMonitor).NotTo(ContainSubstring("tlsConfig"), "ServiceMonitor should not have tlsConfig when TLS disabled")
+
+			configMap := extractNginxExporterConfigMapSection(output)
+			Expect(configMap).NotTo(ContainSubstring("tlsCertFile"), "Exporter config should not have tlsCertFile when TLS disabled")
+			Expect(configMap).NotTo(ContainSubstring("tlsKeyFile"), "Exporter config should not have tlsKeyFile when TLS disabled")
+		})
+
+		It("should configure access-log-exporter for HTTPS using nginx TLS secret when TLS is enabled", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Service: &testhelpers.NginxServiceValues{
+						Port: 443,
+					},
+					TLS: &testhelpers.NginxTLSValues{
+						Enabled:    true,
+						SecretName: "my-nginx-tls",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			statefulSet := extractNginxStatefulSetSection(output)
+			Expect(statefulSet).To(ContainSubstring("mountPath: /etc/exporter/tls"), "Exporter should mount TLS volume")
+			Expect(statefulSet).NotTo(ContainSubstring("exporter-tls"), "Should not have separate exporter-tls volume")
+
+			configMap := extractNginxExporterConfigMapSection(output)
+			Expect(configMap).To(ContainSubstring("tlsCertFile"), "Exporter config should have tlsCertFile when TLS enabled")
+			Expect(configMap).To(ContainSubstring("tlsKeyFile"), "Exporter config should have tlsKeyFile when TLS enabled")
+		})
+
+		It("should configure ServiceMonitor with CA ConfigMap when TLS is enabled", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Service: &testhelpers.NginxServiceValues{
+						Port: 443,
+					},
+					TLS: &testhelpers.NginxTLSValues{
+						Enabled:    true,
+						SecretName: "my-nginx-tls",
+					},
+				},
+				Prometheus: &testhelpers.PrometheusValues{
+					ServiceMonitor: &testhelpers.ServiceMonitorValues{
+						NginxTLS: &testhelpers.NginxTLSMonitorValues{
+							CA: &testhelpers.CAValues{
+								ConfigMapName: "openshift-service-ca.crt",
+								Key:           "service-ca.crt",
+							},
+						},
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			serviceMonitor := extractNginxServiceMonitorSection(output)
+			Expect(serviceMonitor).To(ContainSubstring("scheme: https"), "ServiceMonitor should use HTTPS scheme")
+			Expect(serviceMonitor).To(ContainSubstring("configMap:"), "ServiceMonitor should reference CA via configMap")
+			Expect(serviceMonitor).To(ContainSubstring("name: openshift-service-ca.crt"), "ServiceMonitor should reference correct ConfigMap name")
+			Expect(serviceMonitor).To(ContainSubstring("key: service-ca.crt"), "ServiceMonitor should reference correct key")
+		})
 	})
 
 	Describe("Nginx Service Configuration", func() {

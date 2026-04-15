@@ -1,7 +1,6 @@
 package e2e_test
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -43,13 +42,8 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 		nginxClient = testhelpers.NewNginxClient()
 		metricsClient = &http.Client{
 			Timeout: 10 * time.Second,
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-				},
-			},
 		}
-		metricsURL = fmt.Sprintf("https://%s.%s.svc.cluster.local:9113/metrics",
+		metricsURL = fmt.Sprintf("http://%s.%s.svc.cluster.local:9113/metrics",
 			testhelpers.NginxServiceName, namespace)
 	})
 
@@ -73,15 +67,13 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 			Expect(exporterContainer.Ports[0].ContainerPort).To(Equal(int32(9113)), "metrics port should be 9113")
 			Expect(exporterContainer.Ports[0].Name).To(Equal("metrics"), "port should be named 'metrics'")
 
-			// Verify volume mounts for config and TLS
+			// Verify volume mounts for config (TLS mount is only present when nginx.tls.enabled=true)
 			volumeMounts := make(map[string]string)
 			for _, vm := range exporterContainer.VolumeMounts {
 				volumeMounts[vm.Name] = vm.MountPath
 			}
 			Expect(volumeMounts).To(HaveKey("exporter-config"), "should mount exporter config")
 			Expect(volumeMounts["exporter-config"]).To(Equal("/etc/exporter"), "config should be at /etc/exporter")
-			Expect(volumeMounts).To(HaveKey("exporter-tls"), "should mount TLS certificates")
-			Expect(volumeMounts["exporter-tls"]).To(Equal("/etc/exporter/tls"), "TLS certs should be at /etc/exporter/tls")
 		})
 
 		It("should expose metrics endpoint through service", func() {

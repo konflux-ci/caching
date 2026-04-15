@@ -407,6 +407,28 @@ type SquidHelmValues struct {
 	VolumeMounts       []corev1.VolumeMount      `json:"volumeMounts,omitempty"`
 	Nginx              *NginxValues              `json:"nginx,omitempty"`
 	Service            *ServiceValues            `json:"service,omitempty"`
+	Prometheus         *PrometheusValues         `json:"prometheus,omitempty"`
+}
+
+// PrometheusValues holds Prometheus monitoring configuration
+type PrometheusValues struct {
+	ServiceMonitor *ServiceMonitorValues `json:"serviceMonitor,omitempty"`
+}
+
+// ServiceMonitorValues holds ServiceMonitor configuration
+type ServiceMonitorValues struct {
+	NginxTLS *NginxTLSMonitorValues `json:"nginxTLS,omitempty"`
+}
+
+// NginxTLSMonitorValues holds TLS config for the nginx ServiceMonitor endpoint
+type NginxTLSMonitorValues struct {
+	CA *CAValues `json:"ca,omitempty"`
+}
+
+// CAValues holds CA ConfigMap reference for ServiceMonitor TLS verification
+type CAValues struct {
+	ConfigMapName string `json:"configMapName,omitempty"`
+	Key           string `json:"key,omitempty"`
 }
 
 // parseImageReference extracts repository and tag from an image reference

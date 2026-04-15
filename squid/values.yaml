@@ -386,16 +386,15 @@ prometheus:
       insecureSkipVerify: false
     # TLS options for nginx access-log-exporter scrape (9113). Prometheus will
     # validate the HTTPS endpoint using the provided serverName and CA.
-    # Note: TLS is always enabled for nginx access-log-exporter (not optional).
+    # Only used when nginx.tls.enabled is true. When nginx TLS is disabled,
+    # the exporter serves plain HTTP and no TLS config is needed.
     nginxTLS:
       # Leave empty to auto-derive: <service>.<namespace>.svc.<cluster-domain>
       serverName: ""
-      # If you don't have a CA handy, you can point to a Secret with ca.crt
-      ca:
-        secretName: "caching-tls"
-        # key: "ca.crt" # optional, defaults to ca.crt
-      # Alternatively, reference a mounted CA file path inside Prometheus
-      # caFile: "/etc/prometheus/configmaps/proxy-ca/ca.crt"
+      # CA ConfigMap for verifying the exporter's TLS certificate.
+      # ca:
+        # configMapName: "openshift-service-ca.crt"
+        # key: "service-ca.crt"
       # As a last resort only (not recommended), you can skip verification
       insecureSkipVerify: false
 
@@ -466,7 +465,7 @@ nginx:
     size: 1024
 
   # Image configuration
-  image: registry.access.redhat.com/ubi10/nginx-126@sha256:9a9338207078ec51f6c58d2421c6e3f42b54277d03629467fc447d7823503920
+  image: registry.access.redhat.com/ubi10/nginx-126@sha256:f1ad1b10d33d6191fc28ac1540847b5fd0098a89308ca6e23b9b98eaf8a50af1
 
   # Service configuration
   service:
