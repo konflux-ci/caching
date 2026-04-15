@@ -29,6 +29,8 @@ ignore:
 flags:
   unit-tests:
     carryforward: true
+  e2e-tests:
+    carryforward: true
 
 comment:
   layout: "reach,diff,flags,files"
