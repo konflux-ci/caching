@@ -9,7 +9,7 @@ require (
 	github.com/cert-manager/cert-manager v1.19.4
 	github.com/google/go-containerregistry v0.20.7
 	github.com/intra-sh/icap v0.1.1
-	github.com/jkroepke/access-log-exporter v0.3.6
+	github.com/jkroepke/access-log-exporter v0.3.10
 	github.com/magefile/mage v1.16.1
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
