@@ -10,7 +10,7 @@ require (
 	github.com/google/go-containerregistry v0.20.7
 	github.com/intra-sh/icap v0.1.1
 	github.com/jkroepke/access-log-exporter v0.3.6
-	github.com/magefile/mage v1.16.1
+	github.com/magefile/mage v1.17.1
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
