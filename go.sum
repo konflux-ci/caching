@@ -242,6 +242,8 @@ github.com/kelchen123/access-log-exporter v0.0.0-20260326145038-549eccb14557 h1:
 github.com/kelchen123/access-log-exporter v0.0.0-20260326145038-549eccb14557/go.mod h1:KgGOr496zh49bmQqBIEWa0hVO5ycBTcFd+CxhK4Z3Jg=
 github.com/klauspost/compress v1.18.5 h1:/h1gH5Ce+VWNLSWqPzOVn6XBO+vJbCNGvjoaGBFW2IE=
 github.com/klauspost/compress v1.18.5/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
+github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260328063015-501bee6da7e8 h1:2hEjab+vpHt6Zublih7RIN6HetVwoZtckXCcy3s46RM=
+github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260328063015-501bee6da7e8/go.mod h1:WVMHU9A2464s/vjH1xOTm4LJDD4xP+VlEiU+KM0gkSU=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
