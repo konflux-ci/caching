@@ -1,11 +1,13 @@
 # AGENTS.md
 
 ## Project Overview
-Squid caching proxy for Konflux CI. Container images:
-- `squid` — main proxy with SSL bump, ICAP, metrics
-- `access-log-exporter` — Prometheus metrics exporter for nginx access logs
-- `squid-tester` / `squid-test` — test image for e2e validation
-- `squid-helm` — Helm chart OCI artifact
+Caching infrastructure for Konflux CI. **Note:** The chart is named `squid/` but deploys **multiple services** (squid proxy AND nginx reverse proxy) — this is tech debt being tracked in KFLUXVNGD-827.
+
+Container images:
+- `squid` — main caching proxy with SSL bump, ICAP, metrics (this one IS squid-only)
+- `access-log-exporter` — Prometheus metrics exporter (used with **nginx**, not squid)
+- `squid-tester` / `squid-test` — test image for e2e validation of **both** squid and nginx (misleading name)
+- `squid-helm` — Helm chart OCI artifact (deploys both services)
 
 Deployed via Helm chart in `squid/` to OpenShift/Kubernetes.
 
@@ -31,5 +33,12 @@ Deployed via Helm chart in `squid/` to OpenShift/Kubernetes.
 - E2E tests require `CGO_ENABLED=1` and mirrord installed
 - `.tekton/` is Konflux Pipelines-as-Code — changes trigger CI
 
-## Skills
-See `skills/` for detailed guides on testing, debugging, Helm, Kind, and CI/CD.
+## General Gotchas
+- **Misleading chart name**: `squid/` chart deploys both squid AND nginx services
+- **`access-log-exporter`** is for nginx logs, not squid logs (despite being in this repo)
+
+## Workflow-Specific Gotchas
+See `skills/` for gotchas NOT covered in README — load only what's relevant:
+- `editing-helm-templates/` — StatefulSet naming, probe port changes
+- `working-on-ci/` — image expiration, promotion location
+- `updating-go-deps/` — replace directive, tools.go for Cachi2
