@@ -51,10 +51,36 @@
   ],
   "packageRules": [
     {
+      "description": "Group Go module digest updates and auto-merge",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["digest"],
+      "groupName": "go-digest",
+      "automerge": true
+    },
+    {
+      "description": "Group Go module patch updates and auto-merge",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["patch"],
+      "groupName": "go-patch",
+      "automerge": true
+    },
+    {
+      "description": "Group Go module minor updates and auto-merge",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor"],
+      "groupName": "go-minor",
+      "automerge": true
+    },
+    {
+      "description": "Disable major version updates for indirect Go dependencies since they are resolved by go mod tidy based on direct dependency requirements",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
       "description": "Group all cert-manager components",
       "groupName": "cert-manager",
-      "automerge": true,
-      "autoApprove": true,
       "matchPackageNames": [
         "cert-manager",
         "github.com/cert-manager/cert-manager",
@@ -62,52 +88,67 @@
       ]
     },
     {
-      "description": "Auto-merge patch updates for Konflux components",
-      "matchUpdateTypes": [
-        "patch",
-        "digest"
-      ],
+      "description": "Auto-merge non-major cert-manager updates",
+      "groupName": "cert-manager",
+      "matchUpdateTypes": ["minor", "patch", "digest"],
       "automerge": true,
-      "autoApprove": true,
+      "matchPackageNames": [
+        "cert-manager",
+        "github.com/cert-manager/cert-manager",
+        "/^quay.io/jetstack/cert-manager-/"
+      ]
+    },
+    {
+      "description": "Group Konflux image updates",
+      "groupName": "konflux-images",
       "matchPackageNames": [
         "/^quay.io/konflux-ci//"
       ]
     },
     {
-      "description": "Group Tekton bundle updates together",
-      "groupName": "tekton-bundles",
+      "description": "Auto-merge non-major Konflux image updates",
+      "groupName": "konflux-images",
+      "matchUpdateTypes": ["minor", "patch", "digest"],
       "automerge": true,
-      "autoApprove": true,
       "matchPackageNames": [
-        "/quay.io/konflux-ci/tekton-catalog//"
+        "/^quay.io/konflux-ci//"
       ]
     },
     {
       "description": "Group container base image updates",
       "groupName": "container-images",
-      "matchUpdateTypes": [
-        "patch",
-        "digest"
-      ],
-      "automerge": true,
-      "autoApprove": true,
       "matchPackageNames": [
         "/registry.access.redhat.com//",
         "/registry.fedoraproject.org//"
       ]
     },
     {
-      "description": "Auto-merge Go toolchain patch updates (go.mod and Containerfile)",
+      "description": "Auto-merge non-major container base image updates",
+      "groupName": "container-images",
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "automerge": true,
+      "matchPackageNames": [
+        "/registry.access.redhat.com//",
+        "/registry.fedoraproject.org//"
+      ]
+    },
+    {
+      "description": "Group Go toolchain updates (go.mod and Containerfile)",
+      "groupName": "go-toolchain",
+      "matchDatasources": [
+        "golang-version",
+        "custom.golang-with-checksum"
+      ]
+    },
+    {
+      "description": "Auto-merge Go toolchain patch updates",
       "groupName": "go-toolchain",
       "matchDatasources": [
         "golang-version",
         "custom.golang-with-checksum"
       ],
-      "matchUpdateTypes": [
-        "patch"
-      ],
-      "automerge": true,
-      "autoApprove": true
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
     }
   ]
 }
