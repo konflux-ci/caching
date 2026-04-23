@@ -52,6 +52,9 @@ spec:
         description: 'The Helm version to install and use for deployments.'
         type: string
         default: "3.20.1"
+      - name: oci-container-repo
+        default: 'quay.io/konflux-test-storage/konflux-team/caching'
+        description: The OCI container used to store all test artifacts.
     tasks:
       - name: test-metadata
         taskRef:
@@ -432,6 +435,8 @@ spec:
             value: e2e-tests
           - name: credentials-secret-name
             value: "caching-coverport-secrets"
+          - name: oci-container
+            value: "$(params.oci-container-repo):$(context.pipelineRun.name)-coverport"
         taskRef:
           resolver: git
           params:
