@@ -1,8 +1,6 @@
 module github.com/konflux-ci/caching
 
-go 1.25.0
-
-toolchain go1.25.8
+go 1.26.1
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
@@ -188,4 +186,4 @@ require (
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 )
 
-replace github.com/jkroepke/access-log-exporter => github.com/kelchen123/access-log-exporter v0.0.0-20260326145038-549eccb14557
+replace github.com/jkroepke/access-log-exporter => github.com/kelchen123/access-log-exporter v0.0.0-20260321205655-d8cd024d0b6c
