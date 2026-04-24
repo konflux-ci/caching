@@ -39,13 +39,13 @@ arches:
     name: cpp
     evr: 14.3.1-2.1.el10
     sourcerpm: gcc-14.3.1-2.1.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/d/delve-1.25.2-2.el10_1.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/d/delve-1.25.2-3.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 5563202
-    checksum: sha256:c3212b9a0c337b87f09ffe91c8e779253891270461ee50f30c01b3901d3fb426
+    size: 5550279
+    checksum: sha256:9380630e8867e0e03ed3f0821fe7eb930008a7905c41c3eed59af876d7d809e2
     name: delve
-    evr: 1.25.2-2.el10_1
-    sourcerpm: delve-1.25.2-2.el10_1.src.rpm
+    evr: 1.25.2-3.el10_1
+    sourcerpm: delve-1.25.2-3.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/gcc-14.3.1-2.1.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 39857423
@@ -123,13 +123,13 @@ arches:
     name: httpd-filesystem
     evr: 2.4.63-4.el10_1.3
     sourcerpm: httpd-2.4.63-4.el10_1.3.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-124.47.1.el10_1.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-124.52.1.el10_1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 3416249
-    checksum: sha256:25253433eafccae6ee02d3ad8f87421c534502e5f7efee9f94ac374ac592248a
+    size: 3425913
+    checksum: sha256:21e2cb2b83e380778fed81cc0f274befed16dc27d9cdfb4d25945a412ebf2b14
     name: kernel-headers
-    evr: 6.12.0-124.47.1.el10_1
-    sourcerpm: kernel-6.12.0-124.47.1.el10_1.src.rpm
+    evr: 6.12.0-124.52.1.el10_1
+    sourcerpm: kernel-6.12.0-124.52.1.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/l/libecap-1.0.1-19.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 29616
@@ -655,13 +655,13 @@ arches:
     name: perl-vars
     evr: 1.05-512.2.el10_0
     sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/s/squid-6.10-6.el10_1.1.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/s/squid-6.10-6.el10_1.3.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 4168730
-    checksum: sha256:b4e4098f4627eeaa85eb47b3d0fc263e1b56b677ee1500b008d68041870a2c95
+    size: 4177694
+    checksum: sha256:e5f3ee9b484abc6e6169a62858cdb79fe05e0a212980e2e0b01bd5edb5ff31fa
     name: squid
-    evr: 7:6.10-6.el10_1.1
-    sourcerpm: squid-6.10-6.el10_1.1.src.rpm
+    evr: 7:6.10-6.el10_1.3
+    sourcerpm: squid-6.10-6.el10_1.3.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/s/subversion-1.14.5-3.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 1062483
@@ -996,20 +996,6 @@ arches:
     size: 437267
     checksum: sha256:420a86b376c70f56cd06f8cea4614b7c4287223a4602b2d6e46e54cd7778e398
     name: ncurses
-    evr: 6.4-15.20240127.el10_1
-    sourcerpm: ncurses-6.4-15.20240127.el10_1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/n/ncurses-base-6.4-15.20240127.el10_1.noarch.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 107361
-    checksum: sha256:bfd174abe13d38f5515ef5d960d2cf57ef5c09b21a8a7ff589f6c6c6fd6d6fe6
-    name: ncurses-base
-    evr: 6.4-15.20240127.el10_1
-    sourcerpm: ncurses-6.4-15.20240127.el10_1.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/n/ncurses-libs-6.4-15.20240127.el10_1.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 352152
-    checksum: sha256:a028e489c8b94812269f950affa4cca905658e31eca16f37d32f60cc26783762
-    name: ncurses-libs
     evr: 6.4-15.20240127.el10_1
     sourcerpm: ncurses-6.4-15.20240127.el10_1.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/o/openldap-2.6.9-1.el10.x86_64.rpm
