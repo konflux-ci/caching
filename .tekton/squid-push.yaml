@@ -13,6 +13,7 @@ metadata:
     appstudio.openshift.io/application: caching
     appstudio.openshift.io/component: squid
     pipelines.appstudio.openshift.io/type: build
+    release.appstudio.openshift.io/auto-release: "false"
   name: squid-on-push
   namespace: konflux-vanguard-tenant
 spec:
