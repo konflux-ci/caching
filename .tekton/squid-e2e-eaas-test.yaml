@@ -52,9 +52,6 @@ spec:
         description: 'The Helm version to install and use for deployments.'
         type: string
         default: "3.20.1"
-      - name: oci-container-repo
-        default: 'quay.io/konflux-test-storage/konflux-team/caching'
-        description: The OCI container used to store all test artifacts.
     tasks:
       - name: test-metadata
         taskRef:
@@ -81,11 +78,9 @@ spec:
           params:
             - name: SNAPSHOT
               type: string
-            - name: instrumented-container-image
-              type: string
           results:
             - name: squid-image
-              description: Container image for the squid component (instrumented when available)
+              description: Container image for the squid component
             - name: squid-tester-image
               description: Container image for the squid-tester component
           steps:
@@ -94,25 +89,19 @@ spec:
               script: |
                 #!/bin/bash
                 set -euo pipefail
-                
+
                 echo "Extracting component images from snapshot..."
                 snapshot='$(params.SNAPSHOT)'
                 echo "Snapshot: $snapshot"
-                
-                # Use instrumented squid image if available, otherwise fall back to regular
-                instrumented_image='$(params.instrumented-container-image)'
-                if [ -n "$instrumented_image" ] && [ "$instrumented_image" != "" ]; then
-                  echo "Using instrumented squid image: $instrumented_image"
-                  echo -n "$instrumented_image" > $(results.squid-image.path)
-                else
-                  squid_image=$(echo "$snapshot" | jq -r '.components[] | select(.name == "squid") | .containerImage')
-                  if [ -z "$squid_image" ] || [ "$squid_image" = "null" ]; then
-                    echo "ERROR: Could not find squid component in snapshot"
-                    exit 1
-                  fi
-                  echo "Squid image (non-instrumented): $squid_image"
-                  echo -n "$squid_image" > $(results.squid-image.path)
+
+                # Extract squid image
+                squid_image=$(echo "$snapshot" | jq -r '.components[] | select(.name == "squid") | .containerImage')
+                if [ -z "$squid_image" ] || [ "$squid_image" = "null" ]; then
+                  echo "ERROR: Could not find squid component in snapshot"
+                  exit 1
                 fi
+                echo "Squid image: $squid_image"
+                echo -n "$squid_image" > $(results.squid-image.path)
                 
                 # Extract squid-tester image
                 tester_image=$(echo "$snapshot" | jq -r '.components[] | select(.name == "squid-tester") | .containerImage')
@@ -125,8 +114,6 @@ spec:
         params:
           - name: SNAPSHOT
             value: $(params.SNAPSHOT)
-          - name: instrumented-container-image
-            value: "$(tasks.test-metadata.results.instrumented-container-image)"
 
       # Provision EaaS namespace
       - name: provision-eaas-space
@@ -420,32 +407,6 @@ spec:
             value: "$(tasks.test-metadata.results.git-revision)"
           - name: helm-version
             value: "$(params.helm-version)"
-
-      - name: collect-and-upload-coverage
-        runAfter:
-          - squid-e2e-tests
-        params:
-          - name: instrumented-images
-            value: "$(tasks.test-metadata.results.instrumented-container-repo):$(tasks.test-metadata.results.instrumented-container-tag)"
-          - name: cluster-access-secret-name
-            value: kfg-$(context.pipelineRun.name)
-          - name: test-name
-            value: e2e-tests
-          - name: codecov-flags
-            value: e2e-tests
-          - name: credentials-secret-name
-            value: "caching-coverport-secrets"
-          - name: oci-container
-            value: "$(params.oci-container-repo):$(context.pipelineRun.name)-coverport"
-        taskRef:
-          resolver: git
-          params:
-            - name: url
-              value: https://github.com/konflux-ci/tekton-integration-catalog.git
-            - name: revision
-              value: main
-            - name: pathInRepo
-              value: tasks/coverport-coverage/0.1/coverport-coverage.yaml
 
     finally:
       - name: cleanup-report
