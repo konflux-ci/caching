@@ -15,8 +15,8 @@ RUN dnf -y makecache && \
     rm -rf /var/cache /var/log/dnf* /var/log/yum.*
 
 # Install Go (version-locked)
-ARG GO_VERSION=1.25.8
-ARG GO_SHA256=ceb5e041bbc3893846bd1614d76cb4681c91dadee579426cf21a63f2d7e03be6
+ARG GO_VERSION=1.25.9
+ARG GO_SHA256=00859d7bd6defe8bf84d9db9e57b9a4467b2887c18cd93ae7460e713db774bc1
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.tar.gz && \
     echo "${GO_SHA256}  go.tar.gz" | sha256sum -c - && \
