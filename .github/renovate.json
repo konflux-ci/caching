@@ -104,14 +104,6 @@
       ]
     },
     {
-      "description": "Auto-merge non-major Go module updates",
-      "matchManagers": ["gomod"],
-      "excludeDatasources": ["golang-version"],
-      "matchUpdateTypes": ["minor", "patch", "digest"],
-      "automerge": true,
-      "autoApprove": true
-    },
-    {
       "description": "Auto-merge Go toolchain patch updates (go.mod and Containerfile)",
       "groupName": "go-toolchain",
       "matchDatasources": [
