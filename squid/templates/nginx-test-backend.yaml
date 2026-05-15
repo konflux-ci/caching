@@ -1,0 +1,83 @@
+{{- if and .Values.test.enabled .Values.nginx.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-test-backend
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: nginx-test-backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-test-backend
+  template:
+    metadata:
+      labels:
+        app: nginx-test-backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: nginx-test-backend
+        image: {{ include "squid.test.image" . }}
+        imagePullPolicy: IfNotPresent
+        command: ["/app/nginx-test-backend"]
+        {{- if .Values.nginx.auth.enabled }}
+        env:
+        - name: EXPECTED_AUTH
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.nginx.auth.secretName }}
+              key: authorization
+        {{- end }}
+        ports:
+        - containerPort: 9090
+          name: http
+          protocol: TCP
+        resources:
+          requests:
+            memory: 64Mi
+          limits:
+            memory: 64Mi
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 2
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          seccompProfile:
+            type: RuntimeDefault
+          runAsNonRoot: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-test-backend
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    app: nginx-test-backend
+spec:
+  selector:
+    app: nginx-test-backend
+  ports:
+  - protocol: TCP
+    port: 9090
+    targetPort: 9090
+    name: http
+  type: ClusterIP
+{{- end }}

@@ -23,6 +23,7 @@ const (
 	NginxHTTPSPort       = 443
 	NginxComponentLabel  = "nginx-caching"
 
-	// Nexus constants
-	NexusServiceName = "nexus"
+	// Nginx test backend constants
+	NginxTestBackendServiceName = "nginx-test-backend"
+	NginxTestBackendPort        = 9090
 )

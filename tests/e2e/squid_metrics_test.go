@@ -275,7 +275,7 @@ var _ = Describe("Squid Caching Metrics Integration", func() {
 			}, timeout, interval).Should(BeTrue(), "Basic squid metrics should be available")
 
 			By("Making a request to generate activity")
-			testURL := testServer.URL + "/activity-test"
+			testURL := testServer.URL + "/activity-test?" + generateCacheBuster("operational-metrics")
 			resp, body, err := testhelpers.MakeCachingRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred(), "Request should succeed")
 			resp.Body.Close()

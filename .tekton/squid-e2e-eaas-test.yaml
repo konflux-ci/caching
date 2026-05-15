@@ -374,7 +374,6 @@ spec:
                   --set cert-manager.securityContext.runAsUser=null \
                   --set cert-manager.securityContext.runAsGroup=null \
                   --set cert-manager.securityContext.fsGroup=null \
-                  --set nexus.securityContext.runAsUser=null \
                   --set nginx.enabled=true \
                   $secret_args \
                   --wait \

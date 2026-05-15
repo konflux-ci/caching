@@ -97,7 +97,7 @@ func SetSuiteReplicaCount(count int32) {
 var _ = BeforeSuite(func() {
 	ctx = context.Background()
 
-	// Create Kubernetes client first (need it to read current replica count)
+	// Create Kubernetes client
 	config, err := testhelpers.GetRESTConfig()
 	Expect(err).NotTo(HaveOccurred(), "Failed to get REST config")
 
@@ -138,10 +138,6 @@ var _ = BeforeSuite(func() {
 	// Verify we can connect to the cluster
 	_, err = clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{Limit: 1})
 	Expect(err).NotTo(HaveOccurred(), "Failed to connect to Kubernetes cluster")
-
-	// Configure Nexus
-	err = testhelpers.ConfigureNexus(ctx, clientset, config, testhelpers.NewNexusConfig())
-	Expect(err).NotTo(HaveOccurred(), "Failed to configure Nexus")
 
 	By("Suite setup complete - Configuration is ready")
 	fmt.Printf("DEBUG: Suite-level configuration setup complete\n")

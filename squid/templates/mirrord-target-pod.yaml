@@ -17,28 +17,26 @@ spec:
   serviceAccountName: {{ .Values.squid.name }}-test
   restartPolicy: Always  # Keep the target pod running for development
   containers:
-    - name: testserver
+    - name: mirrord-target
       image: "{{ include "squid.test.image" . }}"
       imagePullPolicy: {{ .Values.mirrord.targetPod.image.pullPolicy | default "IfNotPresent" }}
-      command: ["/app/testserver"]
+      command: ["/app/mirrord-target"]
       ports:
-        - containerPort: {{ .Values.mirrord.targetPod.ports.http }}
+        - containerPort: 9090
           name: http
-        - containerPort: {{ .Values.mirrord.targetPod.ports.testServer }}
-          name: testserver
       env:
         - name: POD_IP
           valueFrom:
             fieldRef:
               fieldPath: status.podIP
         - name: TEST_SERVER_PORT
-          value: "{{ .Values.mirrord.targetPod.env.testServerPort }}"
+          value: "9090"
       resources:
         {{- toYaml .Values.mirrord.targetPod.resources | nindent 8 }}
       readinessProbe:
         httpGet:
           path: /
-          port: {{ .Values.mirrord.targetPod.ports.testServer }}
+          port: 9090
           scheme: HTTP
         initialDelaySeconds: 2
         periodSeconds: 3
@@ -48,7 +46,7 @@ spec:
       livenessProbe:
         httpGet:
           path: /
-          port: {{ .Values.mirrord.targetPod.ports.testServer }}
+          port: 9090
           scheme: HTTP
         initialDelaySeconds: 5
         periodSeconds: 10

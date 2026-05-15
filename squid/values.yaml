@@ -445,7 +445,7 @@ nginx:
   # Backend server configuration
   upstream:
     # URL of the upstream server to proxy to
-    url: "http://nexus.caching.svc.cluster.local:8081"
+    url: "http://nginx-test-backend.caching.svc.cluster.local:9090"
 
   # Authorization header injection (references existing Kubernetes secret)
   auth:
@@ -556,11 +556,6 @@ mirrord:
     image:
       pullPolicy: IfNotPresent
       # Note: repository and tag are set dynamically by squid.test.image helper in _helpers.tpl
-    ports:
-      http: 8080 # Standard HTTP port
-      testServer: 9090 # Test server port for connection stealing
-    env:
-      testServerPort: 9090 # TEST_SERVER_PORT environment variable
     resources:
       requests:
         cpu: 50m
@@ -571,15 +566,3 @@ mirrord:
   # NOTE: RBAC is shared with test infrastructure
   # When mirrord.enabled=true, test RBAC becomes persistent (no helm hooks)
   # When mirrord.enabled=false, test RBAC uses hooks for cleanup
-
-# Nexus configuration (for testing)
-nexus:
-  securityContext:
-    allowPrivilegeEscalation: false
-    capabilities:
-      drop:
-        - ALL
-    seccompProfile:
-      type: RuntimeDefault
-    runAsNonRoot: true
-    runAsUser: 1001
