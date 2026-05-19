@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -18,6 +19,22 @@ func main() {
 	expectedAuth := os.Getenv("EXPECTED_AUTH")
 
 	var requestCount int32
+
+	// checkOverrideStatus returns true (and writes the response) if the client
+	// requested a specific status code via X-Response-Status header.
+	checkOverrideStatus := func(w http.ResponseWriter, r *http.Request) bool {
+		val := r.Header.Get("X-Response-Status")
+		if val == "" {
+			return false
+		}
+		code, err := strconv.Atoi(val)
+		if err != nil || code < 100 || code > 599 {
+			http.Error(w, "invalid X-Response-Status value", http.StatusBadRequest)
+			return true
+		}
+		http.Error(w, http.StatusText(code), code)
+		return true
+	}
 
 	checkAuth := func(w http.ResponseWriter, r *http.Request) bool {
 		if expectedAuth == "" {
@@ -46,6 +63,9 @@ func main() {
 		if !checkAuth(w, r) {
 			return
 		}
+		if checkOverrideStatus(w, r) {
+			return
+		}
 		target := r.URL.Query().Get("url")
 		if target == "" {
 			http.Error(w, "missing 'url' query parameter", http.StatusBadRequest)
@@ -57,6 +77,9 @@ func main() {
 
 	mux.HandleFunc("/content/", func(w http.ResponseWriter, r *http.Request) {
 		if !checkAuth(w, r) {
+			return
+		}
+		if checkOverrideStatus(w, r) {
 			return
 		}
 

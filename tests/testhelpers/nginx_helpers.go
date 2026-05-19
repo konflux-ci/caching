@@ -58,6 +58,7 @@ type NginxAuthValues struct {
 type NginxCacheValues struct {
 	AllowList []string `json:"allowList,omitempty"`
 	Size      int      `json:"size,omitempty"`
+	TTL       string   `json:"ttl,omitempty"`
 }
 
 // NginxServiceValues holds service configuration

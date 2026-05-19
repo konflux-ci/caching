@@ -70,42 +70,27 @@ var _ = Describe("Nginx Proxy Caching Tests", Label("nginx"), Ordered, Serial, f
 			"Request to backend should succeed")
 	})
 
-	It("should return X-Cache-Status: MISS on first request", func() {
-		reqURL := testhelpers.GetNginxURL() + "/content/test?" + generateCacheBuster("nginx-cache-miss")
+	It("should contact upstream on every request for allowList paths", func() {
+		reqURL := testhelpers.GetNginxURL() + "/content/test?" + generateCacheBuster("always-upstream")
 
-		resp, err := client.Get(reqURL)
-		Expect(err).NotTo(HaveOccurred())
-		defer resp.Body.Close()
-
-		cacheStatus := resp.Header.Get("X-Cache-Status")
-		Expect(cacheStatus).To(Equal("MISS"),
-			"First request should be a cache MISS")
-	})
-
-	It("should return X-Cache-Status: HIT on repeated request", func() {
-		reqURL := testhelpers.GetNginxURL() + "/content/test?" + generateCacheBuster("nginx-cache-hit")
-
-		// First request - should be MISS
+		// Make two requests to the same URL — both should return fresh
+		// responses from the upstream since allowList locations don't cache directly
 		resp1, err := client.Get(reqURL)
 		Expect(err).NotTo(HaveOccurred())
 		body1, err := io.ReadAll(resp1.Body)
 		Expect(err).NotTo(HaveOccurred())
 		resp1.Body.Close()
-		Expect(resp1.Header.Get("X-Cache-Status")).To(Equal("MISS"),
-			"First request should be a cache MISS")
 
-		// Second request - should be HIT
 		resp2, err := client.Get(reqURL)
 		Expect(err).NotTo(HaveOccurred())
 		body2, err := io.ReadAll(resp2.Body)
 		Expect(err).NotTo(HaveOccurred())
 		resp2.Body.Close()
-		Expect(resp2.Header.Get("X-Cache-Status")).To(Equal("HIT"),
-			"Second request should be a cache HIT")
 
-		// Verify response bodies are identical
-		Expect(body2).To(Equal(body1),
-			"Cached response should match original response")
+		// The server_hits counter should differ, proving both requests
+		// reached the upstream rather than being served from cache
+		Expect(body2).NotTo(Equal(body1),
+			"Responses should differ because each request contacts the upstream")
 	})
 
 	It("should NOT cache requests to non-matching paths", func() {

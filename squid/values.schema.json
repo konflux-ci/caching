@@ -704,6 +704,10 @@
               "type": "integer",
               "minimum": 1,
               "description": "Cache size in megabytes"
+            },
+            "ttl": {
+              "type": "string",
+              "description": "Cache TTL for responses (nginx time format: 1d, 12h, 30m)"
             }
           },
           "additionalProperties": false

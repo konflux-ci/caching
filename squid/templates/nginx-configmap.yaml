@@ -130,9 +130,12 @@ data:
             }
 
             {{- range .Values.nginx.cache.allowList }}
-            # Cached location matching pattern: {{ . }}
+            # AllowList location matching pattern: {{ . }}
             location ~ {{ . }} {
-                # Forward requests to the upstream server
+                # Forward requests to the upstream server.
+                # No caching at this level — the upstream is always contacted so it
+                # can enforce authorization (e.g. return 403 for banned content).
+                # Only redirect targets are cached, via @handle_redirect.
                 proxy_pass $upstream_url;
 
                 # Send the upstream hostname so the backend receives the correct Host header
@@ -146,18 +149,42 @@ data:
                 proxy_set_header Authorization "__AUTH_HEADER__";
                 {{- end }}
 
+                # Intercept redirect responses and follow them via @handle_redirect.
+                # Only status codes listed in error_page are intercepted; 403s, 404s, etc.
+                # pass through from the upstream as-is.
+                proxy_intercept_errors on;
+                error_page 301 302 307 308 = @handle_redirect;
+            }
+            {{- end }}
+
+            {{- if .Values.nginx.cache.allowList }}
+            # Named location for following redirects from the upstream.
+            # Fetches the redirect target and caches the response keyed on the
+            # original request URI (not the redirect target URL).
+            location @handle_redirect {
+                # Capture the redirect target URL from the upstream's Location header
+                set $redirect_url $upstream_http_location;
+                proxy_pass $redirect_url;
+
+                # Enable SNI for HTTPS redirect targets (e.g. S3 presigned URLs)
+                proxy_ssl_server_name on;
+
                 # Use the disk cache defined in proxy_cache_path
                 proxy_cache backend_cache;
 
-                # Cache successful responses (200 OK) for 1 day
-                proxy_cache_valid 200 1d;
+                # Cache keyed on the original request URI, not the redirect target URL,
+                # so repeated requests for the same artifact hit the cache
+                proxy_cache_key "$scheme$host$request_uri";
 
-                # Serve stale cached content when the upstream server is unavailable or slow,
+                # Cache successful responses (200 OK) for the configured TTL
+                proxy_cache_valid 200 {{ .Values.nginx.cache.ttl }};
+
+                # Serve stale cached content when the redirect target is unavailable or slow,
                 # improving resilience during upstream outages
                 proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
 
                 # Prevent multiple simultaneous requests for the same uncached
-                # artifact from all hitting the upstream server; only one fetches, others wait
+                # artifact from all hitting the redirect target; only one fetches, others wait
                 proxy_cache_lock on;
 
                 # Add header showing cache status (HIT/MISS/EXPIRED/etc) for debugging
@@ -167,6 +194,7 @@ data:
 
             # Default location: proxy to the upstream server without caching.
             # Handles paths not matching any allowList patterns.
+            # Redirects are passed through as-is (not intercepted).
             location / {
                 proxy_pass $upstream_url;
                 proxy_set_header Host {{ (urlParse .Values.nginx.upstream.url).host }};
