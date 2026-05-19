@@ -16,18 +16,6 @@ jobs:
       id-token: write
 
     steps:
-    - name: Free disk space
-      uses: BRAINSia/free-disk-space@v2
-      with:
-        tool-cache: false
-        mandb:   true
-        android: true
-        dotnet: true
-        haskell: true
-        large-packages: true
-        docker-images: true
-        swap-storage: true
-
     - name: Checkout repository
       uses: actions/checkout@v4
 
