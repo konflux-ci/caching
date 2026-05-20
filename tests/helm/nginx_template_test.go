@@ -279,9 +279,9 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			Expect(configMap).To(ContainSubstring("location ~ ^/repository/npm-.*"), "Should have npm pattern cached location")
 			Expect(configMap).To(ContainSubstring("location ~ \\.tar\\.gz$"), "Should have tar.gz pattern cached location")
 
-			// Verify each cached location has cache directives
-			Expect(strings.Count(configMap, "proxy_cache backend_cache")).To(Equal(3), "Should have proxy_cache in 3 locations")
-			Expect(strings.Count(configMap, "proxy_cache_valid 200 1d")).To(Equal(3), "Should have cache_valid in 3 locations")
+			// Caching only happens in @handle_redirect, not in allowList locations
+			Expect(strings.Count(configMap, "proxy_cache backend_cache")).To(Equal(1), "Should have proxy_cache only in @handle_redirect")
+			Expect(strings.Count(configMap, "proxy_cache_valid 200 1d")).To(Equal(1), "Should have cache_valid only in @handle_redirect")
 
 			// Verify default location still exists
 			Expect(configMap).To(ContainSubstring("location / {"), "Should still have default location")
@@ -309,6 +309,110 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 
 			// Auth header should appear in both cached location and default location
 			Expect(strings.Count(configMap, `proxy_set_header Authorization "__AUTH_HEADER__"`)).To(Equal(2), "Should have auth header in both locations")
+		})
+
+		It("should render @handle_redirect when allowList has entries", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Cache: &testhelpers.NginxCacheValues{
+						AllowList: []string{`^/content/`},
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			Expect(configMap).To(ContainSubstring("location @handle_redirect"), "Should render @handle_redirect")
+			Expect(configMap).To(ContainSubstring("set $redirect_url $upstream_http_location"), "Should capture redirect URL")
+			Expect(configMap).To(ContainSubstring("proxy_ssl_server_name on"), "Should enable SNI for redirect targets")
+			Expect(configMap).To(ContainSubstring(`proxy_cache_key "$scheme$host$request_uri"`), "Should cache on original request URI")
+		})
+
+		It("should NOT render @handle_redirect when allowList is empty", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Cache: &testhelpers.NginxCacheValues{
+						AllowList: []string{},
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			Expect(configMap).NotTo(ContainSubstring("@handle_redirect"), "Should not render @handle_redirect without allowList")
+			Expect(configMap).NotTo(ContainSubstring("proxy_intercept_errors"), "Should not have redirect interception without allowList")
+		})
+
+		It("should add redirect interception to allowList locations", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Cache: &testhelpers.NginxCacheValues{
+						AllowList: []string{`^/content/`},
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			Expect(configMap).To(ContainSubstring("proxy_intercept_errors on"), "AllowList location should intercept errors")
+			Expect(configMap).To(ContainSubstring("error_page 301 302 307 308 = @handle_redirect"), "AllowList location should redirect to @handle_redirect")
+		})
+
+		It("should use configured TTL in cache directives", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Cache: &testhelpers.NginxCacheValues{
+						AllowList: []string{`^/content/`},
+						TTL:       "30d",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			Expect(configMap).To(ContainSubstring("proxy_cache_valid 200 30d"), "Should use configured TTL")
+			Expect(configMap).NotTo(ContainSubstring("proxy_cache_valid 200 1d"), "Should not have default TTL")
+		})
+
+		It("should not have redirect interception in default location", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Cache: &testhelpers.NginxCacheValues{
+						AllowList: []string{`^/content/`},
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			// Default location should still bypass cache
+			Expect(configMap).To(ContainSubstring("proxy_no_cache 1"), "Default location should bypass cache")
+			Expect(configMap).To(ContainSubstring(`"BYPASS"`), "Default location should show BYPASS")
 		})
 	})
 
