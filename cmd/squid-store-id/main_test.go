@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"io"
-	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 
@@ -36,8 +34,8 @@ var _ = Describe("isChannelID", func() {
 })
 
 var _ = Describe("parseLine", func() {
-	var normalizeFunc = func(client HTTPClient, url string) string { return url }
-	var normalizeFuncDifferent = func(client HTTPClient, url string) string { return "normalized-" + url }
+	var normalizeFunc = func(url string) string { return url }
+	var normalizeFuncDifferent = func(url string) string { return "normalized-" + url }
 
 	When("given a line with a channel-ID", func() {
 		Context("and the normalized store-id is different from the original URL", func() {
@@ -74,42 +72,28 @@ var _ = Describe("parseLine", func() {
 
 var _ = Describe("normalizeStoreID", func() {
 	When("given content-addressable URLs with query parameters", func() {
-		const testURL = "https://cdn.example.com/blobs/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890?token=abc123&expires=456"
-
-		It("should return normalized URL (without query params) when HTTP request succeeds", func() {
-			mockClient := &MockHTTPClient{
-				StatusCode: http.StatusOK,
-			}
-
+		It("should strip query params from URLs containing /sha256/", func() {
+			testURL := "https://cdn.example.com/blobs/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890?token=abc123&expires=456"
 			expectedURL := "https://cdn.example.com/blobs/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
-			Expect(normalizeStoreID(mockClient, testURL)).To(Equal(expectedURL))
+			Expect(normalizeStoreID(testURL)).To(Equal(expectedURL))
 		})
 
-		It("should handle non-200 HTTP responses by returning original URL", func() {
-			mockClient := &MockHTTPClient{
-				StatusCode: http.StatusUnauthorized,
-			}
-
-			Expect(normalizeStoreID(mockClient, testURL)).To(Equal(testURL))
+		It("should return unchanged URL when no query params present", func() {
+			testURL := "https://cdn.example.com/blobs/sha256/ab/abcdef1234567890"
+			Expect(normalizeStoreID(testURL)).To(Equal(testURL))
 		})
+	})
 
-		It("should handle HTTP error responses by returning original URL", func() {
-			mockClient := &MockHTTPClient{
-				ShouldError: true,
-				Error: &url.Error{
-					Op:  "Get",
-					URL: testURL,
-					Err: http.ErrServerClosed,
-				},
-			}
-
-			Expect(normalizeStoreID(mockClient, testURL)).To(Equal(testURL))
+	When("given non-content-addressable URLs", func() {
+		It("should return the original URL unchanged", func() {
+			testURL := "https://example.com/path?query=value"
+			Expect(normalizeStoreID(testURL)).To(Equal(testURL))
 		})
 	})
 })
 
 var _ = Describe("processInput", func() {
-	var normalizeFuncDifferent = func(client HTTPClient, url string) string { return "normalized-" + url }
+	var normalizeFuncDifferent = func(url string) string { return "normalized-" + url }
 
 	It("processes multiple lines concurrently", func() {
 		in := strings.NewReader(
@@ -144,28 +128,6 @@ var _ = Describe("processInput", func() {
 		Expect(err).To(MatchError(io.ErrUnexpectedEOF))
 	})
 })
-
-// MockHTTPClient implements HTTPClient interface for testing
-type MockHTTPClient struct {
-	StatusCode  int
-	ShouldError bool
-	Error       error
-}
-
-func (m *MockHTTPClient) Get(url string) (*http.Response, error) {
-	if m.ShouldError {
-		return nil, m.Error
-	}
-
-	// Create a mock response
-	resp := &http.Response{
-		StatusCode: m.StatusCode,
-		Body:       io.NopCloser(strings.NewReader("")), // Empty body
-		Header:     make(http.Header),
-	}
-
-	return resp, nil
-}
 
 // MockWriter implements io.Writer for testing
 type MockWriter struct {

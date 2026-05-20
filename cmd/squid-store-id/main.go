@@ -5,17 +5,11 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 )
-
-// HTTPClient interface for making HTTP requests (allows mocking)
-type HTTPClient interface {
-	Get(url string) (*http.Response, error)
-}
 
 // isChannelID checks if a string represents a positive integer (for channel-ID detection)
 func isChannelID(s string) bool {
@@ -23,39 +17,17 @@ func isChannelID(s string) bool {
 	return err == nil && val >= 0
 }
 
-// normalizeStoreID normalizes the store-id for caching by removing query parameters from CDN URLs.
-// Only content-addressable URLs (containing SHA256 hashes) are normalized.
-// The request URL must return a 200 status code to ensure the request is authorized.
-func normalizeStoreID(client HTTPClient, requestURL string) string {
-	// Only normalize content-addressable URLs (those with SHA256 hashes in the path).
-	// This prevents breaking caching for arbitrary URLs with meaningful query parameters.
+func normalizeStoreID(requestURL string) string {
 	if !strings.Contains(requestURL, "/sha256/") {
 		return requestURL
 	}
-
-	// Issue the request to the CDN/S3 to check authorization but don't read the body
-	resp, err := client.Get(requestURL)
-	if err != nil {
-		// Don't log the request URL to avoid leaking sensitive information
-		log.Printf("Error getting URL: %v", err)
-		return requestURL
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("Error getting URL, status code: %v", resp.StatusCode)
-		return requestURL
-	}
-
-	// Return the URL without query parameters as the cache key
 	return strings.SplitN(requestURL, "?", 2)[0]
 }
 
 // parseLine parses the input line according to Squid protocol:
 // [channel-ID <SP>] request-URL [<SP> extras] <NL>
 // and returns the response for Squid.
-func parseLine(line string, normalizeFunc func(HTTPClient, string) string) string {
+func parseLine(line string, normalizeFunc func(string) string) string {
 	parts := strings.Fields(line)
 
 	var requestURL string
@@ -70,7 +42,7 @@ func parseLine(line string, normalizeFunc func(HTTPClient, string) string) strin
 	requestURL = parts[0]
 
 	// Normalize the store-id for caching
-	storeID := normalizeFunc(http.DefaultClient, requestURL)
+	storeID := normalizeFunc(requestURL)
 
 	if storeID != requestURL {
 		// Return the normalized store-id for caching
@@ -83,7 +55,7 @@ func parseLine(line string, normalizeFunc func(HTTPClient, string) string) strin
 }
 
 // processInput reads lines from in, processes each concurrently, and writes responses to out
-func processInput(in io.Reader, out io.Writer, normalizeFunc func(HTTPClient, string) string) error {
+func processInput(in io.Reader, out io.Writer, normalizeFunc func(string) string) error {
 	scanner := bufio.NewScanner(in)
 
 	// Use a wait group to ensure all goroutines gracefully exit
