@@ -17,8 +17,6 @@ var _ = Describe("Nginx HTTPS Tests", Label("nginx"), Ordered, Serial, func() {
 	var httpsClient *http.Client
 
 	BeforeAll(func() {
-		nexusConfig := testhelpers.NewNexusConfig()
-
 		// Create Certificate resource for TLS
 		err := testhelpers.CreateNginxCertificate(ctx, certManagerClient, "nginx-tls")
 		Expect(err).NotTo(HaveOccurred())
@@ -34,7 +32,7 @@ var _ = Describe("Nginx HTTPS Tests", Label("nginx"), Ordered, Serial, func() {
 				Enabled:      true,
 				ReplicaCount: 1,
 				Upstream: &testhelpers.NginxUpstreamValues{
-					URL: nexusConfig.URL,
+					URL: testhelpers.GetNginxTestBackendURL(),
 				},
 				Service: &testhelpers.NginxServiceValues{
 					Port: 443,

@@ -11,32 +11,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("Nginx Nexus Proxy Tests", Label("nginx", "external-deps"), Ordered, Serial, func() {
-	const (
-		authSecretName = "nexus-auth"
-		goModulePath   = "/repository/go-proxy/golang.org/x/text/@v/list"
-	)
+var _ = Describe("Nginx Proxy Caching Tests", Label("nginx"), Ordered, Serial, func() {
+	const authSecretName = "upstream-auth"
 
 	var client *http.Client
 
 	BeforeAll(func() {
-		nexusConfig := testhelpers.NewNexusConfig()
-
-		err := testhelpers.CreateNexusAuthSecret(ctx, clientset, authSecretName, nexusConfig)
+		err := testhelpers.CreateAuthSecret(ctx, clientset, authSecretName, "testuser", "testpass")
 		Expect(err).NotTo(HaveOccurred())
 
 		err = testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 			Nginx: &testhelpers.NginxValues{
 				Enabled: true,
 				Upstream: &testhelpers.NginxUpstreamValues{
-					URL: nexusConfig.URL,
+					URL: testhelpers.GetNginxTestBackendURL(),
 				},
 				Auth: &testhelpers.NginxAuthValues{
 					Enabled:    true,
 					SecretName: authSecretName,
 				},
 				Cache: &testhelpers.NginxCacheValues{
-					AllowList: []string{"^/repository/go-proxy/"},
+					AllowList: []string{"^/content/"},
 				},
 			},
 		})
@@ -45,7 +40,7 @@ var _ = Describe("Nginx Nexus Proxy Tests", Label("nginx", "external-deps"), Ord
 		client = testhelpers.NewNginxClient()
 
 		DeferCleanup(func() {
-			fmt.Println("Cleaning up Nexus auth secret...")
+			fmt.Println("Cleaning up auth secret...")
 			err = clientset.CoreV1().Secrets(namespace).Delete(ctx, authSecretName,
 				metav1.DeleteOptions{})
 			Expect(err).NotTo(HaveOccurred())
@@ -65,20 +60,18 @@ var _ = Describe("Nginx Nexus Proxy Tests", Label("nginx", "external-deps"), Ord
 		Expect(string(body)).To(Equal("OK\n"))
 	})
 
-	It("should successfully proxy requests to Nexus go-proxy", func() {
-		// Make request through nginx
-		reqURL := testhelpers.GetNginxURL() + goModulePath
+	It("should successfully proxy requests to the backend", func() {
+		reqURL := testhelpers.GetNginxURL() + "/content/test"
 		resp, err := client.Get(reqURL)
 		Expect(err).NotTo(HaveOccurred())
 		defer resp.Body.Close()
 
 		Expect(resp.StatusCode).To(Equal(http.StatusOK),
-			"Request to go-proxy should succeed")
+			"Request to backend should succeed")
 	})
 
 	It("should return X-Cache-Status: MISS on first request", func() {
-		uniquePath := goModulePath + "?" + generateCacheBuster("nginx-cache-miss")
-		reqURL := testhelpers.GetNginxURL() + uniquePath
+		reqURL := testhelpers.GetNginxURL() + "/content/test?" + generateCacheBuster("nginx-cache-miss")
 
 		resp, err := client.Get(reqURL)
 		Expect(err).NotTo(HaveOccurred())
@@ -90,8 +83,7 @@ var _ = Describe("Nginx Nexus Proxy Tests", Label("nginx", "external-deps"), Ord
 	})
 
 	It("should return X-Cache-Status: HIT on repeated request", func() {
-		uniquePath := goModulePath + "?" + generateCacheBuster("nginx-cache-hit")
-		reqURL := testhelpers.GetNginxURL() + uniquePath
+		reqURL := testhelpers.GetNginxURL() + "/content/test?" + generateCacheBuster("nginx-cache-hit")
 
 		// First request - should be MISS
 		resp1, err := client.Get(reqURL)
@@ -117,10 +109,7 @@ var _ = Describe("Nginx Nexus Proxy Tests", Label("nginx", "external-deps"), Ord
 	})
 
 	It("should NOT cache requests to non-matching paths", func() {
-		// /service/rest/v1/status is a Nexus health endpoint that doesn't match the cache pattern
-		nonCachedPath := "/service/rest/v1/status"
-		reqURL := testhelpers.GetNginxURL() + nonCachedPath
-
+		reqURL := testhelpers.GetNginxURL() + "/not-cached"
 		resp, err := client.Get(reqURL)
 		Expect(err).NotTo(HaveOccurred())
 		defer resp.Body.Close()

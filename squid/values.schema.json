@@ -531,33 +531,6 @@
               "additionalProperties": false,
               "description": "Mirrord target pod image configuration (repository and tag are set dynamically by squid.test.image helper)"
             },
-            "ports": {
-              "type": "object",
-              "properties": {
-                "http": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 65535
-                },
-                "testServer": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 65535
-                }
-              },
-              "additionalProperties": false
-            },
-            "env": {
-              "type": "object",
-              "properties": {
-                "testServerPort": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 65535
-                }
-              },
-              "additionalProperties": true
-            },
             "resources": {
               "$ref": "#/$defs/resources"
             }
@@ -773,13 +746,8 @@
     },
     "nexus": {
       "type": "object",
-      "properties": {
-        "securityContext": {
-          "$ref": "#/$defs/securityContext"
-        }
-      },
-      "additionalProperties": false,
-      "description": "Configuration for Nexus deployment (used for testing)"
+      "description": "Deprecated: Nexus has been removed. This schema entry exists only for backward compatibility with the Tekton pipeline on main and can be removed once the pipeline no longer sets nexus.securityContext.runAsUser=null.",
+      "additionalProperties": true
     }
   },
   "required": [

@@ -26,14 +26,12 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 
 	// Shared setup: Helm + HTTP clients once for all nested Describes
 	BeforeAll(func() {
-		nexusConfig := testhelpers.NewNexusConfig()
-
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 			ReplicaCount: int(suiteReplicaCount),
 			Nginx: &testhelpers.NginxValues{
 				Enabled: true,
 				Upstream: &testhelpers.NginxUpstreamValues{
-					URL: nexusConfig.URL,
+					URL: testhelpers.GetNginxTestBackendURL(),
 				},
 			},
 		})
@@ -100,7 +98,7 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 			By("Making requests through NGINX to generate access logs")
 			// Make multiple requests to ensure metrics are populated
 			for i := 0; i < 3; i++ {
-				url := testhelpers.GetNginxURL() + fmt.Sprintf("/service/rest/v1/status?iteration=%d", i)
+				url := testhelpers.GetNginxURL() + fmt.Sprintf("/content/metrics-test?iteration=%d", i)
 				resp, err := nginxClient.Get(url)
 				Expect(err).NotTo(HaveOccurred())
 				resp.Body.Close()
@@ -267,7 +265,7 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 			By("Making 5 requests through NGINX")
 			successCount := 0
 			for i := 0; i < 5; i++ {
-				url := testhelpers.GetNginxURL() + fmt.Sprintf("/service/rest/v1/status?req=%d", i)
+				url := testhelpers.GetNginxURL() + fmt.Sprintf("/content/metrics-test?req=%d", i)
 				resp, err := nginxClient.Get(url)
 				if err == nil {
 					if resp.StatusCode == http.StatusOK {
@@ -308,14 +306,14 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 			By("Making requests that produce different status codes")
 
 			// Successful request (200)
-			url200 := testhelpers.GetNginxURL() + "/service/rest/v1/status"
+			url200 := testhelpers.GetNginxURL() + "/content/metrics-test"
 			resp, err := nginxClient.Get(url200)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusOK))
 			resp.Body.Close()
 
 			// Not found request (404)
-			url404 := testhelpers.GetNginxURL() + "/nonexistent-path-12345"
+			url404 := testhelpers.GetNginxURL() + "/nonexistent"
 			resp, err = nginxClient.Get(url404)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(resp.StatusCode).To(Equal(http.StatusNotFound))
@@ -341,7 +339,7 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 
 		It("should track request duration metrics", func() {
 			By("Making a request through NGINX")
-			url := testhelpers.GetNginxURL() + "/service/rest/v1/status"
+			url := testhelpers.GetNginxURL() + "/content/metrics-test"
 			resp, err := nginxClient.Get(url)
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()

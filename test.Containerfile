@@ -50,10 +50,11 @@ COPY squid/ ./squid/
 # Copy test entrypoint script
 COPY --chmod=0755 test-entrypoint.sh ./test-entrypoint.sh
 
-# Compile tests and testserver at build time
+# Compile tests, mirrord target, and nginx test backend server
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     ginkgo build ./tests/e2e && \
-    CGO_ENABLED=1 go build -o /app/testserver ./tests/testserver
+    CGO_ENABLED=1 go build -o /app/mirrord-target ./tests/mirrord-target && \
+    go build -o /app/nginx-test-backend ./tests/nginx-test-backend
 
 # Create a non-root user for running tests
 RUN adduser --uid 1001 --gid 0 --shell /bin/bash --create-home testuser

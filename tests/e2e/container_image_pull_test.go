@@ -25,6 +25,7 @@ var _ = Describe("Container image pulls", Ordered, Serial, Label("external-deps"
 					// Docker Hub CDN patterns
 					"^https://docker-images-prod\\.[a-f0-9]{32}\\.r2\\.cloudflarestorage\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 					"^https://production\\.cloudflare\\.docker\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
+					"^https://production\\.cloudfront\\.docker\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 					"^https://docker-images-prod\\.s3[a-z0-9.-]*\\.amazonaws\\.com/registry-v2/docker/registry/v2/blobs/sha256/[a-f0-9]{2}/[a-f0-9]{64}/data",
 					// Fedora Registry CDN pattern (registry.fedoraproject.org redirects to cdn.registry.fedoraproject.org)
 					"^https://cdn\\.registry\\.fedoraproject\\.org/v2/.+/blobs/sha256:[a-f0-9]{64}",
@@ -84,7 +85,7 @@ func pullAndVerifyQuayCDN(imageRef string) {
 
 func pullAndVerifyDockerHubCDN(imageRef string) {
 	pullAndVerifyContainerImageCDN(imageRef,
-		`(docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com|production\.cloudflare\.docker\.com|docker-images-prod\.s3[a-z0-9.-]*\.amazonaws\.com)`,
+		`(docker-images-prod\.[a-f0-9]{32}\.r2\.cloudflarestorage\.com|production\.cloudflare\.docker\.com|production\.cloudfront\.docker\.com|docker-images-prod\.s3[a-z0-9.-]*\.amazonaws\.com)`,
 		"Docker Hub CDN")
 }
 

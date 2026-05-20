@@ -28,13 +28,11 @@ var _ = Describe("NGINX access log format for access-log-exporter", Label("nginx
 	var client *http.Client
 
 	BeforeAll(func() {
-		nexusConfig := testhelpers.NewNexusConfig()
-
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
 			Nginx: &testhelpers.NginxValues{
 				Enabled: true,
 				Upstream: &testhelpers.NginxUpstreamValues{
-					URL: nexusConfig.URL,
+					URL: testhelpers.GetNginxTestBackendURL(),
 				},
 			},
 		})
@@ -47,7 +45,7 @@ var _ = Describe("NGINX access log format for access-log-exporter", Label("nginx
 		before := metav1.Now()
 
 		By("Making a request through NGINX to generate an access log entry (use a path that is logged; /health has access_log off)")
-		url := testhelpers.GetNginxURL() + "/service/rest/v1/status"
+		url := testhelpers.GetNginxURL() + "/content/log-test"
 		resp, err := client.Get(url)
 		Expect(err).NotTo(HaveOccurred())
 		defer resp.Body.Close()

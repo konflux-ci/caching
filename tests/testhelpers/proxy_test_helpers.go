@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -495,7 +496,6 @@ func buildExtraHelmArgs(environment string, openshift bool, statefulSet *v1.Stat
 			"--set", "cert-manager.securityContext.runAsUser=null",
 			"--set", "cert-manager.securityContext.runAsGroup=null",
 			"--set", "cert-manager.securityContext.fsGroup=null",
-			"--set", "nexus.securityContext.runAsUser=null",
 		)
 	}
 
@@ -1212,5 +1212,34 @@ func ExecCommandInPodWithWriters(ctx context.Context, client kubernetes.Interfac
 		return fmt.Errorf("failed to execute command: %w", err)
 	}
 
+	return nil
+}
+
+// GetNginxTestBackendURL returns the URL for the nginx test backend service.
+func GetNginxTestBackendURL() string {
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", NginxTestBackendServiceName, Namespace, NginxTestBackendPort)
+}
+
+// CreateAuthSecret creates a Kubernetes secret with a Basic Auth authorization header value.
+func CreateAuthSecret(ctx context.Context, client kubernetes.Interface, secretName, username, password string) error {
+	authValue := fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString(
+		[]byte(fmt.Sprintf("%s:%s", username, password))))
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: Namespace,
+		},
+		StringData: map[string]string{
+			"authorization": authValue,
+		},
+	}
+
+	_, err := client.CoreV1().Secrets(Namespace).Create(ctx, secret, metav1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create auth secret: %w", err)
+	}
+
+	fmt.Printf("Created auth secret '%s' in namespace '%s'\n", secretName, Namespace)
 	return nil
 }
