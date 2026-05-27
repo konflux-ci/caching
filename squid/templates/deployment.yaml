@@ -238,5 +238,5 @@ spec:
         accessModes: [ "ReadWriteOnce" ]
         resources:
           requests:
-            storage: {{ .Values.cache.size }}Mi
+            storage: {{ int .Values.cache.size }}Mi
 {{- end }}
