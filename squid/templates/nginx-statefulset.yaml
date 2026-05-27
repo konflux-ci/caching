@@ -207,5 +207,5 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: {{ .Values.nginx.cache.size }}Mi
+            storage: {{ int .Values.nginx.cache.size }}Mi
 {{- end }}
