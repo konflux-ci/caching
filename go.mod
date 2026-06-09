@@ -2,7 +2,7 @@ module github.com/konflux-ci/caching
 
 go 1.25.0
 
-toolchain go1.25.9
+toolchain go1.26.4
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
