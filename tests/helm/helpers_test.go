@@ -3,10 +3,10 @@ package helm_test
 import "strings"
 
 // chartPath is the path to the Helm chart under test
-const chartPath = "./squid"
+const chartPath = "./caching"
 
 // extractSection is a generic helper function that extracts a specific template section from helm output
-// based on the Helm source comment marker (e.g., "# Source: squid/templates/deployment.yaml")
+// based on the Helm source comment marker (e.g., "# Source: caching/templates/deployment.yaml")
 func extractSection(helmOutput, sourceMarker string) string {
 	lines := strings.Split(helmOutput, "\n")
 	var sectionLines []string
@@ -34,50 +34,50 @@ func extractSection(helmOutput, sourceMarker string) string {
 
 // extractSquidDeploymentSection extracts just the squid statefulset YAML for precise testing
 func extractSquidDeploymentSection(helmOutput string) string {
-	return extractSection(helmOutput, "# Source: squid/templates/deployment.yaml")
+	return extractSection(helmOutput, "# Source: caching/templates/deployment.yaml")
 }
 
 // extractNginxStatefulSetSection extracts just the nginx statefulset YAML for precise testing
 func extractNginxStatefulSetSection(helmOutput string) string {
-	return extractSection(helmOutput, "# Source: squid/templates/nginx-statefulset.yaml")
+	return extractSection(helmOutput, "# Source: caching/templates/nginx-statefulset.yaml")
 }
 
 // extractNginxConfigMapSection extracts just the nginx configmap YAML for precise testing
 func extractNginxConfigMapSection(helmOutput string) string {
-	return extractSection(helmOutput, "# Source: squid/templates/nginx-configmap.yaml")
+	return extractSection(helmOutput, "# Source: caching/templates/nginx-configmap.yaml")
 }
 
 // extractNginxServiceSection extracts just the nginx service YAML (non-headless) for precise testing
 func extractNginxServiceSection(helmOutput string) string {
-	return extractSection(helmOutput, "# Source: squid/templates/nginx-service.yaml")
+	return extractSection(helmOutput, "# Source: caching/templates/nginx-service.yaml")
 }
 
 // extractNginxHeadlessServiceSection extracts just the nginx headless service YAML for precise testing
 func extractNginxHeadlessServiceSection(helmOutput string) string {
-	return extractSection(helmOutput, "# Source: squid/templates/nginx-headless-service.yaml")
+	return extractSection(helmOutput, "# Source: caching/templates/nginx-headless-service.yaml")
 }
 
 // extractSquidServiceSection extracts just the squid service YAML (non-headless) for precise testing
 func extractSquidServiceSection(helmOutput string) string {
-	return extractSection(helmOutput, "# Source: squid/templates/service.yaml")
+	return extractSection(helmOutput, "# Source: caching/templates/service.yaml")
 }
 
 // extractSquidHeadlessServiceSection extracts just the squid headless service YAML for precise testing
 func extractSquidHeadlessServiceSection(helmOutput string) string {
-	return extractSection(helmOutput, "# Source: squid/templates/headless-service.yaml")
+	return extractSection(helmOutput, "# Source: caching/templates/headless-service.yaml")
 }
 
 // extractSquidConfigMapSection extracts just the squid configmap YAML for precise testing
 func extractSquidConfigMapSection(helmOutput string) string {
-	return extractSection(helmOutput, "# Source: squid/templates/configmap.yaml")
+	return extractSection(helmOutput, "# Source: caching/templates/configmap.yaml")
 }
 
 // extractNginxExporterConfigMapSection extracts just the nginx exporter configmap YAML for precise testing
 func extractNginxExporterConfigMapSection(helmOutput string) string {
-	return extractSection(helmOutput, "# Source: squid/templates/nginx-exporter-configmap.yaml")
+	return extractSection(helmOutput, "# Source: caching/templates/nginx-exporter-configmap.yaml")
 }
 
 // extractNginxServiceMonitorSection extracts just the nginx servicemonitor YAML for precise testing
 func extractNginxServiceMonitorSection(helmOutput string) string {
-	return extractSection(helmOutput, "# Source: squid/templates/nginx-servicemonitor.yaml")
+	return extractSection(helmOutput, "# Source: caching/templates/nginx-servicemonitor.yaml")
 }

@@ -73,7 +73,7 @@ The chart includes the ServiceMonitor CRD in the `crds/` directory, so it will b
 
 If you don't want ServiceMonitor functionality, you can disable it:
 ```bash
-helm install squid ./squid --set prometheus.serviceMonitor.enabled=false
+helm install squid ./caching --set prometheus.serviceMonitor.enabled=false
 ```
 
 **For non-Prometheus Operator setups**, disable ServiceMonitor and use manual Prometheus configuration:

@@ -82,7 +82,7 @@ helm uninstall squid 2>/dev/null || true
 kubectl delete namespace caching 2>/dev/null || true
 # Wait a few seconds for cleanup
 sleep 5
-helm install squid ./squid
+helm install squid ./caching
 ```
 
 ### 6. Connection Refused from Pods
@@ -225,7 +225,7 @@ This is normal - Kubernetes is performing TCP health checks without sending comp
 
 ### Metrics Access Denied
 
-If you see "access denied" errors, ensure that the squid configuration allows localhost manager access. The default configuration should work, but if you've modified the configuration in `squid/templates/configmap.yaml`, make sure these lines are present:
+If you see "access denied" errors, ensure that the squid configuration allows localhost manager access. The default configuration should work, but if you've modified the configuration in `caching/templates/configmap.yaml`, make sure these lines are present:
 
 ```
 http_access allow localhost manager

@@ -95,17 +95,17 @@ curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
 
 ```bash
 # Full install with cert-manager (default)
-helm install squid ./squid
+helm install squid ./caching
 
 # Without deploying cert-manager (requires cert-manager already installed on the cluster)
 # Note: Certificate resources are still created — cert-manager must be present
-helm install squid ./squid --set installCertManagerComponents=false
+helm install squid ./caching --set installCertManagerComponents=false
 
 # Disable TLS certificate resources (cert-manager still deployed)
-helm install squid ./squid --set installCertManagerComponents=false --set selfsigned-bundle.enabled=false
+helm install squid ./caching --set installCertManagerComponents=false --set selfsigned-bundle.enabled=false
 
 # Local development
-helm install squid ./squid --set environment=dev --set nginx.enabled=true
+helm install squid ./caching --set environment=dev --set nginx.enabled=true
 ```
 
 ### Key Values
@@ -192,7 +192,7 @@ kind delete cluster --name caching
 ## Chart Structure
 
 ```
-squid/
+caching/
 ├── Chart.yaml          # Chart metadata
 ├── values.yaml         # Default configuration
 ├── crds/               # Custom Resource Definitions

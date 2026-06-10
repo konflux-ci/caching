@@ -24,7 +24,7 @@ ignore:
   - "vendor/**"
   - "hack/**"
   - "docs/**"
-  - "squid/**"
+  - "caching/**"
 
 flags:
   unit-tests:

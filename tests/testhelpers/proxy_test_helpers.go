@@ -556,10 +556,10 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	defer os.Remove(valuesFile)
 
 	// Use the temporary values file with helm
-	// Allow overriding chart path via SQUID_CHART_PATH env var (defaults to ./squid)
-	chartPath := os.Getenv("SQUID_CHART_PATH")
+	// Allow overriding chart path via CACHING_CHART_PATH env var (defaults to ./caching)
+	chartPath := os.Getenv("CACHING_CHART_PATH")
 	if chartPath == "" {
-		chartPath = "./squid"
+		chartPath = "./caching"
 	}
 
 	// Build helm arguments based on environment and platform
@@ -703,8 +703,8 @@ func FindChartDirectory() (string, error) {
 		chartYamlPath, err := findChartYamlInDirectory(dir)
 		if err == nil {
 			// Found Chart.yaml, return the directory that contains the chart directory
-			// For example, if Chart.yaml is at /project/squid/Chart.yaml,
-			// we return /project so that "./squid" works as a relative path
+			// For example, if Chart.yaml is at /project/caching/Chart.yaml,
+			// we return /project so that "./caching" works as a relative path
 			chartDir := filepath.Dir(chartYamlPath)
 			return filepath.Dir(chartDir), nil
 		}
