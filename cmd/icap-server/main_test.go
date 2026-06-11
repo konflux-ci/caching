@@ -132,6 +132,18 @@ var _ = Describe("reqmodHandler", func() {
 	})
 })
 
+var _ = Describe("logICAPStartup", func() {
+	It("logs the listen port", func() {
+		logOutput := &bytes.Buffer{}
+		old := log.Writer()
+		log.SetOutput(logOutput)
+		defer log.SetOutput(old)
+
+		logICAPStartup("1344")
+		Expect(logOutput.String()).To(ContainSubstring("Starting ICAP server on port 1344"))
+	})
+})
+
 var _ = Describe("writeHeaderAndLog", func() {
 	var (
 		logOutput   *bytes.Buffer

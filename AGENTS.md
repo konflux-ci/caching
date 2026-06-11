@@ -1,5 +1,7 @@
 # AGENTS.md
 
+Keep this file concise for agents (CI limit: 300 lines). Detailed guides live in `docs/` and `skills/`.
+
 ## Project Overview
 Caching infrastructure for Konflux CI — deploys Squid forward proxy and Nginx reverse proxy to Kubernetes/OpenShift via a Helm chart. The chart is in `caching/` and deploys both services.
 
@@ -10,7 +12,7 @@ Caching infrastructure for Konflux CI — deploys Squid forward proxy and Nginx 
 - `.tekton/` — Konflux Pipelines-as-Code CI definitions
 - `internal/` — Shared Go libraries (Helm, Kind cluster management)
 
-## Build & Test (Mage, not Make)
+## Build & Test (Mage)
 ```bash
 mage -l                     # List all targets
 mage all                    # Full setup: cluster + build + deploy + test
@@ -18,8 +20,21 @@ mage test:unit              # Unit tests (no cluster needed)
 mage test:cluster           # E2E tests (requires kind + mirrord)
 mage squidHelm:up           # Deploy/upgrade Helm chart
 mage build:squid            # Build squid container image
+mage lint:go                # golangci-lint (see Linting below)
 ```
-Before committing: `mage test:unit && helm lint ./caching`
+Before committing: `mage test:unit` (helm, hadolint, golangci, and shellcheck run in CI — see Linting).
+
+## Linting
+Local and CI use dedicated checks; most are **not** run inside the devcontainer job anymore.
+
+| Check | Local | CI workflow |
+|-------|-------|-------------|
+| golangci-lint | `mage lint:go` | `go-lint.yaml` |
+| Helm chart | `helm lint ./caching` | `helm-lint.yaml` |
+| Containerfiles | — | `hadolint.yaml` |
+| Shell scripts (diff) | — | `differential-shellcheck.yaml` |
+
+- golangci-lint v2 — version pinned in `.golangci-lint-version`; config in `.golangci.yml`
 
 ## Conventions
 - Use **Podman**, not Docker — all Mage targets call `podman`

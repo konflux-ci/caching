@@ -252,6 +252,29 @@ func init() {
 	prometheus.MustRegister(squidResponseTime)
 }
 
+func indexPageHandler(w http.ResponseWriter, _ *http.Request) {
+	_, _ = w.Write([]byte(`<html>
+			<head><title>Squid Per-Site Exporter</title></head>
+			<body>
+			<h1>Squid Per-Site Exporter</h1>
+			<p><a href='/metrics'>Metrics</a></p>
+			</body>
+			</html>`))
+}
+
+func healthCheckHandler(squidAddr string, timeout time.Duration) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		conn, err := net.DialTimeout("tcp", squidAddr, timeout)
+		if err != nil {
+			http.Error(w, "squid unreachable", http.StatusServiceUnavailable)
+			return
+		}
+		_ = conn.Close()
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
+	}
+}
+
 func main() {
 	// Configuration with environment variable fallbacks for container-friendly deployment
 	listenAddress := flag.String("web.listen-address",
@@ -268,7 +291,8 @@ func main() {
 	// Require TLS by default; explicitly disable to allow HTTP
 	tlsRequired := flag.Bool("web.tls-required",
 		getEnvDefault("WEB_TLS_REQUIRED", "true") == "true",
-		"Require TLS certificate and key to be present. If true and files are missing, the server will not start. (Env: WEB_TLS_REQUIRED)")
+		"Require TLS certificate and key. If true and files are missing, the server will not start. "+
+			"(Env: WEB_TLS_REQUIRED)")
 
 	// Health check options
 	squidHealthAddr := flag.String("squid.health-addr",
@@ -296,27 +320,10 @@ func main() {
 		EnableOpenMetrics: false,
 	})
 	http.Handle("/metrics", handler)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-			<head><title>Squid Per-Site Exporter</title></head>
-			<body>
-			<h1>Squid Per-Site Exporter</h1>
-			<p><a href='/metrics'>Metrics</a></p>
-			</body>
-			</html>`))
-	})
+	http.HandleFunc("/", indexPageHandler)
 
 	// Health check endpoint: validates exporter process and Squid TCP port
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		conn, err := net.DialTimeout("tcp", *squidHealthAddr, *squidHealthTimeout)
-		if err != nil {
-			http.Error(w, "squid unreachable", http.StatusServiceUnavailable)
-			return
-		}
-		_ = conn.Close()
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+	http.HandleFunc("/health", healthCheckHandler(*squidHealthAddr, *squidHealthTimeout))
 
 	// Start server based on TLS configuration
 	certPresent := fileExists(*tlsCertFile) && fileExists(*tlsKeyFile)
@@ -325,15 +332,18 @@ func main() {
 			log.Printf("Starting HTTPS server on %s", *listenAddress)
 			log.Printf("Using TLS cert: %s", *tlsCertFile)
 			log.Printf("Using TLS key: %s", *tlsKeyFile)
+			//nolint:gosec // metrics sidecar; HTTP server timeouts not required
 			log.Fatal(http.ListenAndServeTLS(*listenAddress, *tlsCertFile, *tlsKeyFile, nil))
 		}
 		log.Fatalf("TLS required but certificate or key not found (cert: %s, key: %s).", *tlsCertFile, *tlsKeyFile)
 	} else {
 		if certPresent {
 			log.Printf("TLS not required but certificates found; starting HTTPS on %s", *listenAddress)
+			//nolint:gosec // metrics sidecar; HTTP server timeouts not required
 			log.Fatal(http.ListenAndServeTLS(*listenAddress, *tlsCertFile, *tlsKeyFile, nil))
 		}
 		log.Printf("TLS disabled; starting HTTP server on %s", *listenAddress)
+		//nolint:gosec // metrics sidecar; HTTP server timeouts not required
 		log.Fatal(http.ListenAndServe(*listenAddress, nil))
 	}
 }

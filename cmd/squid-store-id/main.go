@@ -41,7 +41,7 @@ func normalizeStoreID(client HTTPClient, requestURL string) string {
 		return requestURL
 	}
 
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("Error getting URL, status code: %v", resp.StatusCode)
@@ -101,7 +101,7 @@ func processInput(in io.Reader, out io.Writer, normalizeFunc func(HTTPClient, st
 			defer wg.Done()
 			response := parseLine(l, normalizeFunc)
 			log.Printf("Response: %s", response)
-			fmt.Fprintln(out, response)
+			_, _ = fmt.Fprintln(out, response)
 		}(line)
 	}
 

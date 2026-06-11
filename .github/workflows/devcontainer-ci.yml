@@ -94,22 +94,6 @@ jobs:
         podman exec devcontainer-test ls -la /workspaces/caching
         podman exec devcontainer-test cat /workspaces/caching/README.md | head -5
 
-    - name: Lint Caching Helm chart
-      run: |
-        podman exec devcontainer-test helm lint /workspaces/caching/caching
-
-    - name: Lint main Containerfile
-      run: |
-        podman exec -w /workspaces/caching devcontainer-test hadolint Containerfile
-
-    - name: Lint test Containerfile
-      run: |
-        podman exec -w /workspaces/caching devcontainer-test hadolint test.Containerfile
-
-    - name: Lint devcontainer Containerfile
-      run: |
-        podman exec -w /workspaces/caching devcontainer-test hadolint .devcontainer/Containerfile
-
     - name: Run unit tests
       run: |
         podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage test:unit
