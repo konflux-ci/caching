@@ -1,0 +1,33 @@
+name: Hadolint
+
+on:
+  pull_request:
+  merge_group:
+    types: [checks_requested]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Lint main Containerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Containerfile
+          config: .hadolint.yaml
+
+      - name: Lint test Containerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: test.Containerfile
+          config: .hadolint.yaml
+
+      - name: Lint devcontainer Containerfile
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: .devcontainer/Containerfile
+          config: .hadolint.yaml

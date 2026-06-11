@@ -132,13 +132,13 @@ var _ = Describe("readFromStdin", func() {
 		Expect(err).NotTo(HaveOccurred())
 		oldStdin := os.Stdin
 		os.Stdin = r
-		defer func() { os.Stdin = oldStdin; r.Close() }()
+		defer func() { os.Stdin = oldStdin; _ = r.Close() }()
 
 		go exp.readFromStdin()
 
 		_, err = w.WriteString("sample-stdin-line\n")
 		Expect(err).NotTo(HaveOccurred())
-		w.Close()
+		_ = w.Close()
 
 		select {
 		case got := <-ch:
