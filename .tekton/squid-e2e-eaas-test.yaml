@@ -340,7 +340,7 @@ spec:
                 echo "Adding jetstack Helm repository..."
                 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
                 helm repo update
-                cd squid
+                cd caching
                 helm dependency build
                 
                 # Parse image references
@@ -358,7 +358,7 @@ spec:
                 # Install squid with bundled cert-manager, overriding runAsUser to be OpenShift SCC compatible
                 # OpenShift's restricted-v2 SCC requires UIDs in namespace-specific ranges (e.g., 1000740000-1000749999)
                 # By not specifying runAsUser/runAsGroup/fsGroup, OpenShift will auto-assign from the allowed range
-                # Note: Using installCRDs=false to let squid/crds/ directory handle CRDs (avoids ownership conflicts)
+                # Note: Using installCRDs=false to let caching/crds/ directory handle CRDs (avoids ownership conflicts)
                 echo "Installing Squid chart with cert-manager..."
                 helm install squid . \
                   --namespace "$namespace" \

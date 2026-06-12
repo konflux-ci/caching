@@ -35,6 +35,7 @@ const (
 	testImageTag = "localhost/konflux-ci/squid-test:latest"
 	// TestContainerfile is the path to the Containerfile for tests
 	testContainerfile = "test.Containerfile"
+	chartPath         = "./caching"
 )
 
 // Default target - shows available targets
@@ -393,7 +394,7 @@ func (SquidHelm) Up() error {
 
 	// Build helm dependencies from lock file
 	fmt.Printf("📦 Building helm dependencies...\n")
-	err = sh.Run("helm", "dependency", "build", "./squid")
+	err = sh.Run("helm", "dependency", "build", chartPath)
 	if err != nil {
 		return fmt.Errorf("failed to build helm dependencies: %w", err)
 	}
@@ -403,7 +404,7 @@ func (SquidHelm) Up() error {
 		"helm",
 		"upgrade",
 		"squid",
-		"./squid",
+		chartPath,
 		"--install",
 		"--set", "environment=dev",
 		"--set", "nginx.enabled=true",
@@ -667,7 +668,7 @@ func resetSquidToDefaults() {
 		"helm",
 		"upgrade",
 		"squid",
-		"./squid",
+		chartPath,
 		"--set", "environment=dev",
 		"--set", "nginx.enabled=true",
 		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
@@ -708,7 +709,7 @@ func (Test) ClusterMultiReplica() error {
 	// Upgrade deployment to 3 replicas
 	err := sh.RunWith(map[string]string{
 		"SQUID_REPLICA_COUNT": "3",
-	}, "helm", "upgrade", "squid", "./squid",
+	}, "helm", "upgrade", "squid", chartPath,
 		"-n=default", "--wait", "--timeout=300s", "--history-max=50",
 		"--set", "replicaCount=3",
 		"--set", "nginx.enabled=true",

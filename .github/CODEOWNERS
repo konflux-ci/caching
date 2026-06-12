@@ -7,5 +7,5 @@
 
 # Specific patterns can be added below if needed
 # For example, if you want specific teams for specific directories:
-# /squid/ @konflux-ci/Vanguard @konflux-ci/another-team
+# /caching/ @konflux-ci/Vanguard @konflux-ci/another-team
 # *.md @konflux-ci/docs-team 

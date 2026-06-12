@@ -44,8 +44,8 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 # Copy test source files maintaining directory structure
 COPY tests/ ./tests/
 
-# Copy squid chart
-COPY squid/ ./squid/
+# Copy caching chart
+COPY caching/ ./caching/
 
 # Copy test entrypoint script
 COPY --chmod=0755 test-entrypoint.sh ./test-entrypoint.sh

@@ -1,11 +1,11 @@
 # AGENTS.md
 
 ## Project Overview
-Caching infrastructure for Konflux CI — deploys Squid forward proxy and Nginx reverse proxy to Kubernetes/OpenShift via a Helm chart. **The chart is in `squid/` but deploys both services** (tracked in KFLUXVNGD-827).
+Caching infrastructure for Konflux CI — deploys Squid forward proxy and Nginx reverse proxy to Kubernetes/OpenShift via a Helm chart. The chart is in `caching/` and deploys both services.
 
 ## Key Directories
 - `cmd/` — Go sidecar binaries: `icap-server`, `squid-per-site-exporter`, `squid-store-id`
-- `squid/` — Helm chart (templates, values, CRDs) for both Squid and Nginx
+- `caching/` — Helm chart (templates, values, CRDs) for both Squid and Nginx
 - `tests/e2e/` — Ginkgo E2E tests; `tests/helm/` — Helm template unit tests
 - `.tekton/` — Konflux Pipelines-as-Code CI definitions
 - `internal/` — Shared Go libraries (Helm, Kind cluster management)
@@ -19,7 +19,7 @@ mage test:cluster           # E2E tests (requires kind + mirrord)
 mage squidHelm:up           # Deploy/upgrade Helm chart
 mage build:squid            # Build squid container image
 ```
-Before committing: `mage test:unit && helm lint ./squid`
+Before committing: `mage test:unit && helm lint ./caching`
 
 ## Conventions
 - Use **Podman**, not Docker — all Mage targets call `podman`
@@ -37,7 +37,8 @@ All dependencies must be locked for network-isolated CI builds. When adding depe
 Forgetting lock files will break Konflux CI. See `HERMETIC-BUILDS.md`.
 
 ## Gotchas
-- **Misleading names**: `squid/` chart deploys both squid AND nginx; `access-log-exporter` is for nginx, not squid
+- **Misleading name**: `access-log-exporter` is for nginx, not squid
+- **Chart directory vs release name**: the Helm chart directory is `caching/` but the default Helm release name remains `squid`
 - **Squid image is multi-process**: runs squid, squid-exporter (:9301), per-site-exporter (:9302), ICAP (:1344)
 - **`.tekton/` changes trigger CI** — edits here affect Pipelines-as-Code
 

@@ -31,7 +31,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred(), "Failed to update Helm repositories")
 
 	// Build chart dependencies from the correct directory
-	cmd = exec.Command("helm", "dependency", "build", "./squid")
+	cmd = exec.Command("helm", "dependency", "build", "./caching")
 	cmd.Dir = projectRoot
 	err = cmd.Run()
 	Expect(err).NotTo(HaveOccurred(), "Failed to build Helm chart dependencies")

@@ -60,7 +60,7 @@ sleep 10
 #### 2.1 Deploy Squid with Monitoring
 ```bash
 # Deploy with monitoring enabled
-helm install squid ./squid \
+helm install squid ./caching \
   --set squidExporter.enabled=true \
   --set prometheus.serviceMonitor.enabled=true \
   --set cert-manager.enabled=false \
@@ -294,7 +294,7 @@ For rapid testing during development:
 
 ```bash
 # Quick deployment test
-helm install squid ./squid --set cert-manager.enabled=false --wait
+helm install squid ./caching --set cert-manager.enabled=false --wait
 
 # Quick functionality test
 kubectl port-forward -n caching svc/squid 3128:3128 &
