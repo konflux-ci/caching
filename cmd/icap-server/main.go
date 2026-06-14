@@ -79,7 +79,7 @@ func main() {
 
 	icap.HandleFunc("/reqmod", reqmodHandler)
 
-	log.Println("Starting ICAP server on port", port)
+	log.Printf("Starting ICAP server on port %s", port) //nolint:gosec // port from env with numeric default
 	if err := icap.ListenAndServe(":"+port, nil); err != nil {
 		log.Println("Error starting server:", err)
 		os.Exit(1)

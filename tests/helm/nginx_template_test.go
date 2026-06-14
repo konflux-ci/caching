@@ -737,8 +737,8 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 		It("should use custom name for all nginx resource names and labels", func() {
 			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
 				Nginx: &testhelpers.NginxValues{
-					Enabled:      true,
-					Name: "my-custom-proxy",
+					Enabled: true,
+					Name:    "my-custom-proxy",
 					Upstream: &testhelpers.NginxUpstreamValues{
 						URL: "http://backend:8080",
 					},

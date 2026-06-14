@@ -1,0 +1,62 @@
+version: "2"
+run:
+  timeout: 5m
+  allow-parallel-runners: true
+linters:
+  default: none
+  enable:
+    - copyloopvar
+    - dupl
+    - errcheck
+    - ginkgolinter
+    - goconst
+    - gocyclo
+    - gosec
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - prealloc
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+  settings:
+    revive:
+      rules:
+        - name: comment-spacings
+        - name: import-shadowing
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - dupl
+          - lll
+        path: internal/*
+      - linters:
+          - lll
+        path: tests/helm
+      - linters:
+          - gosec
+        text: "G101:"
+        path: _test\.go$
+      - linters:
+          - gosec
+        text: "G301:|G304:|G306:"
+        path: (_test\.go$|^tests/)
+    paths:
+      - tests/testhelpers
+      - tests/e2e
+      - tests/nginx-test-backend
+      - tests/mirrord-target
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
