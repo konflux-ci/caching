@@ -18,28 +18,19 @@ helm repo update
 # Copy chart to writable temp directory
 CHART_DIR=$(mktemp -d)
 echo "Copying chart to temp directory: $CHART_DIR"
-cp -r /app/squid "$CHART_DIR/"
+cp -r /app/caching "$CHART_DIR/"
 
 # Build dependencies in the temp directory
-if ! helm dependency build "$CHART_DIR/squid"; then
+if ! helm dependency build "$CHART_DIR/caching"; then
   echo "ERROR: Failed to build helm dependencies"
   exit 1
 fi
 
-# Verify dependencies were downloaded
-if [ ! -d "$CHART_DIR/squid/charts" ]; then
-  echo "ERROR: Charts directory not created"
-  exit 1
-fi
-
-echo "✓ Helm dependencies ready at: $CHART_DIR/squid"
-ls -la "$CHART_DIR/squid/charts/"
-
 # Change to the temp directory so tests use the chart with dependencies
 cd "$CHART_DIR"
 
-echo "✓ Changed to temp directory: $CHART_DIR"
-ls -la ./squid/charts/
+echo "✓ Helm dependencies ready at: $CHART_DIR/caching"
+ls -la ./caching/charts/
 
 # Run the compiled test binary
 echo "Running tests..."

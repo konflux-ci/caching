@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema#",
-  "$id": "https://github.com/konflux-ci/caching/squid/values.schema.json",
+  "$id": "https://github.com/konflux-ci/caching/caching/values.schema.json",
   "title": "Squid Proxy Helm Chart Values Schema",
   "description": "JSON Schema for validating values.yaml in the Squid Helm chart",
   "type": "object",

@@ -115,7 +115,7 @@ When tools are pre-installed in devcontainer:
 - name: Lint with pre-installed tools
   run: |
     podman exec devcontainer-test hadolint /workspaces/caching/Containerfile
-    podman exec devcontainer-test helm lint /workspaces/caching/squid
+    podman exec devcontainer-test helm lint /workspaces/caching/caching
 ```
 
 vs avoiding:

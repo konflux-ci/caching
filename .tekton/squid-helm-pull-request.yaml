@@ -32,7 +32,7 @@ spec:
     - name: dockerfile
       value: helm.Containerfile
     - name: path-context
-      value: "squid"
+      value: "caching"
     - name: hermetic
       value: "false"
   pipelineSpec:
