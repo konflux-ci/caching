@@ -305,21 +305,23 @@ cert-manager:
     annotations: {}
     automountServiceAccountToken: true
   replicaCount: 1
+  imageRegistry: quay.io
+  imageNamespace: jetstack
   image:
-    repository: quay.io/jetstack/cert-manager-controller
+    name: cert-manager-controller
     tag: v1.20.2
     pullPolicy: IfNotPresent
   webhook:
     replicaCount: 1
     image:
-      repository: quay.io/jetstack/cert-manager-webhook
+      name: cert-manager-webhook
       tag: v1.20.2
       pullPolicy: IfNotPresent
   cainjector:
     enabled: true # Enable the CA injector component
     replicaCount: 1
     image:
-      repository: quay.io/jetstack/cert-manager-cainjector
+      name: cert-manager-cainjector
       tag: v1.20.2
       pullPolicy: IfNotPresent
   resources:
