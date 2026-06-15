@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.nginx.name }}
   namespace: {{ .Values.namespace.name }}
   labels:
-    {{- include "nginx.labels" . | nindent 4 }}
+    {{- include "caching.nginx.labels" . | nindent 4 }}
   {{- with .Values.nginx.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -16,7 +16,7 @@ spec:
   trafficDistribution: {{ .Values.nginx.service.trafficDistribution }}
   {{- end }}
   selector:
-    {{- include "nginx.selectorLabels" . | nindent 4 }}
+    {{- include "caching.nginx.selectorLabels" . | nindent 4 }}
   ports:
     - port: {{ .Values.nginx.service.port }}
       protocol: TCP

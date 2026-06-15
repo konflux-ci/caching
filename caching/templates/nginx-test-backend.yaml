@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: nginx-test-backend
-        image: {{ include "squid.test.image" . }}
+        image: {{ include "caching.test.image" . }}
         imagePullPolicy: IfNotPresent
         command: ["/app/nginx-test-backend"]
         {{- if .Values.nginx.auth.enabled }}

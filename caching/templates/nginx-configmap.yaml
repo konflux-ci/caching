@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.nginx.name }}-config
   namespace: {{ .Values.namespace.name }}
   labels:
-    {{- include "nginx.labels" . | nindent 4 }}
+    {{- include "caching.nginx.labels" . | nindent 4 }}
 data:
   nginx.conf: |
     # Automatically spawn one worker process per CPU core for optimal performance

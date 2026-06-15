@@ -6,7 +6,7 @@ metadata:
   name: {{ .Values.squid.name }}-test
   namespace: {{ .Values.namespace.name }}
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
     app.kubernetes.io/component: test
   {{- if not .Values.mirrord.enabled }}
   annotations:
@@ -20,7 +20,7 @@ kind: ClusterRole
 metadata:
   name: {{ .Values.squid.name }}-test
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
     app.kubernetes.io/component: test
   {{- if not .Values.mirrord.enabled }}
   annotations:
@@ -60,7 +60,7 @@ kind: ClusterRoleBinding
 metadata:
   name: {{ .Values.squid.name }}-test
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
     app.kubernetes.io/component: test
   {{- if not .Values.mirrord.enabled }}
   annotations:

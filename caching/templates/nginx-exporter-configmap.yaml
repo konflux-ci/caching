@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.nginx.name }}-exporter-config
   namespace: {{ .Values.namespace.name }}
   labels:
-    {{- include "nginx.labels" . | nindent 4 }}
+    {{- include "caching.nginx.labels" . | nindent 4 }}
 data:
   config.yaml: |
     # access-log-exporter configuration

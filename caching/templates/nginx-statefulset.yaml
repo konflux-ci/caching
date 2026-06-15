@@ -5,21 +5,21 @@ metadata:
   name: {{ .Values.nginx.name }}
   namespace: {{ .Values.namespace.name }}
   labels:
-    {{- include "nginx.labels" . | nindent 4 }}
+    {{- include "caching.nginx.labels" . | nindent 4 }}
 spec:
   serviceName: {{ .Values.nginx.name }}-headless
   replicas: {{ .Values.nginx.replicaCount }}
   minReadySeconds: 30
   selector:
     matchLabels:
-      {{- include "nginx.selectorLabels" . | nindent 6 }}
+      {{- include "caching.nginx.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
         # Config checksum to trigger redeployment on config changes
         checksum/config: {{ include (print $.Template.BasePath "/nginx-configmap.yaml") . | sha256sum }}
       labels:
-        {{- include "nginx.selectorLabels" . | nindent 8 }}
+        {{- include "caching.nginx.selectorLabels" . | nindent 8 }}
     spec:
       topologySpreadConstraints:
         - maxSkew: 1
@@ -27,7 +27,7 @@ spec:
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              {{- include "nginx.selectorLabels" . | nindent 14 }}
+              {{- include "caching.nginx.selectorLabels" . | nindent 14 }}
       {{- if hasKey .Values.nginx "affinity" }}
       {{- with .Values.nginx.affinity }}
       affinity:
@@ -35,7 +35,7 @@ spec:
       {{- end }}
       {{- else }}
       affinity:
-        {{- include "nginx.defaultAffinity" . | nindent 8 }}
+        {{- include "caching.nginx.defaultAffinity" . | nindent 8 }}
       {{- end }}
       {{- with .Values.nginx.podSecurityContext }}
       securityContext:
@@ -135,7 +135,7 @@ spec:
               readOnly: true
         # Access-log-exporter sidecar: exposes Prometheus metrics from NGINX access logs
         - name: access-log-exporter
-          image: {{ include "nginx.exporter.image" . }}
+          image: {{ include "caching.nginx.exporter.image" . }}
           imagePullPolicy: IfNotPresent
           args:
             - "--config=/etc/exporter/config.yaml"

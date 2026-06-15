@@ -557,7 +557,7 @@ mirrord:
     name: "mirrord-test-target" # Name of the mirrord target pod
     image:
       pullPolicy: IfNotPresent
-      # Note: repository and tag are set dynamically by squid.test.image helper in _helpers.tpl
+      # Note: repository and tag are set dynamically by caching.test.image helper in _helpers.tpl
     resources:
       requests:
         cpu: 50m

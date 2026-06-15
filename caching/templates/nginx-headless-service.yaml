@@ -5,11 +5,11 @@ metadata:
   name: {{ .Values.nginx.name }}-headless
   namespace: {{ .Values.namespace.name }}
   labels:
-    {{- include "nginx.labels" . | nindent 4 }}
+    {{- include "caching.nginx.labels" . | nindent 4 }}
 spec:
   clusterIP: None
   selector:
-    {{- include "nginx.selectorLabels" . | nindent 4 }}
+    {{- include "caching.nginx.selectorLabels" . | nindent 4 }}
   ports:
     - port: {{ .Values.nginx.service.port }}
       protocol: TCP

@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.squid.name }}-headless
   namespace: {{ .Values.namespace.name }}
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
 spec:
   clusterIP: None
   ports:
@@ -26,5 +26,5 @@ spec:
       name: per-site-http
     {{- end }}
   selector:
-    {{- include "squid.selectorLabels" . | nindent 4 }}
+    {{- include "caching.squid.selectorLabels" . | nindent 4 }}
 {{- end }}
