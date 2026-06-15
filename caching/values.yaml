@@ -299,11 +299,11 @@ cert-manager:
       enabled: false # Disable Pod Security Policy
     rbac:
       create: true # Create RBAC resources
-    serviceAccount:
-      create: true # Create service accounts
-      name: ""
-      annotations: {}
-      automountServiceAccountToken: true
+  serviceAccount:
+    create: true # Create service accounts
+    name: ""
+    annotations: {}
+    automountServiceAccountToken: true
   replicaCount: 1
   image:
     repository: quay.io/jetstack/cert-manager-controller
