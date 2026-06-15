@@ -6,6 +6,8 @@ metadata:
   namespace: {{ .Values.namespace.name }}
 spec:
   isCA: true
+  duration: 2160h # 90 days
+  renewBefore: 360h # 15 days
   subject:
     organizations:
       - konflux
