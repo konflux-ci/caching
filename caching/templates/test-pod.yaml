@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/component: test
     app: {{ .Values.test.name }}
-    helm.sh/chart: {{ include "squid.chart" . }}
+    helm.sh/chart: {{ include "caching.chart" . }}
   annotations:
     "helm.sh/hook": test
     "helm.sh/hook-weight": "1"
@@ -23,7 +23,7 @@ spec:
   serviceAccountName: {{ .Values.squid.name }}-test
   containers:
   - name: ginkgo-test
-    image: "{{ include "squid.test.image" . }}"
+    image: "{{ include "caching.test.image" . }}"
     imagePullPolicy: {{ .Values.test.image.pullPolicy | default "IfNotPresent" }}
     workingDir: /app
     command:
@@ -47,7 +47,7 @@ spec:
     # Pass the test image to the test binary so it knows which image to preserve when calling
     # helm install/upgrade commands.
     - name: SQUID_TEST_IMAGE
-      value: "{{ include "squid.test.image" . }}"
+      value: "{{ include "caching.test.image" . }}"
     resources:
       {{- toYaml .Values.test.resources | nindent 6 }}
 {{- end }}

@@ -5,13 +5,13 @@ metadata:
   name: {{ .Values.squid.name }}
   namespace: {{ .Values.namespace.name }}
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
 spec:
   serviceName: {{ .Values.squid.name }}-headless
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "squid.selectorLabels" . | nindent 6 }}
+      {{- include "caching.squid.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -21,13 +21,13 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "squid.selectorLabels" . | nindent 8 }}
+        {{- include "caching.squid.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "squid.serviceAccountName" . }}
+      serviceAccountName: {{ include "caching.squid.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
 
@@ -35,7 +35,7 @@ spec:
         - name: squid
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ include "squid.image" . }}"
+          image: "{{ include "caching.squid.image" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
@@ -106,7 +106,7 @@ spec:
         - name: icap-server
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ include "squid.image" . }}"
+          image: "{{ include "caching.squid.image" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: icap
@@ -126,7 +126,7 @@ spec:
         - name: squid-exporter
           securityContext:
             {{- toYaml .Values.squidExporter.securityContext | nindent 12 }}
-          image: "{{ include "squid.image" . }}"
+          image: "{{ include "caching.squid.image" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: metrics
@@ -225,7 +225,7 @@ spec:
       {{- end }}
       {{- else }}
       affinity:
-        {{- include "squid.defaultAffinity" . | nindent 8 }}
+        {{- include "caching.squid.defaultAffinity" . | nindent 8 }}
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:

@@ -12,13 +12,13 @@ metadata:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/component: mirrord-target
     app: {{ .Values.mirrord.targetPod.name }}
-    helm.sh/chart: {{ include "squid.chart" . }}
+    helm.sh/chart: {{ include "caching.chart" . }}
 spec:
   serviceAccountName: {{ .Values.squid.name }}-test
   restartPolicy: Always  # Keep the target pod running for development
   containers:
     - name: mirrord-target
-      image: "{{ include "squid.test.image" . }}"
+      image: "{{ include "caching.test.image" . }}"
       imagePullPolicy: {{ .Values.mirrord.targetPod.image.pullPolicy | default "IfNotPresent" }}
       command: ["/app/mirrord-target"]
       ports:

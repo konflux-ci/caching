@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.squid.name }}
   namespace: {{ .Values.prometheus.serviceMonitor.namespace | default .Values.namespace.name }}
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
     {{- with .Values.prometheus.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -16,7 +16,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      {{- include "squid.selectorLabels" . | nindent 6 }}
+      {{- include "caching.squid.selectorLabels" . | nindent 6 }}
   namespaceSelector:
     matchNames:
       - {{ .Values.namespace.name }}

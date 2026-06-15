@@ -529,7 +529,7 @@
               },
               "required": ["pullPolicy"],
               "additionalProperties": false,
-              "description": "Mirrord target pod image configuration (repository and tag are set dynamically by squid.test.image helper)"
+              "description": "Mirrord target pod image configuration (repository and tag are set dynamically by caching.test.image helper)"
             },
             "resources": {
               "$ref": "#/$defs/resources"

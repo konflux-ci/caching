@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.squid.name }}-config
   namespace: {{ .Values.namespace.name }}
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
 data:
   squid.conf: |-
     # This is a minimal squid configuration file

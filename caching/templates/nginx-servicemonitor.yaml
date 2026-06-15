@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.nginx.name }}
   namespace: {{ .Values.prometheus.serviceMonitor.namespace | default .Values.namespace.name }}
   labels:
-    {{- include "nginx.labels" . | nindent 4 }}
+    {{- include "caching.nginx.labels" . | nindent 4 }}
     {{- with .Values.prometheus.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -16,7 +16,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      {{- include "nginx.selectorLabels" . | nindent 6 }}
+      {{- include "caching.nginx.selectorLabels" . | nindent 6 }}
   namespaceSelector:
     matchNames:
       - {{ .Values.namespace.name }}

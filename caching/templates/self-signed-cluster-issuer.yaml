@@ -4,7 +4,7 @@ kind: ClusterIssuer
 metadata:
   name: {{ .Values.namespace.name }}-self-signed-cluster-issuer
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
 spec:
   selfSigned: {}
 ---
@@ -14,7 +14,7 @@ metadata:
   name: {{ .Values.namespace.name }}-self-signed-ca
   namespace: {{ (index .Values "cert-manager").namespace }}
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
 spec:
   secretName: {{ .Values.namespace.name }}-root-ca-secret
   commonName: {{ .Values.namespace.name }}-self-signed-ca
@@ -32,7 +32,7 @@ kind: ClusterIssuer
 metadata:
   name: {{ .Values.namespace.name }}-ca-issuer
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
 spec:
   ca:
     secretName: {{ .Values.namespace.name }}-root-ca-secret

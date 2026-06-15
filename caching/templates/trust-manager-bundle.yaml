@@ -4,7 +4,7 @@ kind: Bundle
 metadata:
   name: {{ .Values.namespace.name }}-ca-bundle
   labels:
-    {{- include "squid.labels" . | nindent 4 }}
+    {{- include "caching.squid.labels" . | nindent 4 }}
 spec:
   sources:
   - secret:
