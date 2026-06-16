@@ -99,7 +99,7 @@ jobs:
         podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage test:unit
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         use_oidc: true
         flags: unit-tests
@@ -143,7 +143,7 @@ jobs:
 
     - name: Upload e2e coverage to Codecov
       if: always()
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         use_oidc: true
         flags: e2e-tests
