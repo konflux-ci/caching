@@ -1,0 +1,112 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/konflux-ci/caching?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "main"
+  labels:
+    appstudio.openshift.io/application: caching
+    appstudio.openshift.io/component: squid
+    pipelines.appstudio.openshift.io/type: test
+  name: squid-eaas-provision-cleaner-smoke
+  namespace: konflux-vanguard-tenant
+spec:
+  pipelineSpec:
+    description: |-
+      Smoke test that provisions an orphan EaaS namespace claim (no ownerReferences)
+      so it survives PipelineRun cleanup until the 4h namespace-claim-cleaner CronJob runs.
+    tasks:
+      - name: provision-eaas-space
+        taskSpec:
+          description: >-
+            Same as build-definitions eaas-provision-space, but writes the claim
+            manifest under /tmp and omits ownerReferences for cleaner validation.
+          results:
+            - name: secretRef
+              type: string
+          steps:
+            - name: request-space
+              image: registry.redhat.io/openshift4/ose-cli:4.13@sha256:73df37794ffff7de1101016c23dc623e4990810390ebdabcbbfa065214352c7c
+              computeResources:
+                limits:
+                  memory: 128Mi
+                  cpu: 10m
+                requests:
+                  memory: 128Mi
+                  cpu: 10m
+              env:
+                - name: HOME
+                  value: /tmp
+                - name: NAMESPACE
+                  value: $(context.taskRun.namespace)
+                - name: CLAIM_NAME
+                  value: $(context.taskRun.name)
+                - name: SECRET
+                  value: $(context.taskRun.name)-secret
+              script: |
+                #!/bin/bash
+                set -eo pipefail
+
+                claim_file="/tmp/namespace_claim.yaml"
+                cat <<EOF > "${claim_file}"
+                apiVersion: eaas.konflux-ci.dev/v1alpha1
+                kind: Namespace
+                metadata:
+                  name: $CLAIM_NAME
+                  namespace: $NAMESPACE
+                spec:
+                  writeConnectionSecretToRef:
+                    name: $SECRET
+                EOF
+
+                NAME=$(oc create -f "${claim_file}" -o=jsonpath='{.metadata.name}')
+
+                if oc wait namespaces.eaas.konflux-ci.dev "$NAME" --for=condition=Ready --timeout=5m; then
+                  echo "SecretRef: $SECRET"
+                  echo -n "$SECRET" > "$(results.secretRef.path)"
+                else
+                  exit 1
+                fi
+
+      - name: verify-eaas-space
+        runAfter:
+          - provision-eaas-space
+        taskSpec:
+          params:
+            - name: secretRef
+              type: string
+          steps:
+            - name: verify
+              image: registry.redhat.io/openshift4/ose-cli:4.13@sha256:73df37794ffff7de1101016c23dc623e4990810390ebdabcbbfa065214352c7c
+              computeResources:
+                limits:
+                  memory: 128Mi
+                  cpu: 10m
+                requests:
+                  memory: 128Mi
+                  cpu: 10m
+              env:
+                - name: HOME
+                  value: /tmp
+              script: |
+                #!/bin/bash
+                set -eo pipefail
+
+                SECRET='$(params.secretRef)'
+                echo "Verifying connection secret ${SECRET}..."
+                oc get secret "${SECRET}" -o jsonpath='{.metadata.name}{"\n"}'
+
+                echo "Namespace claims (all namespaces):"
+                oc get namespaces.eaas.konflux-ci.dev -A
+
+                echo "EaaS provision cleaner smoke test passed"
+
+        params:
+          - name: secretRef
+            value: $(tasks.provision-eaas-space.results.secretRef)
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-squid
