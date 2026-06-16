@@ -5,6 +5,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/konflux-ci/caching/internal"
 	"github.com/magefile/mage/mg"
@@ -22,6 +24,9 @@ type SquidHelm mg.Namespace
 
 // Test manages test execution operations
 type Test mg.Namespace
+
+// Lint manages lint operations
+type Lint mg.Namespace
 
 const (
 	clusterName = "caching"
@@ -92,6 +97,52 @@ func (Test) Unit() error {
 		return fmt.Errorf("unit tests failed: %w", err)
 	}
 	return nil
+}
+
+// Lint:Go runs golangci-lint using the version pinned in .golangci-lint-version.
+func (Lint) Go() error {
+	fmt.Println("🔍 Running golangci-lint...")
+	lintBin, err := golangciLintBinary()
+	if err != nil {
+		return err
+	}
+	return sh.RunV(lintBin, "run")
+}
+
+func golangciLintBinary() (string, error) {
+	versionBytes, err := os.ReadFile(".golangci-lint-version")
+	if err != nil {
+		return "", fmt.Errorf("read .golangci-lint-version: %w", err)
+	}
+	version := strings.TrimSpace(string(versionBytes))
+	if version == "" {
+		return "", fmt.Errorf(".golangci-lint-version is empty")
+	}
+
+	binDir := "bin"
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		return "", fmt.Errorf("create %s: %w", binDir, err)
+	}
+	absBinDir, err := filepath.Abs(binDir)
+	if err != nil {
+		return "", fmt.Errorf("resolve %s: %w", binDir, err)
+	}
+
+	dest := filepath.Join(binDir, "golangci-lint-"+version)
+	if _, err := os.Stat(dest); err == nil {
+		return dest, nil
+	}
+
+	fmt.Printf("Downloading golangci-lint %s...\n", version)
+	installPath := filepath.Join(binDir, "golangci-lint")
+	if err := sh.RunWith(map[string]string{"GOBIN": absBinDir}, "go", "install",
+		"github.com/golangci/golangci-lint/v2/cmd/golangci-lint@"+version); err != nil {
+		return "", fmt.Errorf("install golangci-lint: %w", err)
+	}
+	if err := os.Rename(installPath, dest); err != nil {
+		return "", fmt.Errorf("rename golangci-lint binary: %w", err)
+	}
+	return dest, nil
 }
 
 // Kind:Up creates or connects to a kind cluster named 'caching'

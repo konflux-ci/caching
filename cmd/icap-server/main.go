@@ -69,6 +69,11 @@ func writeHeaderAndLog(w icap.ResponseWriter, req *icap.Request, code int) {
 	}
 }
 
+func logICAPStartup(port string) {
+	//nolint:gosec // G706: port may flow from ICAP_PORT (os.Getenv); deployment-controlled, default is numeric
+	log.Println("Starting ICAP server on port", port)
+}
+
 func main() {
 	log.SetOutput(os.Stdout)
 
@@ -79,7 +84,7 @@ func main() {
 
 	icap.HandleFunc("/reqmod", reqmodHandler)
 
-	log.Println("Starting ICAP server on port", port)
+	logICAPStartup(port)
 	if err := icap.ListenAndServe(":"+port, nil); err != nil {
 		log.Println("Error starting server:", err)
 		os.Exit(1)

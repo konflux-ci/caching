@@ -131,6 +131,8 @@ Run `mage -l` for the full list. Key commands:
 | `mage test:unit` | Run unit tests (no cluster) |
 | `mage test:cluster` | Run E2E tests with mirrord |
 | `mage test:clusterMultiReplica` | Run E2E tests with multiple replicas |
+| **Linting** | |
+| `mage lint:go` | Run golangci-lint (installs pinned version into `bin/`) |
 | **Cleanup** | |
 | `mage clean` | Remove everything |
 
@@ -141,6 +143,19 @@ Run `mage -l` for the full list. Key commands:
 - **Consistent patterns**: `up`/`down`/`status`/`upClean` across targets
 - **Single-command setup**: `mage all` handles complete environment
 - **Cleanup ordering**: `mage clean` removes resources in correct order
+
+## Linting
+
+Lint checks run in dedicated GitHub Actions workflows (faster feedback than bundling them in the devcontainer job).
+
+| Check | Local | CI workflow |
+|-------|-------|-------------|
+| golangci-lint | `mage lint:go` | `.github/workflows/go-lint.yaml` |
+| Helm chart | `helm lint ./caching` | `.github/workflows/helm-lint.yaml` |
+| Containerfiles | — | `.github/workflows/hadolint.yaml` |
+| Shell scripts (diff only) | — | `.github/workflows/differential-shellcheck.yaml` |
+
+Before committing, run `mage test:unit`. Helm and Containerfile linting is enforced on pull requests automatically.
 
 ## Manual Setup Steps
 

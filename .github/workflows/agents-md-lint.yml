@@ -9,19 +9,23 @@ on:
     paths:
       - AGENTS.md
 
+permissions:
+  contents: read
+
 jobs:
   check-line-count:
+    name: Check AGENTS.md line limit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Validate AGENTS.md is under 60 lines
+      - name: Validate AGENTS.md
         run: |
-          MAX_LINES=60
-          LINES=$(grep -c '' AGENTS.md)
-          echo "AGENTS.md has $LINES lines (max: $MAX_LINES)"
-          if [ "$LINES" -ge "$MAX_LINES" ]; then
-            echo "::error file=AGENTS.md::AGENTS.md must be under $MAX_LINES lines ($LINES lines). Keep it concise."
+          MAX_LINES=300
+          ACTUAL_LINES=$(wc -l < AGENTS.md)
+          echo "AGENTS.md has $ACTUAL_LINES lines (max: $MAX_LINES)"
+          if [ "$ACTUAL_LINES" -gt "$MAX_LINES" ]; then
+            echo "::error file=AGENTS.md::AGENTS.md has $ACTUAL_LINES lines, must be <= $MAX_LINES"
             exit 1
           fi

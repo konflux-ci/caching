@@ -24,6 +24,19 @@
   "customManagers": [
     {
       "customType": "regex",
+      "description": "Track golangci-lint version pin file",
+      "managerFilePatterns": [
+        "/^\\.golangci-lint-version$/"
+      ],
+      "matchStrings": [
+        "(?<currentValue>v[0-9]+\\.[0-9]+\\.[0-9]+)"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "golangci/golangci-lint",
+      "extractVersionTemplate": "^v?(?<version>.*)$"
+    },
+    {
+      "customType": "regex",
       "description": "Track Helm version in Tekton pipelines",
       "managerFilePatterns": [
         "/^\\.tekton/.*\\.ya?ml$/"

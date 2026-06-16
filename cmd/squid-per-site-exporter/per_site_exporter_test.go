@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -121,6 +122,37 @@ var _ = Describe("metrics handler", func() {
 	})
 })
 
+var _ = Describe("HTTP handlers", func() {
+	It("serves the index page", func() {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		indexPageHandler(rr, req)
+		Expect(rr.Code).To(Equal(http.StatusOK))
+		Expect(rr.Body.String()).To(ContainSubstring("Squid Per-Site Exporter"))
+		Expect(rr.Body.String()).To(ContainSubstring("/metrics"))
+	})
+
+	It("reports healthy when the squid address is reachable", func() {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		Expect(err).NotTo(HaveOccurred())
+		defer func() { _ = ln.Close() }()
+
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		healthCheckHandler(ln.Addr().String(), time.Second)(rr, req)
+		Expect(rr.Code).To(Equal(http.StatusOK))
+		Expect(rr.Body.String()).To(Equal("OK"))
+	})
+
+	It("reports unhealthy when the squid address is unreachable", func() {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/health", nil)
+		healthCheckHandler("127.0.0.1:1", 100*time.Millisecond)(rr, req)
+		Expect(rr.Code).To(Equal(http.StatusServiceUnavailable))
+		Expect(rr.Body.String()).To(ContainSubstring("squid unreachable"))
+	})
+})
+
 var _ = Describe("readFromStdin", func() {
 	It("invokes the injected parseFunc with raw lines from stdin", func() {
 		exp := NewExporter()
@@ -132,13 +164,13 @@ var _ = Describe("readFromStdin", func() {
 		Expect(err).NotTo(HaveOccurred())
 		oldStdin := os.Stdin
 		os.Stdin = r
-		defer func() { os.Stdin = oldStdin; r.Close() }()
+		defer func() { os.Stdin = oldStdin; _ = r.Close() }()
 
 		go exp.readFromStdin()
 
 		_, err = w.WriteString("sample-stdin-line\n")
 		Expect(err).NotTo(HaveOccurred())
-		w.Close()
+		_ = w.Close()
 
 		select {
 		case got := <-ch:

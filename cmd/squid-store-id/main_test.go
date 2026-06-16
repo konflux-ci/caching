@@ -36,8 +36,8 @@ var _ = Describe("isChannelID", func() {
 })
 
 var _ = Describe("parseLine", func() {
-	var normalizeFunc = func(client HTTPClient, url string) string { return url }
-	var normalizeFuncDifferent = func(client HTTPClient, url string) string { return "normalized-" + url }
+	var normalizeFunc = func(_ HTTPClient, url string) string { return url }
+	var normalizeFuncDifferent = func(_ HTTPClient, url string) string { return "normalized-" + url }
 
 	When("given a line with a channel-ID", func() {
 		Context("and the normalized store-id is different from the original URL", func() {
@@ -74,14 +74,16 @@ var _ = Describe("parseLine", func() {
 
 var _ = Describe("normalizeStoreID", func() {
 	When("given content-addressable URLs with query parameters", func() {
-		const testURL = "https://cdn.example.com/blobs/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890?token=abc123&expires=456"
+		const testURL = "https://cdn.example.com/blobs/sha256/ab/" +
+			"abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890?token=abc123&expires=456"
 
 		It("should return normalized URL (without query params) when HTTP request succeeds", func() {
 			mockClient := &MockHTTPClient{
 				StatusCode: http.StatusOK,
 			}
 
-			expectedURL := "https://cdn.example.com/blobs/sha256/ab/abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
+			expectedURL := "https://cdn.example.com/blobs/sha256/ab/" +
+				"abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
 			Expect(normalizeStoreID(mockClient, testURL)).To(Equal(expectedURL))
 		})
 
@@ -109,7 +111,7 @@ var _ = Describe("normalizeStoreID", func() {
 })
 
 var _ = Describe("processInput", func() {
-	var normalizeFuncDifferent = func(client HTTPClient, url string) string { return "normalized-" + url }
+	var normalizeFuncDifferent = func(_ HTTPClient, url string) string { return "normalized-" + url }
 
 	It("processes multiple lines concurrently", func() {
 		in := strings.NewReader(
@@ -123,7 +125,7 @@ var _ = Describe("processInput", func() {
 		out := &MockWriter{}
 
 		err := processInput(in, out, normalizeFuncDifferent)
-		Expect(err).To(BeNil())
+		Expect(err).NotTo(HaveOccurred())
 
 		lines := strings.Split(strings.TrimSpace(out.String()), "\n")
 		Expect(lines).To(ConsistOf(
@@ -152,7 +154,7 @@ type MockHTTPClient struct {
 	Error       error
 }
 
-func (m *MockHTTPClient) Get(url string) (*http.Response, error) {
+func (m *MockHTTPClient) Get(requestURL string) (*http.Response, error) {
 	if m.ShouldError {
 		return nil, m.Error
 	}
