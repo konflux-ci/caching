@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2019-09/schema#",
   "$id": "https://github.com/konflux-ci/caching/caching/values.schema.json",
-  "title": "Squid Proxy Helm Chart Values Schema",
-  "description": "JSON Schema for validating values.yaml in the Squid Helm chart",
+  "title": "Caching Helm Chart Values Schema",
+  "description": "JSON Schema for validating values.yaml in the Caching Helm chart (Squid forward proxy + Nginx reverse proxy)",
   "type": "object",
 
   "properties": {
