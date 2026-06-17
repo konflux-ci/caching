@@ -84,7 +84,7 @@ mage all
 mage kind:up           # Create cluster
 mage build:squid       # Build image
 mage build:loadSquid   # Load into cluster
-mage squidHelm:up      # Deploy chart
+mage cachingHelm:up    # Deploy chart
 mage test:cluster      # Run e2e tests
 ```
 
@@ -123,10 +123,10 @@ Run `mage -l` for the full list. Key commands:
 | `mage build:accessLogExporter` | Build access-log-exporter image (for use as sidecar with nginx) |
 | `mage build:loadAccessLogExporter` | Load access-log-exporter into cluster |
 | **Deployment** | |
-| `mage squidHelm:up` | Deploy/upgrade helm chart |
-| `mage squidHelm:down` | Remove deployment |
-| `mage squidHelm:status` | Check deployment status |
-| `mage squidHelm:upClean` | Force redeploy |
+| `mage cachingHelm:up` | Deploy/upgrade helm chart |
+| `mage cachingHelm:down` | Remove deployment |
+| `mage cachingHelm:status` | Check deployment status |
+| `mage cachingHelm:upClean` | Force redeploy |
 | **Testing** | |
 | `mage test:unit` | Run unit tests (no cluster) |
 | `mage test:cluster` | Run E2E tests with mirrord |
@@ -180,8 +180,8 @@ podman build --target access-log-exporter -t localhost/konflux-ci/access-log-exp
 kind load image-archive --name caching <(podman save localhost/konflux-ci/access-log-exporter:latest)
 
 # Build test image
-podman build -t localhost/konflux-ci/squid-test:latest -f test.Containerfile .
-kind load image-archive --name caching <(podman save localhost/konflux-ci/squid-test:latest)
+podman build -t localhost/konflux-ci/caching-tester:latest -f test.Containerfile .
+kind load image-archive --name caching <(podman save localhost/konflux-ci/caching-tester:latest)
 ```
 
 ### 3. Deploy with Helm
@@ -234,7 +234,7 @@ kind delete cluster --name caching
 # Remove local images (optional)
 podman rmi localhost/konflux-ci/squid:latest
 podman rmi localhost/konflux-ci/access-log-exporter:latest
-podman rmi localhost/konflux-ci/squid-test:latest
+podman rmi localhost/konflux-ci/caching-tester:latest
 ```
 
 > **Note**: `mage clean` handles most cleanup automatically. Manual image removal is only needed if you want to reclaim disk space.

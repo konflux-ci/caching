@@ -193,7 +193,7 @@ spec:
                   "target": "quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid:{{revision}}"
                 },
                 {
-                  "source": "localhost/konflux-ci/squid-test",
+                  "source": "localhost/konflux-ci/caching-tester",
                   "target": "quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester:{{revision}}"
                 },
                 {

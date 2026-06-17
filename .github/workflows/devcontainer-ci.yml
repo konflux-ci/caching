@@ -109,7 +109,7 @@ jobs:
     - name: Deploy Kind environment
       run: |
         # Build with coverage instrumentation and deploy to Kind
-        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -e ENABLE_COVERAGE=true -w /workspaces/caching devcontainer-test mage squidHelm:up
+        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -e ENABLE_COVERAGE=true -w /workspaces/caching devcontainer-test mage cachingHelm:up
 
     - name: Run our test suite (via mirrord)
       run: |

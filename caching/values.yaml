@@ -28,7 +28,7 @@ envSettings:
         tag: "latest"
     test:
       image:
-        repository: localhost/konflux-ci/squid-test
+        repository: localhost/konflux-ci/caching-tester
         tag: "latest"
     nginx:
       exporter:

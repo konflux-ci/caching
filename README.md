@@ -51,8 +51,8 @@ This single command creates a Kind cluster, builds images, deploys the Helm char
 | `mage kind:down` | Delete Kind cluster |
 | `mage build:squid` | Build Squid image |
 | `mage build:loadSquid` | Load image into cluster |
-| `mage squidHelm:up` | Deploy Helm chart |
-| `mage squidHelm:status` | Check deployment |
+| `mage cachingHelm:up` | Deploy Helm chart |
+| `mage cachingHelm:status` | Check deployment |
 | `mage test:unit` | Unit tests (no cluster) |
 | `mage test:cluster` | E2E tests with mirrord |
 
@@ -163,7 +163,7 @@ For detailed configuration, see [docs/monitoring.md](docs/monitoring.md).
 ```bash
 kubectl get pods -n caching
 kubectl logs -n caching -l app.kubernetes.io/name=squid -c squid
-mage squidHelm:status
+mage cachingHelm:status
 ```
 
 ### Common Issues
