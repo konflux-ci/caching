@@ -889,8 +889,8 @@ func PullContainerImage(t *http.RoundTripper, imageRef string) error {
 		if err != nil {
 			return err
 		}
-		defer cr.Close()
 		written, err := io.Copy(io.Discard, cr)
+		cr.Close()
 		if err != nil {
 			return err
 		}
