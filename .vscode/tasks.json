@@ -26,7 +26,7 @@
             "command": "bash",
             "args": [
                 "-c",
-                "mage kind:status && mage squidHelm:status"
+                "mage kind:status && mage cachingHelm:status"
             ],
             "group": "build",
             "presentation": {

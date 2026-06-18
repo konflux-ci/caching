@@ -137,7 +137,7 @@ which mirrord
 mage test:cluster  # Check output for detailed error messages
 
 # Verify cluster state before running tests
-mage squidHelm:status
+mage cachingHelm:status
 
 # Check if all pods are running
 kubectl get pods -n caching
