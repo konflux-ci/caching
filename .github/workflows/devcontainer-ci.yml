@@ -19,6 +19,20 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    - name: Free up runner disk space
+      run: |
+        echo "=== Disk space before cleanup ==="
+        df -h /
+        sudo rm -rf \
+          /usr/local/lib/android \
+          /usr/local/.ghcup \
+          /usr/share/dotnet \
+          /usr/share/swift \
+          /usr/local/share/powershell \
+          /opt/hostedtoolcache
+        echo "=== Disk space after cleanup ==="
+        df -h /
+
     - name: Install podman
       run: |
         sudo apt-get update
