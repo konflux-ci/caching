@@ -450,13 +450,45 @@ func (CachingHelm) Up() error {
 		return fmt.Errorf("failed to build helm dependencies: %w", err)
 	}
 
-	fmt.Printf("⚓ Installing/upgrading caching helm chart (release: squid) and waiting for readiness...\n")
+	// Two-phase install for Helm 4 compatibility.
+	// Helm 4 uses server-side apply, which creates all resources in a single
+	// batch. cert-manager/trust-manager webhooks aren't running yet when the
+	// API server tries to validate Certificate, ClusterIssuer, and Bundle
+	// resources, causing "connection refused" failures.
+	//
+	// Phase 1: Install cert-manager and trust-manager subcharts only.
+	//          Disable all CRD instances and workloads that depend on them.
+	// Phase 2: Full upgrade with all features enabled.
+
+	fmt.Printf("⚓ Phase 1: Installing cert-manager and trust-manager subcharts...\n")
 	err = sh.Run(
 		"helm",
 		"upgrade",
 		"squid",
 		chartPath,
 		"--install",
+		"--set", "environment=dev",
+		"--set", "squid.enabled=false",
+		"--set", "nginx.enabled=false",
+		"--set", "selfsigned-certificate.enabled=false",
+		"--set", "selfsigned-bundle.enabled=false",
+		"--set", "test.enabled=false",
+		"--set", "mirrord.enabled=false",
+		"--set", "prometheus.serviceMonitor.enabled=false",
+		"--wait",
+		"--timeout=300s",
+		"--debug",
+	)
+	if err != nil {
+		return fmt.Errorf("phase 1 failed (cert-manager install): %w", err)
+	}
+
+	fmt.Printf("⚓ Phase 2: Full chart upgrade (CRD instances + workloads)...\n")
+	err = sh.Run(
+		"helm",
+		"upgrade",
+		"squid",
+		chartPath,
 		"--set", "environment=dev",
 		"--set", "nginx.enabled=true",
 		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
@@ -465,7 +497,7 @@ func (CachingHelm) Up() error {
 		"--debug",
 	)
 	if err != nil {
-		return fmt.Errorf("failed to install/upgrade helm chart: %w", err)
+		return fmt.Errorf("phase 2 failed (full chart upgrade): %w", err)
 	}
 
 	// Show comprehensive deployment status

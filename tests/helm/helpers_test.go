@@ -81,3 +81,8 @@ func extractNginxExporterConfigMapSection(helmOutput string) string {
 func extractNginxServiceMonitorSection(helmOutput string) string {
 	return extractSection(helmOutput, "# Source: caching/templates/nginx-servicemonitor.yaml")
 }
+
+// extractSquidServiceMonitorSection extracts just the squid servicemonitor YAML for precise testing
+func extractSquidServiceMonitorSection(helmOutput string) string {
+	return extractSection(helmOutput, "# Source: caching/templates/servicemonitor.yaml")
+}
