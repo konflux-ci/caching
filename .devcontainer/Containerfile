@@ -1,5 +1,5 @@
-# Start from latest stable Fedora image (digest-pinned)
-FROM registry.fedoraproject.org/fedora:latest@sha256:5e5ea4564f6aba4d38c7235058a530e761da2c90449e164fd65c528916d949cb
+# Pinned to Fedora 43 — Fedora 44 ships Helm 4 which requires chart changes
+FROM registry.fedoraproject.org/fedora:43@sha256:a82fd1133f1072da14c4a6e5dbef4690f66c2db48a0cd02e9cfc240c032376a3
 
 # DNF tuning from official Podman Containerfile for build robustness
 RUN echo -e "\\n\\n# Added during image build" >> /etc/dnf/dnf.conf && \
