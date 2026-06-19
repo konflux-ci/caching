@@ -15,7 +15,9 @@ For manual setup, you need:
 | Kind | Latest | Kubernetes in Docker/Podman |
 | kubectl | Latest | Kubernetes CLI |
 | Helm | 3.x | Chart deployment |
-| Mage | 1.16+ | `go install github.com/magefile/mage@latest` |
+| Mage | 1.17+ | `go install "github.com/magefile/mage@$(go list -m -f '{{.Version}}' github.com/magefile/mage)"` |
+
+> **Note**: Mage version is derived from go.mod automatically.
 
 **Critical for Kind**: Increase inotify limits to avoid [file watcher issues](https://kind.sigs.k8s.io/docs/user/known-issues/#pod-errors-due-to-too-many-open-files):
 

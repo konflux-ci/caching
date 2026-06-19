@@ -30,11 +30,12 @@ fs.inotify.max_user_instances=1024
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) (Kubernetes in Docker)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [Helm](https://helm.sh/docs/intro/install/) v3.x
-- [Mage](https://magefile.org/) - `go install github.com/magefile/mage@v1.16.1`
+- [Mage](https://magefile.org/) - `go install "github.com/magefile/mage@$(go list -m -f '{{.Version}}' github.com/magefile/mage)"`
 - [mirrord](https://mirrord.dev/docs/overview/quick-start/) (optional, for e2e tests)
 - [gcc](https://gcc.gnu.org/) (for CGO)
 
 > **Note**: Mage automation uses Podman explicitly. Docker may work for manual commands but is not tested with automation.
+> **Mage version**: `go.mod` is the canonical source of truth. The version is derived dynamically, so no manual updates are needed when go.mod changes.
 
 ### Debug Symbols (Required for Go Debugging)
 
