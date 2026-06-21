@@ -33,12 +33,13 @@ RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64 && \
     GOBIN=/usr/local/bin go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
     GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest
 
-# Copy go.mod to derive Mage version dynamically (placed here to avoid cache invalidation for other tools)
-COPY go.mod go.sum ./
+# We derive Mage version dynamically from go.mod instead of hardcoding to ensure version 
+# parity with Konflux CI hermetic builds. It is placed here to avoid cache invalidation for other tools.
+COPY go.mod go.sum /tmp/
 
 # Install mage from version in go.mod
-COPY go.mod go.sum ./
-RUN MAGE_VER="$(go list -m -f '{{.Version}}' github.com/magefile/mage)" && \
+RUN cd /tmp && \
+    MAGE_VER="$(go list -m -f '{{.Version}}' github.com/magefile/mage)" && \
     rm -f go.mod go.sum && \
     GOBIN=/usr/local/bin go install "github.com/magefile/mage@${MAGE_VER}"
 

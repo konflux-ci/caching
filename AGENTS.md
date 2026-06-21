@@ -23,8 +23,7 @@ mage build:squid            # Build squid container image
 mage lint:go                # golangci-lint (see Linting below)
 ```
 Before committing: `mage test:unit` (helm, hadolint, golangci, and shellcheck run in CI — see Linting).
-
-- Mage — version derived from `go.mod` via `go install "github.com/magefile/mage@$(go list -m -f '{{.Version}}' github.com/magefile/mage)"`
+**Note**: Mage version is derived dynamically from `go.mod` via `go install "github.com/magefile/mage@$(go list -m -f '{{.Version}}' github.com/magefile/mage)"`.
 
 ## Linting
 Local and CI use dedicated checks; most are **not** run inside the devcontainer job anymore.
