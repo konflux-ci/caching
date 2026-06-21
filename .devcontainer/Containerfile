@@ -38,6 +38,7 @@ RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64 && \
 COPY go.mod go.sum /tmp/
 
 # Install mage from version in go.mod
+# hadolint ignore=DL3003
 RUN cd /tmp && \
     MAGE_VER="$(go list -m -f '{{.Version}}' github.com/magefile/mage)" && \
     rm -f go.mod go.sum && \

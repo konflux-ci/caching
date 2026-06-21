@@ -127,19 +127,21 @@ jobs:
       run: |
         mkdir -p coverage-output && chmod 777 coverage-output
         # Extract kubeconfig from devcontainer and make it readable for rootless podman
-        podman exec devcontainer-test cat /home/vscode/.kube/config > /tmp/kubeconfig
-        chmod 644 /tmp/kubeconfig
-        podman run --rm \
-          --network host \
-          -v /tmp/kubeconfig:/kubeconfig:ro \
-          -v $PWD/coverage-output:/workspace/coverage-output \
-          -e KUBECONFIG=/kubeconfig \
-          quay.io/konflux-ci/konflux-devprod/coverport-cli@sha256:9a2d0a42fcc0dcea31c1b20b2752bb4dfe76f92a99314968e24f525c782a03f1 \
-          collect \
-            --namespace=caching \
-            --label-selector="app.kubernetes.io/name=squid" \
-            --test-name=e2e-tests \
-            --output=/workspace/coverage-output || true
+        podman exec devcontainer-test cat /home/vscode/.kube/config > /tmp/kubeconfig || true
+        if [ -s /tmp/kubeconfig ]; then
+          chmod 644 /tmp/kubeconfig
+          podman run --rm \
+            --network host \
+            -v /tmp/kubeconfig:/kubeconfig:ro \
+            -v $PWD/coverage-output:/workspace/coverage-output \
+            -e KUBECONFIG=/kubeconfig \
+            quay.io/konflux-ci/konflux-devprod/coverport-cli@sha256:9a2d0a42fcc0dcea31c1b20b2752bb4dfe76f92a99314968e24f525c782a03f1 \
+            collect \
+              --namespace=caching \
+              --label-selector="app.kubernetes.io/name=squid" \
+              --test-name=e2e-tests \
+              --output=/workspace/coverage-output || true
+        fi
 
     - name: Upload e2e coverage to Codecov
       if: always()
@@ -153,8 +155,8 @@ jobs:
     - name: Clean up Kind environment
       if: always()
       run: |
-        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage clean
-        podman exec -w /workspaces/caching devcontainer-test kind delete cluster --name caching-ci
+        podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage clean || true
+        podman exec -w /workspaces/caching devcontainer-test kind delete cluster --name caching-ci || true
 
     - name: Cleanup container
       if: always()
