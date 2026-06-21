@@ -35,14 +35,14 @@ RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64 && \
 
 # We derive Mage version dynamically from go.mod instead of hardcoding to ensure version 
 # parity with Konflux CI hermetic builds. It is placed here to avoid cache invalidation for other tools.
-COPY go.mod go.sum /tmp/
+WORKDIR /tmp/mage-install
+COPY go.mod go.sum ./
 
 # Install mage from version in go.mod
-# hadolint ignore=DL3003
-RUN cd /tmp && \
-    MAGE_VER="$(go list -m -f '{{.Version}}' github.com/magefile/mage)" && \
-    rm -f go.mod go.sum && \
+RUN MAGE_VER="$(go list -m -f '{{.Version}}' github.com/magefile/mage)" && \
+    rm -rf /tmp/mage-install && \
     GOBIN=/usr/local/bin go install "github.com/magefile/mage@${MAGE_VER}"
+WORKDIR /
 
 # Install mirrord binary securely from GitHub releases (specific version)
 ARG MIRRORD_VERSION=3.217.1
