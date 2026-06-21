@@ -35,6 +35,7 @@ fs.inotify.max_user_instances=1024
 - [gcc](https://gcc.gnu.org/) (for CGO)
 
 > **Note**: Mage automation uses Podman explicitly. Docker may work for manual commands but is not tested with automation.
+
 > **Note**: Mage version is derived from `go.mod` automatically. The version is derived dynamically, so no manual updates are needed when go.mod changes.
 
 ### Debug Symbols (Required for Go Debugging)
