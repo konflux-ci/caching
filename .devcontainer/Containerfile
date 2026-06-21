@@ -40,9 +40,9 @@ COPY go.mod go.sum ./
 
 # Install mage from version in go.mod
 RUN MAGE_VER="$(go list -m -f '{{.Version}}' github.com/magefile/mage)" && \
-    GOBIN=/usr/local/bin go install "github.com/magefile/mage@${MAGE_VER}" && \
-    cd /tmp && rm -rf /tmp/mage-install
+    GOBIN=/usr/local/bin go install "github.com/magefile/mage@${MAGE_VER}"
 WORKDIR /
+RUN rm -rf /tmp/mage-install
 
 # Install mirrord binary securely from GitHub releases (specific version)
 ARG MIRRORD_VERSION=3.217.1
