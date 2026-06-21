@@ -37,9 +37,10 @@ RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64 && \
 COPY go.mod go.sum ./
 
 # Install mage from version in go.mod
-RUN GOBIN=/usr/local/bin go install \
-      "github.com/magefile/mage@$(go list -m -f '{{.Version}}' github.com/magefile/mage)" && \
-    rm -f go.mod go.sum
+COPY go.mod go.sum ./
+RUN MAGE_VER="$(go list -m -f '{{.Version}}' github.com/magefile/mage)" && \
+    rm -f go.mod go.sum && \
+    GOBIN=/usr/local/bin go install "github.com/magefile/mage@${MAGE_VER}"
 
 # Install mirrord binary securely from GitHub releases (specific version)
 ARG MIRRORD_VERSION=3.217.1
