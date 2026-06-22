@@ -8,6 +8,7 @@ failure-threshold: warning
 # Ignore specific rules if needed
 ignored:
   - SC3037 # In POSIX sh, echo flags are undefined.
+  - SC1091 # Not following: File not included in mock (cachi2.env only exists at build time).
   - DL3041 # Specify version with `dnf install -y <package>-<version>`.
 
 # Override rule severity
