@@ -418,7 +418,14 @@ type PrometheusValues struct {
 
 // ServiceMonitorValues holds ServiceMonitor configuration
 type ServiceMonitorValues struct {
-	NginxTLS *NginxTLSMonitorValues `json:"nginxTLS,omitempty"`
+	PerSiteTLS *PerSiteTLSMonitorValues `json:"perSiteTLS,omitempty"`
+	NginxTLS   *NginxTLSMonitorValues   `json:"nginxTLS,omitempty"`
+}
+
+// PerSiteTLSMonitorValues holds TLS config for the per-site exporter ServiceMonitor endpoint
+type PerSiteTLSMonitorValues struct {
+	Enabled bool   `json:"enabled"`
+	CaFile  string `json:"caFile,omitempty"`
 }
 
 // NginxTLSMonitorValues holds TLS config for the nginx ServiceMonitor endpoint
