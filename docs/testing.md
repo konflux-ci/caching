@@ -30,7 +30,7 @@ For local development and debugging, use mirrord to run tests with cluster netwo
 
 ```bash
 # Setup test environment first
-mage squidHelm:up
+mage cachingHelm:up
 
 # Run tests with cluster network access
 mage test:cluster
@@ -80,7 +80,7 @@ Available via Ctrl+Shift+P → "Tasks: Run Task":
 | Run Ginkgo Tests (Current Directory) | Run tests in the currently open directory |
 | Run Ginkgo Tests with Coverage | Generate test coverage reports |
 | Run Focused Ginkgo Tests | Run specific test patterns |
-| Check Test Environment Status | Run `mage kind:status && mage squidHelm:status` |
+| Check Test Environment Status | Run `mage kind:status && mage cachingHelm:status` |
 | Generate Ginkgo Test File | Bootstrap a new Ginkgo test file |
 | Clean Test Environment | Clean up all resources |
 

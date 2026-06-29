@@ -18,7 +18,7 @@ mage -l                     # List all targets
 mage all                    # Full setup: cluster + build + deploy + test
 mage test:unit              # Unit tests (no cluster needed)
 mage test:cluster           # E2E tests (requires kind + mirrord)
-mage squidHelm:up           # Deploy/upgrade Helm chart
+mage cachingHelm:up         # Deploy/upgrade Helm chart
 mage build:squid            # Build squid container image
 mage lint:go                # golangci-lint (see Linting below)
 ```

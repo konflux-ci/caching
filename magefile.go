@@ -19,8 +19,8 @@ type Kind mg.Namespace
 // Build manages image building operations
 type Build mg.Namespace
 
-// SquidHelm manages squid helm chart operations
-type SquidHelm mg.Namespace
+// CachingHelm manages caching helm chart operations
+type CachingHelm mg.Namespace
 
 // Test manages test execution operations
 type Test mg.Namespace
@@ -37,7 +37,7 @@ const (
 	// SquidContainerfile is the path to the Containerfile for squid
 	squidContainerfile = "Containerfile"
 	// TestImageTag is the tag used for the test container image
-	testImageTag = "localhost/konflux-ci/squid-test:latest"
+	testImageTag = "localhost/konflux-ci/caching-tester:latest"
 	// TestContainerfile is the path to the Containerfile for tests
 	testContainerfile = "test.Containerfile"
 	chartPath         = "./caching"
@@ -429,12 +429,12 @@ func (Build) LoadTestImage() error {
 	return nil
 }
 
-// SquidHelm:Up deploys the Squid Helm chart to the cluster
-func (SquidHelm) Up() error {
+// CachingHelm:Up deploys the caching Helm chart to the cluster
+func (CachingHelm) Up() error {
 	// Ensure dependencies are met (squid, test, and access-log-exporter images needed)
 	mg.Deps(Build.LoadSquid, Build.LoadTestImage, Build.LoadAccessLogExporter)
 
-	fmt.Println("⚓ Deploying Squid Helm chart...")
+	fmt.Println("⚓ Deploying caching Helm chart...")
 
 	// Ensure required helm repositories are available
 	fmt.Printf("📦 Ensuring helm repositories are available...\n")
@@ -450,7 +450,7 @@ func (SquidHelm) Up() error {
 		return fmt.Errorf("failed to build helm dependencies: %w", err)
 	}
 
-	fmt.Printf("⚓ Installing/upgrading squid helm chart and waiting for readiness...\n")
+	fmt.Printf("⚓ Installing/upgrading caching helm chart (release: squid) and waiting for readiness...\n")
 	err = sh.Run(
 		"helm",
 		"upgrade",
@@ -470,18 +470,18 @@ func (SquidHelm) Up() error {
 
 	// Show comprehensive deployment status
 	fmt.Printf("🔍 Verifying deployment status...\n")
-	err = (SquidHelm{}).Status()
+	err = (CachingHelm{}).Status()
 	if err != nil {
 		return fmt.Errorf("deployment verification failed: %w", err)
 	}
 
-	fmt.Printf("✅ Squid helm chart deployed successfully!\n")
+	fmt.Printf("✅ Caching helm chart deployed successfully!\n")
 	return nil
 }
 
-// SquidHelm:Down removes the Squid Helm chart from the cluster
-func (SquidHelm) Down() error {
-	fmt.Println("🗑️  Removing Squid Helm chart...")
+// CachingHelm:Down removes the caching Helm chart from the cluster
+func (CachingHelm) Down() error {
+	fmt.Println("🗑️  Removing caching Helm chart...")
 
 	// Check if release exists first
 	exists, err := internal.ReleaseExists("squid")
@@ -495,7 +495,7 @@ func (SquidHelm) Down() error {
 	}
 
 	// Uninstall the helm release
-	fmt.Printf("🗑️  Uninstalling squid helm release...\n")
+	fmt.Printf("🗑️  Uninstalling caching helm release (squid)...\n")
 	err = sh.Run("helm", "uninstall", "squid")
 	if err != nil {
 		return fmt.Errorf("failed to uninstall helm chart: %w", err)
@@ -508,27 +508,27 @@ func (SquidHelm) Down() error {
 		// Don't fail the function, just warn - the namespace might be stuck
 	}
 
-	fmt.Printf("✅ Squid helm chart removed successfully!\n")
+	fmt.Printf("✅ Caching helm chart removed successfully!\n")
 	return nil
 }
 
-// SquidHelm:UpClean forces redeployment of the Squid Helm chart (removes and reinstalls)
-func (SquidHelm) UpClean() error {
-	fmt.Println("🔄 Force redeploying Squid Helm chart...")
+// CachingHelm:UpClean forces redeployment of the caching Helm chart (removes and reinstalls)
+func (CachingHelm) UpClean() error {
+	fmt.Println("🔄 Force redeploying caching Helm chart...")
 
 	// Remove existing release
-	err := (SquidHelm{}).Down()
+	err := (CachingHelm{}).Down()
 	if err != nil {
 		return fmt.Errorf("failed to remove existing release: %w", err)
 	}
 
 	// Install fresh release
-	fmt.Printf("⚓ Installing fresh squid helm chart...\n")
-	return (SquidHelm{}).Up()
+	fmt.Printf("⚓ Installing fresh caching helm chart...\n")
+	return (CachingHelm{}).Up()
 }
 
-// SquidHelm:Status shows the deployment status
-func (SquidHelm) Status() error {
+// CachingHelm:Status shows the deployment status
+func (CachingHelm) Status() error {
 	fmt.Println("📊 Checking deployment status...")
 
 	// Check if squid helm release exists
@@ -595,9 +595,9 @@ func All() error {
 	// Run unit tests first for fast feedback
 	mg.Deps(Test.Unit)
 
-	// SquidHelm.Up will automatically handle all dependencies:
-	// SquidHelm.Up -> Build.LoadSquid + Build.LoadSquidExporter + Build.LoadTestImage -> Kind.Up + Build.Squid + Build.TestImage
-	err := (SquidHelm{}).Up()
+	// CachingHelm.Up will automatically handle all dependencies:
+	// CachingHelm.Up -> Build.LoadSquid + Build.LoadAccessLogExporter + Build.LoadTestImage -> Kind.Up + Build.Squid + Build.TestImage
+	err := (CachingHelm{}).Up()
 	if err != nil {
 		return err
 	}
@@ -621,7 +621,7 @@ func All() error {
 	}
 	fmt.Println("✅ All helm tests passed!")
 	// Reset squid helm chart to values.yaml defaults after tests complete
-	resetSquidToDefaults()
+	resetCachingToDefaults()
 	fmt.Println()
 	fmt.Println("🎉 Complete automation workflow finished successfully!")
 	fmt.Println("Your local dev/test environment is ready:")
@@ -710,11 +710,11 @@ func runClusterTests(replicaCount int) error {
 		"./tests/e2e/e2e.test", "-ginkgo.v", "-ginkgo.label-filter="+os.Getenv("GINKGO_LABEL_FILTER"))
 }
 
-// resetSquidToDefaults resets the squid helm release to values.yaml defaults
+// resetCachingToDefaults resets the caching helm release to values.yaml defaults
 // Uses environment=dev and preserves GINKGO_LABEL_FILTER if set
 // Errors are logged as warnings but don't cause the function to fail
-func resetSquidToDefaults() {
-	fmt.Println("🔄 Resetting squid to values.yaml defaults...")
+func resetCachingToDefaults() {
+	fmt.Println("🔄 Resetting caching chart to values.yaml defaults...")
 	err := sh.Run(
 		"helm",
 		"upgrade",
@@ -727,21 +727,21 @@ func resetSquidToDefaults() {
 		"--timeout=300s",
 	)
 	if err != nil {
-		fmt.Printf("⚠️  Warning: Failed to reset squid to values.yaml defaults: %v\n", err)
+		fmt.Printf("⚠️  Warning: Failed to reset caching chart to values.yaml defaults: %v\n", err)
 	}
 }
 
 // Test:Cluster runs tests with cluster network access via mirrord
 func (Test) Cluster() error {
 	// Ensure cluster and deployment are ready (includes mirrord infrastructure)
-	mg.Deps(SquidHelm{}.Up)
+	mg.Deps(CachingHelm{}.Up)
 
 	// Run with default replica count (0 = use values.yaml default)
 	err := runClusterTests(0)
 	if err != nil {
 		return fmt.Errorf("failed to run tests: %w", err)
 	}
-	resetSquidToDefaults()
+	resetCachingToDefaults()
 	return nil
 }
 
@@ -753,7 +753,7 @@ func (Test) ClusterMultiReplica() error {
 	os.Setenv("SQUID_REPLICA_COUNT", "3")
 
 	// Ensure cluster and deployment are ready
-	mg.Deps(SquidHelm{}.Up)
+	mg.Deps(CachingHelm{}.Up)
 
 	fmt.Println("🧪 Upgrading deployment to 3 replicas...")
 
@@ -783,6 +783,6 @@ func (Test) ClusterMultiReplica() error {
 	if err != nil {
 		return fmt.Errorf("failed to run tests: %w", err)
 	}
-	resetSquidToDefaults()
+	resetCachingToDefaults()
 	return nil
 }
