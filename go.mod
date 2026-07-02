@@ -10,7 +10,7 @@ require (
 	github.com/google/go-containerregistry v0.21.7
 	github.com/intra-sh/icap v0.1.1
 	github.com/jkroepke/access-log-exporter v0.3.6
-	github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260611122559-e33f1c60c1f7
+	github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260625095013-f8efda237236
 	github.com/magefile/mage v1.17.2
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.41.0
