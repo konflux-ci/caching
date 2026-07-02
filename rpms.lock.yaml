@@ -116,13 +116,13 @@ arches:
     name: golang-src
     evr: 1.26.4-1.el10_2
     sourcerpm: golang-1.26.4-1.el10_2.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/h/httpd-filesystem-2.4.63-13.el10_2.1.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/h/httpd-filesystem-2.4.63-13.el10_2.4.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 20296
-    checksum: sha256:75edd6a00826a8c803c3c679cfa6865942d69422d4e799f7d0ef6c40e6752c57
+    size: 21133
+    checksum: sha256:9a9ee7f85ae3c2d05fa366d703ae173e63e7d87e26622f3f99f77a1bca40ebe5
     name: httpd-filesystem
-    evr: 2.4.63-13.el10_2.1
-    sourcerpm: httpd-2.4.63-13.el10_2.1.src.rpm
+    evr: 2.4.63-13.el10_2.4
+    sourcerpm: httpd-2.4.63-13.el10_2.4.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-211.29.1.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 3666093
@@ -837,34 +837,6 @@ arches:
     name: gdbm-libs
     evr: 1:1.23-12.el10_0
     sourcerpm: gdbm-1.23-12.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/g/glibc-2.39-126.el10_2.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 2207034
-    checksum: sha256:758caa64942e66d9c902cf574a2d681271d9b5acf7ab9d4762e41f961ad4987e
-    name: glibc
-    evr: 2.39-126.el10_2
-    sourcerpm: glibc-2.39-126.el10_2.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/g/glibc-common-2.39-126.el10_2.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 333367
-    checksum: sha256:b8c5d31097662a733ea36443b4ba474717cbac0a402781620b0d4ab400dc8bc6
-    name: glibc-common
-    evr: 2.39-126.el10_2
-    sourcerpm: glibc-2.39-126.el10_2.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/g/glibc-langpack-en-2.39-126.el10_2.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 686586
-    checksum: sha256:eb7eac1e6c2da295d694f5b2ade193ce14ced5a841d36fc6b6a6f8412165be76
-    name: glibc-langpack-en
-    evr: 2.39-126.el10_2
-    sourcerpm: glibc-2.39-126.el10_2.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/g/glibc-minimal-langpack-2.39-126.el10_2.x86_64.rpm
-    repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 31973
-    checksum: sha256:cdb85f12c0380125b18ad24915fb47cdaab7c16a817b31d4c05b8a0c8da7ae4f
-    name: glibc-minimal-langpack
-    evr: 2.39-126.el10_2
-    sourcerpm: glibc-2.39-126.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/g/groff-base-1.23.0-10.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 1182753
