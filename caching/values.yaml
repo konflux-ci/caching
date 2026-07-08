@@ -44,7 +44,7 @@ envSettings:
         tag: "latest"
     test:
       image:
-        repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/squid-tester
+        repository: quay.io/redhat-user-workloads/konflux-vanguard-tenant/caching/caching-tester
         tag: "latest"
     nginx:
       exporter:
@@ -62,7 +62,7 @@ envSettings:
         tag: "latest"
     test:
       image:
-        repository: quay.io/konflux-ci/caching/squid-test
+        repository: quay.io/konflux-ci/caching/caching-tester
         tag: "latest"
     nginx:
       exporter:
