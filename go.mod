@@ -1,15 +1,13 @@
 module github.com/konflux-ci/caching
 
-go 1.26.0
-
-toolchain go1.26.4
+go 1.26.4
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
 	github.com/cert-manager/cert-manager v1.20.3
 	github.com/google/go-containerregistry v0.21.7
 	github.com/intra-sh/icap v0.1.1
-	github.com/jkroepke/access-log-exporter v0.3.6
+	github.com/jkroepke/access-log-exporter v0.4.4
 	github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260611122559-e33f1c60c1f7
 	github.com/magefile/mage v1.17.2
 	github.com/onsi/ginkgo/v2 v2.32.0
@@ -139,11 +137,8 @@ require (
 	github.com/ua-parser/uap-go v0.0.0-20260529044130-17c35e68e58c // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xlab/treeprint v1.2.0 // indirect
-	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.44.0 // indirect
-	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.44.0 // indirect
-	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
@@ -182,5 +177,3 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.0 // indirect
 )
-
-replace github.com/jkroepke/access-log-exporter => github.com/kelchen123/access-log-exporter v0.0.0-20260326145038-549eccb14557
