@@ -101,7 +101,7 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 
 ## Automated Dependency Updates
 
-- **Go modules** (including Helm): Updated automatically by Renovate
+- **Go modules** (including Helm): Direct dependencies updated automatically by Renovate. Indirect dependencies are excluded (disabled in `.github/renovate.json`) since they are resolved transitively by `go mod tidy` when direct deps change.
 - **RPM packages** (including go-toolset): Updated automatically by Mintmaker
 
 No manual intervention is required for routine dependency updates.
