@@ -51,6 +51,16 @@ All dependencies must be locked for network-isolated CI builds. When adding depe
 - `tools.go` — build-time Go tool imports
 Forgetting lock files will break Konflux CI. See `HERMETIC-BUILDS.md`.
 
+## Dependency Automation (Renovate)
+Renovate (`.github/renovate.json`) automates dependency updates. Key behaviors:
+- **Auto-merged**: cert-manager, Konflux component patches, Tekton bundles, container base images, Go toolchain patches
+- **Grouped PRs**: cert-manager, tekton-bundles, container-images, go-toolchain
+- **Excluded**: indirect Go deps (resolved transitively by `go mod tidy`)
+- **Custom managers** track: golangci-lint version pin, Helm version in Tekton pipelines, Go version+SHA256 in devcontainer
+- `lockFileMaintenance` is enabled but does **not** auto-merge (see #945)
+
+See `skills/dependency-automation/` for full configuration details.
+
 ## Gotchas
 - **Misleading name**: `access-log-exporter` is for nginx, not squid
 - **Chart directory vs release name**: the Helm chart directory is `caching/` but the default Helm release name remains `squid`
@@ -62,3 +72,4 @@ See `skills/` for detailed gotchas — load only what's relevant:
 - `editing-helm-templates/` — StatefulSet naming, probe port changes
 - `working-on-ci/` — image expiration, promotion location
 - `updating-go-deps/` — tools.go for Cachi2
+- `dependency-automation/` — Renovate auto-merge, grouping, custom managers
