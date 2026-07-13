@@ -309,20 +309,17 @@ cert-manager:
   imageNamespace: jetstack
   image:
     name: cert-manager-controller
-    tag: v1.20.2
     pullPolicy: IfNotPresent
   webhook:
     replicaCount: 1
     image:
       name: cert-manager-webhook
-      tag: v1.20.2
       pullPolicy: IfNotPresent
   cainjector:
     enabled: true # Enable the CA injector component
     replicaCount: 1
     image:
       name: cert-manager-cainjector
-      tag: v1.20.2
       pullPolicy: IfNotPresent
   resources:
     requests:
