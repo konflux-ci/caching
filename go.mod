@@ -16,7 +16,7 @@ require (
 	github.com/prashantv/gostub v1.1.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.69.0
+	github.com/prometheus/common v0.70.0
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	helm.sh/helm/v3 v3.21.3
@@ -120,7 +120,7 @@ require (
 	github.com/pires/go-proxyproto v0.14.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/exporter-toolkit v0.11.0 // indirect
-	github.com/prometheus/procfs v0.20.1 // indirect
+	github.com/prometheus/procfs v0.21.0 // indirect
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/rubenv/sql-migrate v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
