@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:2a4785f399dc7ae2f3ca85f68bac0ccac47f3e73464a47c21e4f7ae46b55a053
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:b217fa65d8c21058887b18f005f587e47a17dd1281a5196ac88d01724a273dbd
 
 # Install required packages for Go and testing
 # Note: curl-minimal is already present in ubi10-minimal
@@ -60,16 +60,16 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 RUN adduser --uid 1001 --gid 0 --shell /bin/bash --create-home testuser
 USER 1001
 
-LABEL name="Konflux CI Squid Tester"
-LABEL summary="Konflux CI Squid Tester"
-LABEL description="Konflux CI Squid Tester"
-LABEL usage="podman run --rm konflux-ci/squid-tester"
+LABEL name="Konflux CI Caching Tester"
+LABEL summary="Konflux CI Caching Tester"
+LABEL description="Konflux CI Caching Tester"
+LABEL usage="podman run --rm konflux-ci/caching-tester"
 LABEL maintainer="bkorren@redhat.com"
-LABEL com.redhat.component="konflux-ci-squid-tester"
-LABEL io.k8s.description="Konflux CI Squid Tester"
-LABEL io.k8s.display-name="konflux-ci-squid-tester"
+LABEL com.redhat.component="konflux-ci-caching-tester"
+LABEL io.k8s.description="Konflux CI Caching Tester"
+LABEL io.k8s.display-name="konflux-ci-caching-tester"
 LABEL io.openshift.expose-services="3128:squid"
-LABEL io.openshift.tags="squid-tester"
+LABEL io.openshift.tags="caching-tester"
 LABEL version="1.0"
 LABEL release="1"
 LABEL vendor="Red Hat, Inc."

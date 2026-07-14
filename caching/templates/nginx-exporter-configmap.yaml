@@ -44,6 +44,16 @@ data:
                 lineIndex: 0
               - name: "status"
                 lineIndex: 1
+              # Keeps the first 2 path segments to group by repository type (e.g. /repository/go-proxy/.+)
+              # and strips query strings to control cardinality. First-match-wins: [^?] ensures
+              # a query-only suffix (e.g. /a/b/?x=1) falls through to the query-strip rule.
+              - name: "normalized_uri"
+                lineIndex: 2
+                replacements:
+                  - regexp: "^(/[^/]+/[^/]+/)[^?].*"
+                    replacement: "$1.+"
+                  - regexp: "\\?.*"
+                    replacement: ""
               - name: "cache_status"
                 lineIndex: 5
                 replacements:
@@ -62,11 +72,31 @@ data:
                 lineIndex: 0
               - name: "status"
                 lineIndex: 1
+              # Keeps the first 2 path segments to group by repository type (e.g. /repository/go-proxy/.+)
+              # and strips query strings to control cardinality. First-match-wins: [^?] ensures
+              # a query-only suffix (e.g. /a/b/?x=1) falls through to the query-strip rule.
+              - name: "normalized_uri"
+                lineIndex: 2
+                replacements:
+                  - regexp: "^(/[^/]+/[^/]+/)[^?].*"
+                    replacement: "$1.+"
+                  - regexp: "\\?.*"
+                    replacement: ""
           
           - name: "http_cache_status_total"
             type: "counter"
             help: "Total requests by cache status (HIT, MISS, BYPASS, EXPIRED, etc.)"
             labels:
+              # Keeps the first 2 path segments to group by repository type (e.g. /repository/go-proxy/.+)
+              # and strips query strings to control cardinality. First-match-wins: [^?] ensures
+              # a query-only suffix (e.g. /a/b/?x=1) falls through to the query-strip rule.
+              - name: "normalized_uri"
+                lineIndex: 2
+                replacements:
+                  - regexp: "^(/[^/]+/[^/]+/)[^?].*"
+                    replacement: "$1.+"
+                  - regexp: "\\?.*"
+                    replacement: ""
               - name: "cache_status"
                 lineIndex: 5
                 replacements:
@@ -85,6 +115,16 @@ data:
                 lineIndex: 0
               - name: "status"
                 lineIndex: 1
+              # Keeps the first 2 path segments to group by repository type (e.g. /repository/go-proxy/.+)
+              # and strips query strings to control cardinality. First-match-wins: [^?] ensures
+              # a query-only suffix (e.g. /a/b/?x=1) falls through to the query-strip rule.
+              - name: "normalized_uri"
+                lineIndex: 2
+                replacements:
+                  - regexp: "^(/[^/]+/[^/]+/)[^?].*"
+                    replacement: "$1.+"
+                  - regexp: "\\?.*"
+                    replacement: ""
               - name: "cache_status"
                 lineIndex: 5
                 replacements:

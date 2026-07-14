@@ -17,7 +17,21 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
+
+    - name: Free up runner disk space
+      run: |
+        echo "=== Disk space before cleanup ==="
+        df -h /
+        sudo rm -rf \
+          /usr/local/lib/android \
+          /usr/local/.ghcup \
+          /usr/share/dotnet \
+          /usr/share/swift \
+          /usr/local/share/powershell \
+          /opt/hostedtoolcache
+        echo "=== Disk space after cleanup ==="
+        df -h /
 
     - name: Install podman
       run: |
@@ -99,7 +113,7 @@ jobs:
         podman exec -e GOTOOLCHAIN=auto -e GOSUMDB=sum.golang.org -w /workspaces/caching devcontainer-test mage test:unit
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         use_oidc: true
         flags: unit-tests
@@ -143,7 +157,7 @@ jobs:
 
     - name: Upload e2e coverage to Codecov
       if: always()
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         use_oidc: true
         flags: e2e-tests

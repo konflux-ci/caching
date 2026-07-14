@@ -9,14 +9,14 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
   labels:
     appstudio.openshift.io/application: caching
-    appstudio.openshift.io/component: squid
+    appstudio.openshift.io/component: caching-tester
     pipelines.appstudio.openshift.io/type: test
-  name: squid-e2e-eaas-test
+  name: caching-e2e-eaas-test
   namespace: konflux-vanguard-tenant
 spec:
   params:
     - name: test-name
-      value: squid-openshift-e2e
+      value: caching-openshift-e2e
     - name: ocp-version
       value: "4.17"
     - name: test-event-type
@@ -26,7 +26,7 @@ spec:
 
   pipelineSpec:
     description: |-
-      This pipeline automates the process of running end-to-end tests for Squid
+      This pipeline automates the process of running end-to-end tests for Caching
       on an ephemeral OpenShift cluster using EaaS (Environment as a Service).
       It runs on pull_request events and uses PR build images directly.
     params:
@@ -36,7 +36,7 @@ spec:
         type: string
       - name: test-name
         description: 'The name of the test corresponding to a defined Konflux integration test.'
-        default: 'squid-e2e'
+        default: 'caching-e2e'
       - name: ocp-version
         description: 'The OpenShift version to use for the ephemeral cluster deployment.'
         type: string
@@ -51,7 +51,7 @@ spec:
       - name: helm-version
         description: 'The Helm version to install and use for deployments.'
         type: string
-        default: "3.20.2"
+        default: "3.21.3"
     tasks:
       - name: test-metadata
         taskRef:
@@ -81,11 +81,11 @@ spec:
           results:
             - name: squid-image
               description: Container image for the squid component
-            - name: squid-tester-image
-              description: Container image for the squid-tester component
+            - name: caching-tester-image
+              description: Container image for the caching-tester component
           steps:
             - name: extract
-              image: quay.io/konflux-ci/konflux-test:v1.4.53@sha256:724ecf16a1fc9b51a1b20c91c5125556c53d471d0d8db1648d2404e4715f204e
+              image: quay.io/konflux-ci/konflux-test:v1.5.3@sha256:37299834a7a95c042e2d9bc24d0668ccfc8dd4c96baf1339a0f3f46915e91455
               script: |
                 #!/bin/bash
                 set -euo pipefail
@@ -102,15 +102,15 @@ spec:
                 fi
                 echo "Squid image: $squid_image"
                 echo -n "$squid_image" > $(results.squid-image.path)
-                
-                # Extract squid-tester image
-                tester_image=$(echo "$snapshot" | jq -r '.components[] | select(.name == "squid-tester") | .containerImage')
+
+                # Extract caching-tester image
+                tester_image=$(echo "$snapshot" | jq -r '.components[] | select(.name == "caching-tester") | .containerImage')
                 if [ -z "$tester_image" ] || [ "$tester_image" = "null" ]; then
-                  echo "ERROR: Could not find squid-tester component in snapshot"
+                  echo "ERROR: Could not find caching-tester component in snapshot"
                   exit 1
                 fi
                 echo "Tester image: $tester_image"
-                echo -n "$tester_image" > $(results.squid-tester-image.path)
+                echo -n "$tester_image" > $(results.caching-tester-image.path)
         params:
           - name: SNAPSHOT
             value: $(params.SNAPSHOT)
@@ -198,7 +198,7 @@ spec:
                   value: "45m"
 
       # Run E2E tests
-      - name: squid-e2e-tests
+      - name: caching-e2e-tests
         timeout: 2h
         when:
           - input: "$(tasks.test-metadata.results.test-event-type)"
@@ -236,7 +236,7 @@ spec:
                 - name: credentials
                   value: credentials
             - name: create-namespace
-              image: quay.io/konflux-ci/konflux-test:v1.4.53@sha256:724ecf16a1fc9b51a1b20c91c5125556c53d471d0d8db1648d2404e4715f204e
+              image: quay.io/konflux-ci/konflux-test:v1.5.3@sha256:37299834a7a95c042e2d9bc24d0668ccfc8dd4c96baf1339a0f3f46915e91455
               env:
                 - name: KUBECONFIG
                   value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
@@ -247,7 +247,7 @@ spec:
                 #!/bin/bash
                 set -euo pipefail
                 echo "Creating caching namespace on ephemeral cluster..."
-                
+
                 cat <<EOF | oc apply -f -
                 apiVersion: v1
                 kind: Namespace
@@ -259,7 +259,7 @@ spec:
                     meta.helm.sh/release-name: squid
                     meta.helm.sh/release-namespace: default
                 EOF
-                
+
                 echo "Namespace created with Helm ownership labels"
             - name: copy-secrets
               ref:
@@ -281,7 +281,7 @@ spec:
                 - name: labelSelector
                   value: "appstudio.redhat.com/internal=true"
             - name: deploy-and-test
-              image: quay.io/konflux-ci/konflux-test:v1.4.53@sha256:724ecf16a1fc9b51a1b20c91c5125556c53d471d0d8db1648d2404e4715f204e
+              image: quay.io/konflux-ci/konflux-test:v1.5.3@sha256:37299834a7a95c042e2d9bc24d0668ccfc8dd4c96baf1339a0f3f46915e91455
               env:
                 - name: KUBECONFIG
                   value: "/credentials/$(steps.get-kubeconfig.results.kubeconfig)"
@@ -291,9 +291,9 @@ spec:
               script: |
                 #!/bin/bash
                 set -euo pipefail
-                
+
                 echo "Using kubeconfig at: $KUBECONFIG"
-                
+
                 # Install helm with pinned version
                 HELM_VERSION="$(params.helm-version)"
                 echo "Installing Helm ${HELM_VERSION}..."
@@ -302,27 +302,27 @@ spec:
                 mv linux-amd64/helm /usr/local/bin/helm
                 rm -rf helm.tgz linux-amd64
                 helm version
-                
+
                 # Verify cluster access
                 echo "Verifying OpenShift cluster..."
                 oc version
                 oc auth can-i create customresourcedefinitions || echo "WARNING: No CRD permissions"
                 oc auth can-i '*' '*' --all-namespaces && echo "Confirmed: cluster-admin access" || echo "WARNING: Limited permissions"
-                
+
                 echo "Cloning repository..."
                 git clone $(params.git-url) /workspace/source
                 cd /workspace/source
                 git checkout $(params.git-revision)
-                
+
                 # Use default namespace for Helm release (matches magefile.go behavior)
                 # Resources will be created in "caching" namespace (from chart's values.yaml default)
                 namespace="default"
-                
+
                 # Check for image pull secrets in the resource namespace
                 echo "Checking for image pull secrets in caching namespace..."
                 pull_secrets=$(oc get secrets -n "caching" -o json | \
                   jq -r '.items[] | select(.type=="kubernetes.io/dockerconfigjson") | .metadata.name' 2>/dev/null || echo "")
-                
+
                 if [ -n "$pull_secrets" ]; then
                   echo "Found $(echo "$pull_secrets" | wc -w) image pull secret(s)"
                   secret_args=""
@@ -335,26 +335,41 @@ spec:
                   echo "WARNING: No image pull secrets found"
                   secret_args=""
                 fi
-                
+
                 # Prepare Helm chart with cert-manager dependency
                 echo "Adding jetstack Helm repository..."
                 helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
                 helm repo update
                 cd caching
                 helm dependency build
-                
+
                 # Parse image references
+                # Handle both tag (repo:tag) and digest (repo@sha256:...) formats
                 squid_img="$(params.squid-image)"
-                squid_repo="${squid_img%:*}"
-                squid_tag="${squid_img##*:}"
-                
+                if [[ "$squid_img" == *"@"* ]]; then
+                  # Digest format: repo@sha256:digest
+                  squid_repo="${squid_img%@*}"
+                  squid_tag="${squid_img##*@}"
+                else
+                  # Tag format: repo:tag
+                  squid_repo="${squid_img%:*}"
+                  squid_tag="${squid_img##*:}"
+                fi
+
                 tester_img="$(params.tester-image)"
-                tester_repo="${tester_img%:*}"
-                tester_tag="${tester_img##*:}"
-                
+                if [[ "$tester_img" == *"@"* ]]; then
+                  # Digest format: repo@sha256:digest
+                  tester_repo="${tester_img%@*}"
+                  tester_tag="${tester_img##*@}"
+                else
+                  # Tag format: repo:tag
+                  tester_repo="${tester_img%:*}"
+                  tester_tag="${tester_img##*:}"
+                fi
+
                 echo "Squid: $squid_repo:$squid_tag"
                 echo "Tester: $tester_repo:$tester_tag"
-                
+
                 # Install squid with bundled cert-manager, overriding runAsUser to be OpenShift SCC compatible
                 # OpenShift's restricted-v2 SCC requires UIDs in namespace-specific ranges (e.g., 1000740000-1000749999)
                 # By not specifying runAsUser/runAsGroup/fsGroup, OpenShift will auto-assign from the allowed range
@@ -379,9 +394,9 @@ spec:
                   --wait \
                   --timeout=5m \
                   --debug
-                
+
                 echo "Squid deployed successfully!"
-                
+
                 echo "Running Helm tests..."
                 if ! helm test squid --namespace "$namespace" --timeout 90m; then
                   echo "ERROR: Helm test failed!"
@@ -389,17 +404,17 @@ spec:
                   oc logs -n "caching" squid-test --tail=2000 2>&1 || true
                   exit 1
                 fi
-                
+
                 echo "Helm tests succeeded, capturing squid-test logs for diagnostics..."
                 echo "=== squid-test pod logs (success) ==="
                 oc logs -n "caching" squid-test --tail=2000 2>&1 || true
-                
+
                 echo "All E2E tests passed!"
         params:
           - name: squid-image
             value: "$(tasks.extract-snapshot-images.results.squid-image)"
           - name: tester-image
-            value: "$(tasks.extract-snapshot-images.results.squid-tester-image)"
+            value: "$(tasks.extract-snapshot-images.results.caching-tester-image)"
           - name: git-url
             value: "$(tasks.test-metadata.results.git-url)"
           - name: git-revision

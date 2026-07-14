@@ -255,9 +255,12 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 			initialMetrics, err := getMetrics()
 			Expect(err).NotTo(HaveOccurred())
 
-			// Try to find initial request count (may not exist yet)
+			// Match on normalized_uri to avoid ambiguity: with the normalized_uri
+			// label, multiple status="200" series exist for different paths and
+			// GetMetricValue returns whichever sorts first alphabetically.
+			matchLabels := map[string]string{"status": "200", "normalized_uri": "/content/metrics-test"}
 			initialCount := 0.0
-			val, err := testhelpers.GetMetricValue(initialMetrics, "http_requests_total", map[string]string{"status": "200"})
+			val, err := testhelpers.GetMetricValue(initialMetrics, "http_requests_total", matchLabels)
 			if err == nil {
 				initialCount = val
 			}
@@ -284,7 +287,7 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 					return false
 				}
 
-				updatedCount, err := testhelpers.GetMetricValue(updatedMetrics, "http_requests_total", map[string]string{"status": "200"})
+				updatedCount, err := testhelpers.GetMetricValue(updatedMetrics, "http_requests_total", matchLabels)
 				if err != nil {
 					GinkgoWriter.Printf("Failed to parse metric: %v\n", err)
 					return false
@@ -335,6 +338,57 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 				return has200 && has404
 			}, testhelpers.Timeout, testhelpers.Interval).Should(BeTrue(),
 				"Metrics should track different HTTP status codes separately")
+		})
+
+		It("should include normalized_uri label that normalizes paths and strips query strings", func() {
+			By("Making requests with deep paths, short paths, and query strings")
+			for _, path := range []string{
+				"/repository/go-proxy/some/deep/path",
+				"/repository/go-proxy/some/deep/path?q=1",
+				"/shortpath",
+				"/shortpath?foo=bar",
+				"/repository/go-proxy/?x=1",
+			} {
+				url := testhelpers.GetNginxURL() + path
+				resp, err := nginxClient.Get(url)
+				Expect(err).NotTo(HaveOccurred())
+				resp.Body.Close()
+			}
+
+			metricsWithNormalizedURI := []string{
+				"http_requests_total",
+				"http_request_duration_seconds",
+				"http_cache_status_total",
+				"http_upstream_response_time_seconds",
+			}
+
+			checkNormalizedURI := func(expectedURI string) func() error {
+				labels := map[string]string{"normalized_uri": expectedURI}
+				return func() error {
+					metrics, err := getMetrics()
+					if err != nil {
+						return fmt.Errorf("failed to get metrics: %w", err)
+					}
+					for _, name := range metricsWithNormalizedURI {
+						if _, err := testhelpers.GetMetricValue(metrics, name, labels); err != nil {
+							return fmt.Errorf("metric %s missing normalized_uri=%q: %w", name, expectedURI, err)
+						}
+					}
+					return nil
+				}
+			}
+
+			By("Verifying deep URIs are normalized to 2 segments")
+			Eventually(checkNormalizedURI("/repository/go-proxy/.+"), testhelpers.Timeout, testhelpers.Interval).Should(Succeed(),
+				"All 4 metrics should have normalized_uri that collapses deep paths to 2 segments")
+
+			By("Verifying short URIs are preserved and query strings are stripped")
+			Eventually(checkNormalizedURI("/shortpath"), testhelpers.Timeout, testhelpers.Interval).Should(Succeed(),
+				"All 4 metrics should preserve short URIs and strip query strings")
+
+			By("Verifying 2-segment URIs with query-only suffix are not collapsed")
+			Eventually(checkNormalizedURI("/repository/go-proxy/"), testhelpers.Timeout, testhelpers.Interval).Should(Succeed(),
+				"A 2-segment URI with query string should strip the query, not collapse to .+")
 		})
 
 		It("should track request duration metrics", func() {
