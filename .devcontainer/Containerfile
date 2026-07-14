@@ -26,13 +26,23 @@ RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.
 # Set Go environment
 ENV PATH="/usr/local/go/bin:$PATH"
 
-# Install kind, mage, ginkgo CLI, and dlv debugger 
+# Install kind, ginkgo CLI, and dlv debugger
 RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64 && \
     chmod +x ./kind && \
     mv ./kind /usr/local/bin/kind && \
-    GOBIN=/usr/local/bin go install github.com/magefile/mage@v1.15.0 && \
     GOBIN=/usr/local/bin go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
     GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest
+
+# We derive Mage version dynamically from go.mod instead of hardcoding to ensure version 
+# parity with Konflux CI hermetic builds. It is placed here to avoid cache invalidation for other tools.
+WORKDIR /tmp/mage-install
+COPY go.mod go.sum ./
+
+# Install mage from version in go.mod
+RUN MAGE_VER="$(go list -m -f '{{.Version}}' github.com/magefile/mage)" && \
+    GOBIN=/usr/local/bin go install "github.com/magefile/mage@${MAGE_VER}"
+WORKDIR /
+RUN rm -rf /tmp/mage-install
 
 # Install mirrord binary securely from GitHub releases (specific version)
 ARG MIRRORD_VERSION=3.217.1
