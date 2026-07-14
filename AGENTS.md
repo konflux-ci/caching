@@ -62,4 +62,4 @@ Forgetting lock files will break Konflux CI. See `HERMETIC-BUILDS.md`.
 See `skills/` for detailed gotchas — load only what's relevant:
 - `editing-helm-templates/` — StatefulSet naming, probe port changes
 - `working-on-ci/` — image expiration, promotion location
-- `updating-go-deps/` — replace directive, tools.go for Cachi2
+- `updating-go-deps/` — tools.go for Cachi2
