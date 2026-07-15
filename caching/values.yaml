@@ -448,6 +448,8 @@ nginx:
   upstream:
     # URL of the upstream server to proxy to
     url: "http://nginx-test-backend.caching.svc.cluster.local:9090"
+    # Timeout for reading a response from the upstream server (nginx time format: 60s, 5m)
+    readTimeout: "180s"
 
   # Authorization header injection (references existing Kubernetes secret)
   auth:

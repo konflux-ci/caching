@@ -670,6 +670,10 @@
             "url": {
               "type": "string",
               "description": "URL of the upstream server to proxy to"
+            },
+            "readTimeout": {
+              "type": "string",
+              "description": "Timeout for reading a response from the upstream server (nginx time format: 60s, 5m)"
             }
           },
           "required": ["url"],

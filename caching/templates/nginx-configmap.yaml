@@ -75,6 +75,11 @@ data:
         # from /etc/resolv.conf to ensure portability across clusters.
         resolver __RESOLVER__ valid=60s;
         resolver_timeout 5s;
+
+        # Maximum time to wait for the upstream (or redirect target like S3)
+        # to send a response. Applies to all proxy_pass locations, including
+        # the named redirect handler where large artifacts are fetched and cached.
+        proxy_read_timeout {{ .Values.nginx.upstream.readTimeout }};
         
         # Metrics endpoint for access-log-exporter to scrape basic NGINX stats.
         # Provides connection and request counts for the nginx_up metric.

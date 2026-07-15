@@ -493,6 +493,37 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			// Host header should be derived from the upstream URL
 			Expect(strings.Count(configMap, "proxy_set_header Host nexus.example.com:8081")).To(Equal(2), "Should derive Host header from upstream URL in both locations")
 		})
+
+		It("should use default proxy_read_timeout when not specified", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://nexus.example.com:8081",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+			Expect(configMap).To(ContainSubstring("proxy_read_timeout 180s;"), "Should use default proxy_read_timeout of 180s")
+		})
+
+		It("should allow overriding proxy_read_timeout", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL:         "http://nexus.example.com:8081",
+						ReadTimeout: "300s",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+			Expect(configMap).To(ContainSubstring("proxy_read_timeout 300s;"), "Should use overridden proxy_read_timeout")
+		})
 	})
 
 	Describe("Nginx TLS Configuration", func() {

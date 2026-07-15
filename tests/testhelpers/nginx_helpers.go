@@ -45,7 +45,8 @@ type NginxTLSValues struct {
 
 // NginxUpstreamValues holds upstream server configuration
 type NginxUpstreamValues struct {
-	URL string `json:"url,omitempty"`
+	URL         string `json:"url,omitempty"`
+	ReadTimeout string `json:"readTimeout,omitempty"`
 }
 
 // NginxAuthValues holds authorization header injection configuration
