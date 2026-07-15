@@ -123,13 +123,13 @@ arches:
     name: httpd-filesystem
     evr: 2.4.63-13.el10_2.4
     sourcerpm: httpd-2.4.63-13.el10_2.4.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-211.33.1.el10_2.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-211.34.1.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 3671421
-    checksum: sha256:ac5bd148a8efac374a288e900ce0addbda10c867ec41f893949b1888e92ced7e
+    size: 3671889
+    checksum: sha256:0d4950cd5a4abaead75a0b65b5f48adbf1eea91bb268da823a836f76adaba658
     name: kernel-headers
-    evr: 6.12.0-211.33.1.el10_2
-    sourcerpm: kernel-6.12.0-211.33.1.el10_2.src.rpm
+    evr: 6.12.0-211.34.1.el10_2
+    sourcerpm: kernel-6.12.0-211.34.1.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/l/libecap-1.0.1-19.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 29616
@@ -172,13 +172,13 @@ arches:
     name: libxkbcommon
     evr: 1.7.0-4.el10
     sourcerpm: libxkbcommon-1.7.0-4.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/o/openssl-devel-3.5.5-4.el10_2.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/o/openssl-devel-3.5.5-5.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 4405852
-    checksum: sha256:fc196a4a2f690b0132754ec06d8b5b20f604d9966a622e738153c1dbfa3a43da
+    size: 4394682
+    checksum: sha256:88e0f064ad7dcf39517a73b8df5ea143a68aed16c5685266e7e6a609cf76b654
     name: openssl-devel
-    evr: 1:3.5.5-4.el10_2
-    sourcerpm: openssl-3.5.5-4.el10_2.src.rpm
+    evr: 1:3.5.5-5.el10_2
+    sourcerpm: openssl-3.5.5-5.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-AutoLoader-5.74-512.2.el10_0.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 22487
@@ -1012,6 +1012,13 @@ arches:
     name: openssh-clients
     evr: 9.9p1-23.el10_2
     sourcerpm: openssh-9.9p1-23.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/o/openssl-libs-3.5.5-5.el10_2.x86_64.rpm
+    repoid: ubi-10-for-x86_64-baseos-rpms
+    size: 2372402
+    checksum: sha256:3ac92ca4cc7098b79683f2578753e41710628e3f02cd3b484a5211f0e36a89fb
+    name: openssl-libs
+    evr: 1:3.5.5-5.el10_2
+    sourcerpm: openssl-3.5.5-5.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/p/pam-1.6.1-9.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 598152
