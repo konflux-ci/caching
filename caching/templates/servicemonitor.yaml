@@ -49,7 +49,9 @@ spec:
             name: {{ .secretName }}
             key: {{ .key | default "ca.crt" }}
         {{- end }}
-        caFile: {{ .Values.prometheus.serviceMonitor.perSiteTLS.caFile }}
+        {{- with .Values.prometheus.serviceMonitor.perSiteTLS.caFile }}
+        caFile: {{ . }}
+        {{- end }}
       {{- end }}
     {{- end }}
 {{- end }} 
