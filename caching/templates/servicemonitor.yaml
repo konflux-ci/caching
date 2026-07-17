@@ -1,4 +1,4 @@
-{{- if and .Values.squidExporter.enabled .Values.prometheus.serviceMonitor.enabled }}
+{{- if and .Values.squid.enabled .Values.squidExporter.enabled .Values.prometheus.serviceMonitor.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

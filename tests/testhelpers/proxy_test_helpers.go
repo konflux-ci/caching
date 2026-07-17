@@ -394,11 +394,13 @@ type ServiceValues struct {
 }
 
 type SquidValues struct {
-	Name string `json:"name,omitempty"`
+	Enabled *bool  `json:"enabled,omitempty"`
+	Name    string `json:"name,omitempty"`
 }
 
 type SquidHelmValues struct {
 	Squid              *SquidValues              `json:"squid,omitempty"`
+	SquidExporter      *SquidExporterValues      `json:"squidExporter,omitempty"`
 	Cache              *CacheValues              `json:"cache,omitempty"`
 	Environment        string                    `json:"environment,omitempty"`
 	ReplicaCount       int                       `json:"replicaCount,omitempty"`
@@ -411,6 +413,11 @@ type SquidHelmValues struct {
 	Prometheus         *PrometheusValues         `json:"prometheus,omitempty"`
 }
 
+// SquidExporterValues holds squid-exporter configuration
+type SquidExporterValues struct {
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
 // PrometheusValues holds Prometheus monitoring configuration
 type PrometheusValues struct {
 	ServiceMonitor *ServiceMonitorValues `json:"serviceMonitor,omitempty"`
@@ -418,6 +425,7 @@ type PrometheusValues struct {
 
 // ServiceMonitorValues holds ServiceMonitor configuration
 type ServiceMonitorValues struct {
+	Enabled  *bool                  `json:"enabled,omitempty"`
 	NginxTLS *NginxTLSMonitorValues `json:"nginxTLS,omitempty"`
 }
 
@@ -430,6 +438,12 @@ type NginxTLSMonitorValues struct {
 type CAValues struct {
 	ConfigMapName string `json:"configMapName,omitempty"`
 	Key           string `json:"key,omitempty"`
+}
+
+// BoolPtr is a helper function to create a pointer to a bool value.
+// Used in tests to explicitly set boolean values that use pointer types with omitempty.
+func BoolPtr(b bool) *bool {
+	return &b
 }
 
 // parseImageReference extracts repository and tag from an image reference
