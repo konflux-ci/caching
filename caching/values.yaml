@@ -273,11 +273,14 @@ tolerations: []
 # Uncomment the affinity section below to customize or disable these defaults
 # affinity: {}
 
-# IMPORTANT: This chart creates and manages its own namespace via templates/namespace.yaml
-# DO NOT use `helm install --namespace` or `helm upgrade --namespace` with this chart
-# All resources will be deployed to the namespace specified below
+# Namespace configuration
+# - When namespace.create=true (default): Chart creates and manages the namespace.
+#   DO NOT use `helm install --namespace` in this mode.
+# - When namespace.create=false: Namespace must exist beforehand (managed externally).
+#   Use `helm install --namespace <name>` to target the existing namespace.
 namespace:
   name: caching
+  create: true  # Set to false if namespace is managed externally (e.g., by another component)
   annotations: {}
 
 # Cert-manager and Trust-manager installation control

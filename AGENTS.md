@@ -38,7 +38,7 @@ Local and CI use dedicated checks; most are **not** run inside the devcontainer 
 
 ## Conventions
 - Use **Podman**, not Docker — all Mage targets call `podman`
-- Chart creates its own `caching` namespace — don't pass `helm -n caching`, the chart manages it
+- Chart creates its own `caching` namespace by default (`namespace.create: true`) — when deploying standalone, don't pass `helm -n caching`. Set `namespace.create: false` when the namespace is managed externally (e.g., by another chart instance)
 - E2E tests require `CGO_ENABLED=1` and mirrord installed
 - Go tests use **Ginkgo/Gomega** BDD framework
 - Filter tests: `GINKGO_LABEL_FILTER='!external-deps' mage test:cluster`

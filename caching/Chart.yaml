@@ -1,7 +1,7 @@
 apiVersion: v2
 name: caching
 description: A Helm chart for deploying caching infrastructure (Squid forward proxy + Nginx reverse proxy)
-# NOTE: This chart creates its own namespace - do not use --namespace with helm commands
+# NOTE: By default this chart creates its own namespace. Set namespace.create=false for external namespace management.
 
 # A chart can be either an 'application' or a 'library' chart.
 #

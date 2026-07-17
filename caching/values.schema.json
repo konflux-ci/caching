@@ -369,6 +369,10 @@
           "pattern": "caching",
           "description": "Namespace name"
         },
+        "create": {
+          "type": "boolean",
+          "description": "Whether to create the namespace. Set to false if namespace is managed externally."
+        },
         "annotations": {
           "type": "object",
           "additionalProperties": {
@@ -377,7 +381,7 @@
           "description": "Namespace annotations"
         }
       },
-      "required": ["name"],
+      "required": ["name", "create"],
       "additionalProperties": false
     },
     "installCertManagerComponents": {

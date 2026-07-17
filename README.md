@@ -113,6 +113,7 @@ helm install squid ./caching --set environment=dev --set nginx.enabled=true
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `environment` | `release` | `dev` (local images), `prerelease`, `release` (Quay) |
+| `namespace.create` | `true` | Create the namespace (set `false` if managed externally) |
 | `installCertManagerComponents` | `true` | Deploy cert-manager and trust-manager |
 | `selfsigned-bundle.enabled` | `true` | Create trust bundle resource |
 | `selfsigned-certificate.enabled` | `true` | Create certificate resources |
