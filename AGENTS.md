@@ -53,7 +53,6 @@ Forgetting lock files will break Konflux CI. See `HERMETIC-BUILDS.md`.
 
 ## Gotchas
 - **Misleading name**: `access-log-exporter` is for nginx, not squid
-- **Chart directory vs release name**: the Helm chart directory is `caching/` but the default Helm release name remains `squid`
 - **Squid image is multi-process**: runs squid, squid-exporter (:9301), per-site-exporter (:9302), ICAP (:1344)
 - **`.tekton/` changes trigger CI** — edits here affect Pipelines-as-Code
 

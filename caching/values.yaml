@@ -541,6 +541,7 @@ nginx:
 # ============================================================================
 
 test:
+  name: "caching-test"
   enabled: true # Enable helm test functionality
   image:
     pullPolicy: IfNotPresent

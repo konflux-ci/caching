@@ -2,12 +2,12 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "{{ .Values.squid.name }}-test"
+  name: "{{ .Values.test.name }}"
   namespace: {{ .Values.namespace.name }}
   labels:
-    # Use different app name to avoid service selector conflicts
-    app.kubernetes.io/name: squid
-    app.kubernetes.io/instance: {{ .Values.squid.name }}
+    # Use different app names from the squid or nginx pods to avoid service selector conflicts
+    app.kubernetes.io/name: {{ .Values.test.name }}
+    app.kubernetes.io/instance: {{ .Values.test.name }}
     app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/component: test
@@ -20,7 +20,7 @@ metadata:
     "helm.sh/hook-timeout": "9000" # 15 minutes
 spec:
   restartPolicy: Never
-  serviceAccountName: {{ .Values.squid.name }}-test
+  serviceAccountName: {{ .Values.test.name }}
   containers:
   - name: ginkgo-test
     image: "{{ include "caching.test.image" . }}"
