@@ -59,6 +59,22 @@
     },
     {
       "customType": "regex",
+      "description": "Track openshift/konflux-tasks main HEAD in pipeline param default",
+      "managerFilePatterns": [
+        "/^\\.tekton/caching-openshift-e2e-tests\\.yaml$/"
+      ],
+      "matchStringsStrategy": "combination",
+      "matchStrings": [
+        "# renovate: datasource=git-refs depName=https://github.com/openshift/konflux-tasks",
+        "default:\\s+(?<currentDigest>[a-f0-9]{40})"
+      ],
+      "datasourceTemplate": "git-refs",
+      "depNameTemplate": "https://github.com/openshift/konflux-tasks",
+      "currentValueTemplate": "main",
+      "autoReplaceStringTemplate": "default: {{newDigest}}"
+    },
+    {
+      "customType": "regex",
       "description": "Track Go version and SHA256 in devcontainer Containerfile",
       "managerFilePatterns": [
         "/^\\.devcontainer/Containerfile$/"

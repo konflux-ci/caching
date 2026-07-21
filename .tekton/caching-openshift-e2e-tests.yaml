@@ -40,6 +40,11 @@ spec:
         description: 'The Helm version to install and use for deployments.'
         type: string
         default: "3.21.3"
+      - name: openshift-ci-tasks-revision
+        description: 'Pinned commit of openshift/konflux-tasks for ephemeral cluster tasks.'
+        type: string
+        # renovate: datasource=git-refs depName=https://github.com/openshift/konflux-tasks
+        default: 5fb29d2447b801ff050d0f4d4285615f8ca75f2f
     tasks:
       - name: test-metadata
         taskRef:
@@ -107,7 +112,7 @@ spec:
             - name: url
               value: https://github.com/openshift/konflux-tasks
             - name: revision
-              value: 5fb29d2447b801ff050d0f4d4285615f8ca75f2f
+              value: $(params.openshift-ci-tasks-revision)
             - name: pathInRepo
               value: tasks/provision-ephemeral-cluster/0.1/provision-ephemeral-cluster.yaml
         params:
@@ -178,7 +183,7 @@ spec:
             - name: url
               value: https://github.com/openshift/konflux-tasks
             - name: revision
-              value: 5fb29d2447b801ff050d0f4d4285615f8ca75f2f
+              value: $(params.openshift-ci-tasks-revision)
             - name: pathInRepo
               value: tasks/copy-secrets-to-ephemeral-cluster/0.1/copy-secrets-to-ephemeral-cluster.yaml
         params:
@@ -360,7 +365,7 @@ spec:
             - name: url
               value: https://github.com/openshift/konflux-tasks
             - name: revision
-              value: 5fb29d2447b801ff050d0f4d4285615f8ca75f2f
+              value: $(params.openshift-ci-tasks-revision)
             - name: pathInRepo
               value: tasks/deprovision-ephemeral-cluster/0.1/deprovision-ephemeral-cluster.yaml
         params:
