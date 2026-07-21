@@ -478,6 +478,10 @@
     "test": {
       "type": "object",
       "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name used for the test pod, service account, RBAC resources, etc."
+        },
         "enabled": {
           "type": "boolean",
           "description": "Enable helm test functionality"
@@ -502,7 +506,7 @@
           "description": "Label filter for Ginkgo tests"
         }
       },
-      "required": ["enabled"],
+      "required": ["name", "enabled"],
       "additionalProperties": false
     },
     "mirrord": {

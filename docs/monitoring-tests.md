@@ -44,7 +44,7 @@ fi
 #### 1.3 Clean Previous Deployments
 ```bash
 # Remove any existing deployment
-helm uninstall squid 2>/dev/null || true
+helm uninstall caching 2>/dev/null || true
 
 # Remove namespace
 kubectl delete namespace caching 2>/dev/null || true
@@ -60,7 +60,7 @@ sleep 10
 #### 2.1 Deploy Squid with Monitoring
 ```bash
 # Deploy with monitoring enabled
-helm install squid ./caching \
+helm install caching ./caching \
   --set squidExporter.enabled=true \
   --set prometheus.serviceMonitor.enabled=true \
   --set cert-manager.enabled=false \
@@ -294,7 +294,7 @@ For rapid testing during development:
 
 ```bash
 # Quick deployment test
-helm install squid ./caching --set cert-manager.enabled=false --wait
+helm install caching ./caching --set cert-manager.enabled=false --wait
 
 # Quick functionality test
 kubectl port-forward -n caching svc/squid 3128:3128 &
@@ -307,5 +307,5 @@ curl -s http://localhost:9301/metrics | grep squid_up
 pkill -f "kubectl port-forward.*9301"
 
 # Quick cleanup
-helm uninstall squid && kubectl delete namespace caching
+helm uninstall caching && kubectl delete namespace caching
 ```

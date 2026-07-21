@@ -12,7 +12,7 @@ echo "Nginx service: ${NGINX_SERVICE:-nginx.caching.svc.cluster.local:8080}"
 # Build helm chart dependencies in a writable temp directory
 # The /app directory is read-only, so we need to copy the chart to /tmp
 echo "Building helm chart dependencies..."
-helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
+helm repo add jetstack https://charts.jetstack.io
 helm repo update
 
 # Copy chart to writable temp directory

@@ -95,17 +95,17 @@ curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
 
 ```bash
 # Full install with cert-manager (default)
-helm install squid ./caching
+helm install caching ./caching
 
 # Without deploying cert-manager (requires cert-manager already installed on the cluster)
 # Note: Certificate resources are still created — cert-manager must be present
-helm install squid ./caching --set installCertManagerComponents=false
+helm install caching ./caching --set installCertManagerComponents=false
 
 # Disable TLS certificate resources (cert-manager still deployed)
-helm install squid ./caching --set installCertManagerComponents=false --set selfsigned-bundle.enabled=false
+helm install caching ./caching --set installCertManagerComponents=false --set selfsigned-bundle.enabled=false
 
 # Local development
-helm install squid ./caching --set environment=dev --set nginx.enabled=true
+helm install caching ./caching --set environment=dev --set nginx.enabled=true
 ```
 
 ### Key Values
@@ -132,7 +132,7 @@ mage test:cluster
 GINKGO_LABEL_FILTER='!external-deps' mage test:cluster
 
 # Direct helm test (requires explicit timeout)
-helm test squid --timeout=420s
+helm test caching --timeout=420s
 ```
 
 The test suite uses [Ginkgo](https://onsi.github.io/ginkgo/) with [mirrord](https://mirrord.dev/) for cluster network access during local development.
@@ -172,7 +172,7 @@ mage cachingHelm:status
 |-------|----------|
 | Cluster exists error | `kind export kubeconfig --name caching` |
 | Image pull errors | `mage build:loadSquid` |
-| Namespace errors | `helm uninstall squid && kubectl delete ns caching` |
+| Namespace errors | `helm uninstall caching && kubectl delete ns caching` |
 | Connection refused | Check squid ACLs cover your pod CIDR |
 
 For detailed troubleshooting, see [docs/troubleshooting.md](docs/troubleshooting.md).
@@ -184,7 +184,7 @@ For detailed troubleshooting, see [docs/troubleshooting.md](docs/troubleshooting
 mage clean
 
 # Manual
-helm uninstall squid
+helm uninstall caching
 kubectl delete namespace caching
 kind delete cluster --name caching
 ```

@@ -188,7 +188,7 @@ kind load image-archive --name caching <(podman save localhost/konflux-ci/cachin
 
 ```bash
 # Deploy for local dev — enables nginx reverse proxy (required for access-log-exporter sidecar)
-helm install squid ./caching --set environment=dev --set nginx.enabled=true
+helm install caching ./caching --set environment=dev --set nginx.enabled=true
 kubectl get pods -n caching
 ```
 
@@ -196,20 +196,20 @@ kubectl get pods -n caching
 
 ```bash
 # Full install with cert-manager
-helm install squid ./caching
+helm install caching ./caching
 
 # Without deploying cert-manager (requires cert-manager already installed on the cluster)
 # Note: Certificate resources are still created — cert-manager must be present
-helm install squid ./caching --set installCertManagerComponents=false
+helm install caching ./caching --set installCertManagerComponents=false
 
 # Install cert-manager + trust-manager without creating certificate resources
-helm install squid ./caching --set selfsigned-issuer.enabled=false
+helm install caching ./caching --set selfsigned-issuer.enabled=false
 
 # Disable TLS certificate resources (cert-manager still deployed)
-helm install squid ./caching --set installCertManagerComponents=false --set selfsigned-bundle.enabled=false
+helm install caching ./caching --set installCertManagerComponents=false --set selfsigned-bundle.enabled=false
 
 # Local development
-helm install squid ./caching --set environment=dev --set nginx.enabled=true
+helm install caching ./caching --set environment=dev --set nginx.enabled=true
 ```
 
 ## Cleanup
@@ -222,7 +222,7 @@ mage clean              # Remove cluster + images (recommended)
 
 ```bash
 # Remove Helm release and namespace
-helm uninstall squid
+helm uninstall caching
 kubectl delete namespace caching
 
 # Remove cert-manager namespace (if installed via chart)

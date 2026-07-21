@@ -579,7 +579,7 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	// Build helm arguments based on environment and platform
 	extraArgs := buildExtraHelmArgs(environment, openshift, statefulSet)
 
-	err = UpgradeChartWithArgs("squid", chartPath, valuesFile, extraArgs)
+	err = UpgradeChartWithArgs("caching", chartPath, valuesFile, extraArgs)
 	if err != nil {
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}

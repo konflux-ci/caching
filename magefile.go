@@ -450,11 +450,11 @@ func (CachingHelm) Up() error {
 		return fmt.Errorf("failed to build helm dependencies: %w", err)
 	}
 
-	fmt.Printf("⚓ Installing/upgrading caching helm chart (release: squid) and waiting for readiness...\n")
+	fmt.Printf("⚓ Installing/upgrading caching helm chart (release: caching) and waiting for readiness...\n")
 	err = sh.Run(
 		"helm",
 		"upgrade",
-		"squid",
+		"caching",
 		chartPath,
 		"--install",
 		"--set", "environment=dev",
@@ -484,19 +484,19 @@ func (CachingHelm) Down() error {
 	fmt.Println("🗑️  Removing caching Helm chart...")
 
 	// Check if release exists first
-	exists, err := internal.ReleaseExists("squid")
+	exists, err := internal.ReleaseExists("caching")
 	if err != nil {
 		return fmt.Errorf("failed to check release existence: %w", err)
 	}
 
 	if !exists {
-		fmt.Printf("ℹ️  Helm release 'squid' does not exist\n")
+		fmt.Printf("ℹ️  Helm release 'caching' does not exist\n")
 		return nil
 	}
 
 	// Uninstall the helm release
-	fmt.Printf("🗑️  Uninstalling caching helm release (squid)...\n")
-	err = sh.Run("helm", "uninstall", "squid")
+	fmt.Printf("🗑️  Uninstalling caching helm release (caching)...\n")
+	err = sh.Run("helm", "uninstall", "caching")
 	if err != nil {
 		return fmt.Errorf("failed to uninstall helm chart: %w", err)
 	}
@@ -531,11 +531,11 @@ func (CachingHelm) UpClean() error {
 func (CachingHelm) Status() error {
 	fmt.Println("📊 Checking deployment status...")
 
-	// Check if squid helm release exists
+	// Check if caching helm release exists
 	fmt.Printf("🔍 Checking helm release status...\n")
-	err := sh.Run("helm", "status", "squid")
+	err := sh.Run("helm", "status", "caching")
 	if err != nil {
-		fmt.Printf("❌ Helm release 'squid' not found or not deployed\n")
+		fmt.Printf("❌ Helm release 'caching' not found or not deployed\n")
 		return fmt.Errorf("helm release not found: %w", err)
 	}
 
@@ -605,14 +605,14 @@ func All() error {
 	// Run helm tests to validate the deployment
 	fmt.Println()
 	fmt.Println("🧪 Running helm tests to validate deployment...")
-	err = sh.Run("helm", "test", "squid", "--timeout=15m")
+	err = sh.Run("helm", "test", "caching", "--timeout=15m")
 	if err != nil {
 		// Test failed - capture and display logs for debugging
 		fmt.Println()
 		fmt.Println("❌ Helm tests failed! Capturing test pod logs for debugging...")
 		fmt.Println()
 		fmt.Println("=== Squid Test Pod Logs ===")
-		logsError := sh.RunV("kubectl", "logs", "-n", "caching", "squid-test")
+		logsError := sh.RunV("kubectl", "logs", "-n", "caching", "caching-test")
 		if logsError != nil {
 			fmt.Printf("⚠️  Could not retrieve test pod logs: %v\n", logsError)
 		}
@@ -620,7 +620,7 @@ func All() error {
 		return fmt.Errorf("helm tests failed: %w", err)
 	}
 	fmt.Println("✅ All helm tests passed!")
-	// Reset squid helm chart to values.yaml defaults after tests complete
+	// Reset caching helm chart to values.yaml defaults after tests complete
 	resetCachingToDefaults()
 	fmt.Println()
 	fmt.Println("🎉 Complete automation workflow finished successfully!")
@@ -718,7 +718,7 @@ func resetCachingToDefaults() {
 	err := sh.Run(
 		"helm",
 		"upgrade",
-		"squid",
+		"caching",
 		chartPath,
 		"--set", "environment=dev",
 		"--set", "nginx.enabled=true",
@@ -760,7 +760,7 @@ func (Test) ClusterMultiReplica() error {
 	// Upgrade deployment to 3 replicas
 	err := sh.RunWith(map[string]string{
 		"SQUID_REPLICA_COUNT": "3",
-	}, "helm", "upgrade", "squid", chartPath,
+	}, "helm", "upgrade", "caching", chartPath,
 		"-n=default", "--wait", "--timeout=300s", "--history-max=50",
 		"--set", "replicaCount=3",
 		"--set", "nginx.enabled=true",

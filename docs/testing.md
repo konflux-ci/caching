@@ -12,14 +12,14 @@ mage all
 mage test:cluster
 ```
 
-> **Note**: `mage all` sets up the complete environment (cluster, images, deployment) and ends by invoking `helm test squid --timeout=15m`. It runs **unit tests** and **Helm-driven tests** — it does not run `mage test:cluster` (mirrord E2E).
+> **Note**: `mage all` sets up the complete environment (cluster, images, deployment) and ends by invoking `helm test caching --timeout=15m`. It runs **unit tests** and **Helm-driven tests** — it does not run `mage test:cluster` (mirrord E2E).
 
 ## Running Tests via Helm
 
 When running `helm test` directly (not through `mage all`), you must specify a timeout of at least 420 seconds:
 
 ```bash
-helm test squid --timeout=420s
+helm test caching --timeout=420s
 ```
 
 The default Helm test timeout is 5 minutes (300 seconds), which may not be sufficient for all tests to complete.

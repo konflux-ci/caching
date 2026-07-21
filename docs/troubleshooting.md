@@ -78,11 +78,11 @@ Look for:
 
 **Solution**: Clean up and reinstall:
 ```bash
-helm uninstall squid 2>/dev/null || true
+helm uninstall caching 2>/dev/null || true
 kubectl delete namespace caching 2>/dev/null || true
 # Wait a few seconds for cleanup
 sleep 5
-helm install squid ./caching
+helm install caching ./caching
 ```
 
 ### 6. Connection Refused from Pods
