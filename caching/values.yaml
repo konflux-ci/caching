@@ -79,6 +79,10 @@ squid:
   enabled: true
   # Name used for all squid resources (services, statefulset, configmap) and labels.
   name: "squid"
+  # Namespace where squid will be deployed.
+  # For new independent deployments, set to "squid-proxy".
+  # For backward compatibility with existing deployments, leave empty to use the shared namespace.name below.
+  namespace: ""
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
@@ -273,9 +277,21 @@ tolerations: []
 # Uncomment the affinity section below to customize or disable these defaults
 # affinity: {}
 
-# IMPORTANT: This chart creates and manages its own namespace via templates/namespace.yaml
-# DO NOT use `helm install --namespace` or `helm upgrade --namespace` with this chart
-# All resources will be deployed to the namespace specified below
+# ============================================================================
+# BACKWARD COMPATIBILITY - Legacy namespace configuration
+# ============================================================================
+# This section is for backward compatibility with existing deployments that use
+# a single shared namespace. New deployments should use component-specific
+# namespaces (squid.namespace, nginx.namespace).
+#
+# IMPORTANT: When using legacy mode (namespace.name defined, component namespaces empty):
+# - This chart creates and manages its own namespace via templates/namespace.yaml
+# - DO NOT use `helm install --namespace` or `helm upgrade --namespace`
+# - All resources will be deployed to the namespace specified below
+#
+# When using component-specific namespaces:
+# - Set squid.namespace and/or nginx.namespace above
+# - templates/namespace.yaml will still render but is harmless (creates legacy namespace)
 namespace:
   name: caching
   annotations: {}
@@ -433,6 +449,11 @@ nginx:
 
   # Name used for all nginx resources (services, statefulset, configmap) and labels.
   name: "nginx"
+
+  # Namespace where nginx will be deployed.
+  # For new independent deployments, set to "nginx-proxy".
+  # For backward compatibility with existing deployments, leave empty to use the shared namespace.name below.
+  namespace: ""
 
   # Replica count for the nginx proxy StatefulSet
   replicaCount: 1
