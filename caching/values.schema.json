@@ -630,6 +630,12 @@
         "name": {
           "type": "string",
           "description": "Name used for all squid resources and labels"
+        },
+        "namespace": {
+          "type": "string",
+          "description": "Namespace where squid will be deployed. Leave empty to use shared namespace.name for backward compatibility.",
+          "maxLength": 63,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         }
       },
       "required": ["enabled", "name"],
@@ -646,6 +652,12 @@
         "name": {
           "type": "string",
           "description": "Name used for all nginx resources and labels"
+        },
+        "namespace": {
+          "type": "string",
+          "description": "Namespace where nginx will be deployed. Leave empty to use shared namespace.name for backward compatibility.",
+          "maxLength": 63,
+          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         },
         "replicaCount": {
           "type": "integer",
