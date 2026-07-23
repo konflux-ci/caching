@@ -20,6 +20,41 @@ Get current environment - defaults to "release" if not set
 
 {{/*
 =============================================================================
+NAMESPACE HELPERS
+=============================================================================
+*/}}
+
+{{/*
+Internal helper for namespace resolution with fallback chain
+Returns component-specific namespace if set, falls back to namespace.name, defaults to "caching"
+*/}}
+{{- define "caching.component.namespace" -}}
+{{- $componentNs := .componentNs -}}
+{{- if $componentNs -}}
+  {{- $componentNs -}}
+{{- else if .ctx.Values.namespace.name -}}
+  {{- .ctx.Values.namespace.name -}}
+{{- else -}}
+  caching
+{{- end -}}
+{{- end }}
+
+{{/*
+Determine namespace for Squid component
+*/}}
+{{- define "caching.squid.namespace" -}}
+{{- include "caching.component.namespace" (dict "componentNs" .Values.squid.namespace "ctx" .) -}}
+{{- end }}
+
+{{/*
+Determine namespace for Nginx component
+*/}}
+{{- define "caching.nginx.namespace" -}}
+{{- include "caching.component.namespace" (dict "componentNs" .Values.nginx.namespace "ctx" .) -}}
+{{- end }}
+
+{{/*
+=============================================================================
 SQUID COMPONENT HELPERS
 =============================================================================
 */}}
