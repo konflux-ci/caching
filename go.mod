@@ -1,13 +1,13 @@
 module github.com/konflux-ci/caching
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
 	github.com/cert-manager/cert-manager v1.20.3
 	github.com/google/go-containerregistry v0.21.7
 	github.com/intra-sh/icap v0.1.1
-	github.com/jkroepke/access-log-exporter v0.4.4
+	github.com/jkroepke/access-log-exporter v0.4.6
 	github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260716142834-0e0cf75be216
 	github.com/magefile/mage v1.17.2
 	github.com/onsi/ginkgo/v2 v2.32.0
@@ -120,7 +120,7 @@ require (
 	github.com/pires/go-proxyproto v0.14.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/exporter-toolkit v0.11.0 // indirect
-	github.com/prometheus/procfs v0.21.0 // indirect
+	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/rubenv/sql-migrate v1.8.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
