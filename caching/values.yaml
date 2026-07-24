@@ -492,7 +492,7 @@ nginx:
     ttl: "1d"
 
   # Image configuration
-  image: registry.access.redhat.com/ubi10/nginx-126@sha256:2ae0dbce76d02bcf683409598839b2e866c4c06abc55080c0ae651bdc021e6fc
+  image: registry.access.redhat.com/ubi10/nginx-126@sha256:552d5dfd8bbf30b5c4ba261c741c69d33ef17f6c1579ca1b744d7e3f336bc597
 
   # Service configuration
   service:
