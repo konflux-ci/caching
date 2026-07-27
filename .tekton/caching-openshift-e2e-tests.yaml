@@ -44,7 +44,7 @@ spec:
         description: 'Pinned commit of openshift/konflux-tasks for ephemeral cluster tasks.'
         type: string
         # renovate: datasource=git-refs depName=https://github.com/openshift/konflux-tasks
-        default: 5fb29d2447b801ff050d0f4d4285615f8ca75f2f
+        default: 8ff2127903a3786a9821a7cead10e8141cc68e19
     tasks:
       - name: test-metadata
         taskRef:
