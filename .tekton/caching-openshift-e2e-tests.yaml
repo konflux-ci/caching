@@ -356,20 +356,3 @@ spec:
                 oc logs -n caching caching-test --tail=2000 2>&1 || true
 
                 echo "All E2E tests passed!"
-
-    finally:
-      - name: deprovision-ephemeral-cluster
-        taskRef:
-          resolver: git
-          params:
-            - name: url
-              value: https://github.com/openshift/konflux-tasks
-            - name: revision
-              value: $(params.openshift-ci-tasks-revision)
-            - name: pathInRepo
-              value: tasks/deprovision-ephemeral-cluster/0.1/deprovision-ephemeral-cluster.yaml
-        params:
-          - name: testPlatformClusterClaimName
-            value: $(tasks.provision-cluster.results.testPlatformClusterClaimName)
-          - name: testPlatformClusterClaimNamespace
-            value: $(tasks.provision-cluster.results.testPlatformClusterClaimNamespace)
