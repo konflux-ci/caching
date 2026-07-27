@@ -1,9 +1,9 @@
-{{- if .Values.test.enabled }}
+{{- if and .Values.squid.enabled .Values.test.enabled }}
 apiVersion: trust.cert-manager.io/v1alpha1
 kind: Bundle
 metadata:
   name: test-server-bundle
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "caching.squid.namespace" . }}
 spec:
   sources:
   - secret:

@@ -1,14 +1,14 @@
-{{- if (index .Values "selfsigned-bundle").enabled }}
+{{- if and .Values.squid.enabled (index .Values "selfsigned-bundle").enabled }}
 apiVersion: trust.cert-manager.io/v1alpha1
 kind: Bundle
 metadata:
-  name: {{ .Values.namespace.name }}-ca-bundle
+  name: {{ include "caching.squid.namespace" . }}-ca-bundle
   labels:
     {{- include "caching.squid.labels" . | nindent 4 }}
 spec:
   sources:
   - secret:
-      name: "{{ .Values.namespace.name }}-root-ca-secret"
+      name: "{{ include "caching.squid.namespace" . }}-root-ca-secret"
       key: "ca.crt"
   target:
     configMap:
