@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ .Values.squid.name }}
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "caching.squid.namespace" . }}
   labels:
     {{- include "caching.squid.labels" . | nindent 4 }}
 spec:
@@ -195,7 +195,7 @@ spec:
         # Mount the secret created by cert-manager
         - name: squid-certs-secret
           secret:
-            secretName: {{ .Values.namespace.name }}-tls
+            secretName: {{ include "caching.squid.namespace" . }}-tls
         # Volume for Squid's SSL database
         - name: squid-spool-ssl
           emptyDir: {}

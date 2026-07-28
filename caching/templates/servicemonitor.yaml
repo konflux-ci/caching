@@ -3,7 +3,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ .Values.squid.name }}
-  namespace: {{ .Values.prometheus.serviceMonitor.namespace | default .Values.namespace.name }}
+  namespace: {{ .Values.prometheus.serviceMonitor.namespace | default (include "caching.squid.namespace" .) }}
   labels:
     {{- include "caching.squid.labels" . | nindent 4 }}
     {{- with .Values.prometheus.serviceMonitor.labels }}
@@ -19,7 +19,7 @@ spec:
       {{- include "caching.squid.selectorLabels" . | nindent 6 }}
   namespaceSelector:
     matchNames:
-      - {{ .Values.namespace.name }}
+      - {{ include "caching.squid.namespace" . }}
   endpoints:
     - port: metrics
       path: {{ .Values.prometheus.serviceMonitor.path }}
@@ -40,7 +40,7 @@ spec:
       {{- if .Values.prometheus.serviceMonitor.perSiteTLS.enabled }}
       tlsConfig:
         {{- $clusterDomain := (default "cluster.local" .Values.clusterDomain) }}
-        {{- $svcFQDN := printf "%s.%s.svc.%s" .Values.squid.name .Values.namespace.name $clusterDomain }}
+        {{- $svcFQDN := printf "%s.%s.svc.%s" .Values.squid.name (include "caching.squid.namespace" .) $clusterDomain }}
         serverName: {{ .Values.prometheus.serviceMonitor.perSiteTLS.serverName | default $svcFQDN }}
         insecureSkipVerify: {{ .Values.prometheus.serviceMonitor.perSiteTLS.insecureSkipVerify | default false }}
         {{- with .Values.prometheus.serviceMonitor.perSiteTLS.ca }}
