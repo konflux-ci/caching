@@ -471,7 +471,11 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 
 	Describe("Nginx ConfigMap Upstream Configuration", func() {
 		It("should configure upstream URL in all locations via variable for DNS re-resolution", func() {
+			testEnabled := false
 			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Test: &testhelpers.TestValues{
+					Enabled: &testEnabled,
+				},
 				Nginx: &testhelpers.NginxValues{
 					Enabled: true,
 					Upstream: &testhelpers.NginxUpstreamValues{
@@ -486,12 +490,13 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 
 			configMap := extractNginxConfigMapSection(output)
 
-			// Upstream URL should be set via variable once at server level
+			// Upstream URL and host should be set via variables once at server level
 			Expect(strings.Count(configMap, `set $upstream_url "http://nexus.example.com:8081"`)).To(Equal(1), "Should set upstream_url variable once at server level")
+			Expect(strings.Count(configMap, `set $upstream_host "nexus.example.com:8081"`)).To(Equal(1), "Should set upstream_host variable once at server level")
 			Expect(strings.Count(configMap, "proxy_pass $upstream_url")).To(Equal(2), "Should use upstream_url variable in proxy_pass in both locations")
 
-			// Host header should be derived from the upstream URL
-			Expect(strings.Count(configMap, "proxy_set_header Host nexus.example.com:8081")).To(Equal(2), "Should derive Host header from upstream URL in both locations")
+			// Host header should use the upstream_host variable
+			Expect(strings.Count(configMap, "proxy_set_header Host $upstream_host")).To(Equal(2), "Should use upstream_host variable in Host header in both locations")
 		})
 
 		It("should use default proxy_read_timeout when not specified", func() {
@@ -792,5 +797,89 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			Expect(configMap).To(ContainSubstring("name: my-custom-proxy-config"), "ConfigMap should use custom name with -config suffix")
 		})
 
+	})
+
+	Describe("Nginx Namespace Configuration", func() {
+		It("should create nginx namespace when nginx.namespace is set", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled:   true,
+					Namespace: "nginx-proxy",
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Should create nginx-proxy namespace
+			Expect(output).To(ContainSubstring("kind: Namespace"))
+			Expect(output).To(MatchRegexp(`(?s)kind: Namespace.*?name: nginx-proxy`), "Should create nginx-proxy namespace")
+		})
+
+		It("should deploy nginx resources to custom namespace", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled:   true,
+					Namespace: "nginx-proxy",
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// All nginx resources should be in nginx-proxy namespace
+			statefulSet := extractNginxStatefulSetSection(output)
+			Expect(statefulSet).To(ContainSubstring("namespace: nginx-proxy"), "StatefulSet should be in nginx-proxy namespace")
+
+			service := extractNginxServiceSection(output)
+			Expect(service).To(ContainSubstring("namespace: nginx-proxy"), "Service should be in nginx-proxy namespace")
+
+			configMap := extractNginxConfigMapSection(output)
+			Expect(configMap).To(ContainSubstring("namespace: nginx-proxy"), "ConfigMap should be in nginx-proxy namespace")
+		})
+
+		It("should use default caching namespace when nginx.namespace is empty", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// All nginx resources should be in default caching namespace
+			statefulSet := extractNginxStatefulSetSection(output)
+			Expect(statefulSet).To(ContainSubstring("namespace: caching"), "StatefulSet should be in caching namespace")
+
+			service := extractNginxServiceSection(output)
+			Expect(service).To(ContainSubstring("namespace: caching"), "Service should be in caching namespace")
+		})
+
+		It("should use correct namespace in test backend URL when nginx has custom namespace", func() {
+			testEnabled := true
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Test: &testhelpers.TestValues{
+					Enabled: &testEnabled,
+				},
+				Nginx: &testhelpers.NginxValues{
+					Enabled:   true,
+					Namespace: "nginx-proxy",
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://nginx-test-backend.nginx-proxy.svc.cluster.local:9090",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			// Test backend URL should use nginx's custom namespace
+			Expect(configMap).To(ContainSubstring(`set $upstream_url "http://nginx-test-backend.nginx-proxy.svc.cluster.local:9090"`), "Test backend URL should use nginx's custom namespace")
+			Expect(configMap).To(ContainSubstring(`set $upstream_host "nginx-test-backend.nginx-proxy.svc.cluster.local:9090"`), "Upstream host should match test backend in custom namespace")
+		})
 	})
 })

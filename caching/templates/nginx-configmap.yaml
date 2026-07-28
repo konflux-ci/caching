@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Values.nginx.name }}-config
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "caching.nginx.namespace" . }}
   labels:
     {{- include "caching.nginx.labels" . | nindent 4 }}
 data:
@@ -124,7 +124,10 @@ data:
             # DNS via the resolver directive. A static proxy_pass URL is only
             # resolved once at config load; using a variable enables re-resolution
             # based on the resolver's valid interval.
-            set $upstream_url "{{ .Values.nginx.upstream.url }}";
+            {{- $upstreamURL := .Values.nginx.upstream.url }}
+            {{- $upstreamParsed := urlParse $upstreamURL }}
+            set $upstream_url "{{ $upstreamURL }}";
+            set $upstream_host "{{ $upstreamParsed.host }}";
 
             # Health check endpoint for Kubernetes liveness/readiness probes.
             # Returns 200 OK without proxying the request or logging.
@@ -144,7 +147,7 @@ data:
                 proxy_pass $upstream_url;
 
                 # Send the upstream hostname so the backend receives the correct Host header
-                proxy_set_header Host {{ (urlParse $.Values.nginx.upstream.url).host }};
+                proxy_set_header Host $upstream_host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
@@ -202,7 +205,7 @@ data:
             # Redirects are passed through as-is (not intercepted).
             location / {
                 proxy_pass $upstream_url;
-                proxy_set_header Host {{ (urlParse .Values.nginx.upstream.url).host }};
+                proxy_set_header Host $upstream_host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;

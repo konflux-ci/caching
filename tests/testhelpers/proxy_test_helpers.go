@@ -411,6 +411,12 @@ type SquidHelmValues struct {
 	Nginx              *NginxValues              `json:"nginx,omitempty"`
 	Service            *ServiceValues            `json:"service,omitempty"`
 	Prometheus         *PrometheusValues         `json:"prometheus,omitempty"`
+	Test               *TestValues               `json:"test,omitempty"`
+}
+
+// TestValues holds test configuration
+type TestValues struct {
+	Enabled *bool `json:"enabled,omitempty"`
 }
 
 // SquidExporterValues holds squid-exporter configuration

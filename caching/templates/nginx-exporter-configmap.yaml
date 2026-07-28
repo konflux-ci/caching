@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Values.nginx.name }}-exporter-config
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "caching.nginx.namespace" . }}
   labels:
     {{- include "caching.nginx.labels" . | nindent 4 }}
 data:
