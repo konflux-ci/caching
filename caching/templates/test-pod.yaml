@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: "{{ .Values.test.name }}"
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "caching.squid.namespace" . }}
   labels:
     # Use different app names from the squid or nginx pods to avoid service selector conflicts
     app.kubernetes.io/name: {{ .Values.test.name }}
@@ -30,11 +30,11 @@ spec:
     - /app/test-entrypoint.sh
     env:
     - name: TARGET_NAMESPACE
-      value: {{ .Values.namespace.name | quote }}
+      value: {{ include "caching.squid.namespace" . | quote }}
     - name: SQUID_SERVICE
-      value: "{{ .Values.squid.name }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.service.port }}"
+      value: "{{ .Values.squid.name }}.{{ include "caching.squid.namespace" . }}.svc.cluster.local:{{ .Values.service.port }}"
     - name: NGINX_SERVICE
-      value: "{{ .Values.nginx.name }}.{{ .Values.namespace.name }}.svc.cluster.local:{{ .Values.nginx.service.port }}"
+      value: "{{ .Values.nginx.name }}.{{ include "caching.nginx.namespace" . }}.svc.cluster.local:{{ .Values.nginx.service.port }}"
     - name: LABEL_FILTER
       value: {{ .Values.test.labelFilter | quote }}
     # Pass environment to test binary so it knows which image repos to use
