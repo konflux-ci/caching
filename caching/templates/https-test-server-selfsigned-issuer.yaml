@@ -35,17 +35,17 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: test-server-cert
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "caching.squid.namespace" . }}
 spec:
   secretName: test-server-tls
   duration: 2160h # 90d
   renewBefore: 360h # 15d
-  commonName: test-server.{{ .Values.namespace.name }}.svc.cluster.local
+  commonName: test-server.{{ include "caching.squid.namespace" . }}.svc.cluster.local
   dnsNames:
   - test-server
-  - test-server.{{ .Values.namespace.name }}
-  - test-server.{{ .Values.namespace.name }}.svc
-  - test-server.{{ .Values.namespace.name }}.svc.cluster.local
+  - test-server.{{ include "caching.squid.namespace" . }}
+  - test-server.{{ include "caching.squid.namespace" . }}.svc
+  - test-server.{{ include "caching.squid.namespace" . }}.svc.cluster.local
   issuerRef:
     name: test-server-ca-issuer
     kind: ClusterIssuer
