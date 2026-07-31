@@ -15,19 +15,19 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Lint main Containerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: Containerfile
           config: .hadolint.yaml
 
       - name: Lint test Containerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: test.Containerfile
           config: .hadolint.yaml
 
       - name: Lint devcontainer Containerfile
-        uses: hadolint/hadolint-action@v3.1.0
+        uses: hadolint/hadolint-action@v3.3.0
         with:
           dockerfile: .devcontainer/Containerfile
           config: .hadolint.yaml
