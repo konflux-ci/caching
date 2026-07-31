@@ -1,9 +1,10 @@
 {{- if and .Values.nginx.enabled .Values.prometheus.serviceMonitor.enabled }}
+{{- $nginxNamespace := include "caching.nginx.namespace" . }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ .Values.nginx.name }}
-  namespace: {{ .Values.prometheus.serviceMonitor.namespace | default .Values.namespace.name }}
+  namespace: {{ .Values.prometheus.serviceMonitor.namespace | default $nginxNamespace }}
   labels:
     {{- include "caching.nginx.labels" . | nindent 4 }}
     {{- with .Values.prometheus.serviceMonitor.labels }}
@@ -19,7 +20,7 @@ spec:
       {{- include "caching.nginx.selectorLabels" . | nindent 6 }}
   namespaceSelector:
     matchNames:
-      - {{ .Values.namespace.name }}
+      - {{ $nginxNamespace }}
   endpoints:
     - port: metrics
       path: {{ .Values.prometheus.serviceMonitor.path }}
@@ -34,7 +35,7 @@ spec:
       {{- if .Values.nginx.tls.enabled }}
       tlsConfig:
         {{- $clusterDomain := (default "cluster.local" .Values.clusterDomain) }}
-        {{- $svcFQDN := printf "%s.%s.svc.%s" .Values.nginx.name .Values.namespace.name $clusterDomain }}
+        {{- $svcFQDN := printf "%s.%s.svc.%s" .Values.nginx.name $nginxNamespace $clusterDomain }}
         serverName: {{ .Values.prometheus.serviceMonitor.nginxTLS.serverName | default $svcFQDN }}
         insecureSkipVerify: {{ .Values.prometheus.serviceMonitor.nginxTLS.insecureSkipVerify | default false }}
         {{- with .Values.prometheus.serviceMonitor.nginxTLS.ca }}

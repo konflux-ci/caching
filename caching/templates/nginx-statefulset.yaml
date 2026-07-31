@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ .Values.nginx.name }}
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "caching.nginx.namespace" . }}
   labels:
     {{- include "caching.nginx.labels" . | nindent 4 }}
 spec:

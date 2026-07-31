@@ -636,6 +636,13 @@
           "description": "Namespace where squid will be deployed. Leave empty to use shared namespace.name for backward compatibility.",
           "maxLength": 63,
           "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        },
+        "namespaceAnnotations": {
+          "type": ["object", "null"],
+          "description": "Annotations to apply to the squid namespace when squid.namespace is set. If empty, falls back to namespace.annotations. Set to null to explicitly opt out.",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "required": ["enabled", "name"],
@@ -658,6 +665,13 @@
           "description": "Namespace where nginx will be deployed. Leave empty to use shared namespace.name for backward compatibility.",
           "maxLength": 63,
           "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+        },
+        "namespaceAnnotations": {
+          "type": ["object", "null"],
+          "description": "Annotations to apply to the nginx namespace when nginx.namespace is set. If empty, falls back to namespace.annotations. Set to null to explicitly opt out.",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "replicaCount": {
           "type": "integer",

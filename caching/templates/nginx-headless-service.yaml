@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Values.nginx.name }}-headless
-  namespace: {{ .Values.namespace.name }}
+  namespace: {{ include "caching.nginx.namespace" . }}
   labels:
     {{- include "caching.nginx.labels" . | nindent 4 }}
 spec:

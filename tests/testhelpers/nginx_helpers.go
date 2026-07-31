@@ -20,6 +20,7 @@ type NginxValues struct {
 	// Enabled must NOT have omitempty since we need to explicitly set false to disable
 	Enabled      bool                  `json:"enabled"`
 	Name         string                `json:"name,omitempty"`
+	Namespace    string                `json:"namespace,omitempty"`
 	ReplicaCount int                   `json:"replicaCount,omitempty"`
 	TLS          *NginxTLSValues       `json:"tls,omitempty"`
 	Upstream     *NginxUpstreamValues  `json:"upstream,omitempty"`

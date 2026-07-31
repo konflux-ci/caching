@@ -83,6 +83,10 @@ squid:
   # For new independent deployments, set to "squid-proxy".
   # For backward compatibility with existing deployments, leave empty to use the shared namespace.name below.
   namespace: ""
+  # Annotations to apply to the squid namespace when squid.namespace is set.
+  # If empty ({}), falls back to namespace.annotations below.
+  # Set to null to explicitly opt out of annotations (no annotations on squid namespace).
+  namespaceAnnotations: {}
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
@@ -454,6 +458,10 @@ nginx:
   # For new independent deployments, set to "nginx-proxy".
   # For backward compatibility with existing deployments, leave empty to use the shared namespace.name below.
   namespace: ""
+  # Annotations to apply to the nginx namespace when nginx.namespace is set.
+  # If empty ({}), falls back to namespace.annotations below.
+  # Set to null to explicitly opt out of annotations (no annotations on nginx namespace).
+  namespaceAnnotations: {}
 
   # Replica count for the nginx proxy StatefulSet
   replicaCount: 1

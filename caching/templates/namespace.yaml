@@ -1,10 +1,18 @@
+{{- $baseNamespace := .Values.namespace.name }}
+{{- $baseAnnotations := .Values.namespace.annotations | default dict }}
+{{- $squidUsesBase := and .Values.squid.enabled (not .Values.squid.namespace) }}
+{{- $nginxUsesBase := and .Values.nginx.enabled (not .Values.nginx.namespace) }}
+{{- $testUsesBase := .Values.test.enabled }}
+{{- if or $squidUsesBase $nginxUsesBase $testUsesBase }}
+---
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.namespace.name }}
+  name: {{ $baseNamespace }}
   labels:
-    name: {{ .Values.namespace.name }}
-{{- if .Values.namespace.annotations }}
+    name: {{ $baseNamespace }}
+{{- with $baseAnnotations }}
   annotations:
-{{ toYaml .Values.namespace.annotations | indent 4 }}
-{{- end }} 
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- end }}

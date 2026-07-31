@@ -1,0 +1,24 @@
+{{- if and .Values.nginx.enabled .Values.nginx.namespace }}
+{{- $baseAnnotations := .Values.namespace.annotations | default dict }}
+{{- $nginxNs := include "caching.nginx.namespace" . }}
+{{- $isExplicitNull := kindIs "invalid" .Values.nginx.namespaceAnnotations }}
+{{- $nginxAnnotations := dict }}
+{{- if not $isExplicitNull }}
+{{- if .Values.nginx.namespaceAnnotations }}
+{{- $nginxAnnotations = .Values.nginx.namespaceAnnotations }}
+{{- else }}
+{{- $nginxAnnotations = $baseAnnotations }}
+{{- end }}
+{{- end }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $nginxNs }}
+  labels:
+    name: {{ $nginxNs }}
+{{- with $nginxAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+{{- end }}
