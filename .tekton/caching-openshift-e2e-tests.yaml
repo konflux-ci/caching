@@ -125,12 +125,7 @@ spec:
           - name: workflow
             value: hypershift-hostedcluster-workflow
           - name: env
-            value: |
-              {
-                "COMPUTE_NODE_TYPE": "$(params.machine-type)",
-                "HYPERSHIFT_NODE_COUNT": "3",
-                "HOSTED_MANAGEMENT_CLUSTER": "hosted-mgmt2"
-              }
+            value: '{"COMPUTE_NODE_TYPE": "$(params.machine-type)", "HYPERSHIFT_NODE_COUNT": "3"}'
           - name: releases
             value: |
               {"latest":{"release":{"channel":"stable","version":"$(params.ocp-version)","architecture":"multi"}}}
