@@ -1,0 +1,129 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/konflux-ci/caching?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+  labels:
+    appstudio.openshift.io/application: caching
+    pipelines.appstudio.openshift.io/type: test
+  name: snapshot-consistency-test
+  namespace: konflux-vanguard-tenant
+spec:
+  pipelineSpec:
+    description: |-
+      Validates that all components from the caching monorepo in a snapshot
+      share the same git commit SHA. This prevents partial snapshots from
+      triggering auto-release, ensuring that only complete builds where all
+      components are at the same revision are released.
+
+      This addresses the issue where caching-helm builds faster than other
+      components, creating snapshots with mismatched git revisions that
+      would cause ImagePullBackOff errors in infra-deployments.
+    params:
+      - name: SNAPSHOT
+        description: 'JSON string containing the application components and their container images'
+        default: '{"components": []}'
+        type: string
+
+    tasks:
+      - name: validate-snapshot-consistency
+        taskSpec:
+          params:
+            - name: SNAPSHOT
+              description: The JSON string of the Snapshot under test
+              type: string
+          results:
+            - name: TEST_OUTPUT
+              description: Test result output
+          steps:
+            - name: test-snapshot-component
+              image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
+              workingDir: /workspace
+              env:
+                - name: SNAPSHOT
+                  value: $(params.SNAPSHOT)
+              script: |
+                #!/bin/bash
+                set -euo pipefail
+
+                RESULT_FILE="$(results.TEST_OUTPUT.path)"
+
+                write_failure() {
+                  echo "{\"result\":\"FAILURE\",\"successes\":0,\"failures\":1,\"warnings\":0,\"timestamp\":\"$(date -u +%s)\"}" > "$RESULT_FILE"
+                  exit 0
+                }
+
+                # Derive the monorepo name from the snapshot by finding the most common
+                # repo across all components. This avoids hardcoding and works for forks.
+                REPO_NAME=$(echo "${SNAPSHOT}" | jq -r '.components[].source.git.url // ""' 2>/dev/null | sed 's/\.git$//; s|.*/||' | sort | uniq -c | sort -rn | head -1 | awk '{print $2}')
+                if [ -z "$REPO_NAME" ]; then
+                  echo "ERROR: Could not derive repo name from snapshot."
+                  write_failure
+                fi
+                echo "Matching components with repo name: $REPO_NAME"
+
+                if ! components=$(jq -c '.components[]?' <<< "${SNAPSHOT}"); then
+                  echo "ERROR: Failed to parse SNAPSHOT JSON."
+                  write_failure
+                fi
+
+                if [ -z "$components" ]; then
+                  echo "ERROR: No components found in snapshot."
+                  write_failure
+                fi
+
+                expected_sha=""
+                expected_sha_component=""
+
+                while read -r component; do
+                  if ! parsed=$(echo "$component" | jq -r '[.name, (.source.git.url // ""), (.source.git.revision // "")] | @tsv'); then
+                    echo "ERROR: Failed to parse component JSON."
+                    write_failure
+                  fi
+                  IFS=$'\t' read -r name component_url component_sha <<< "$parsed"
+
+                  if [ -z "$component_url" ]; then
+                    echo "WARNING: Component $name has no source.git.url, skipping"
+                    continue
+                  fi
+
+                  component_repo_name=$(echo "$component_url" | sed 's/\.git$//' | awk -F/ '{print $NF}')
+
+                  if [[ "$component_repo_name" != "$REPO_NAME" ]]; then
+                    echo "SKIP: Component $name (external repo: $component_url)"
+                    continue
+                  fi
+
+                  if [ -z "$component_sha" ]; then
+                    echo "ERROR: Component $name has empty revision."
+                    write_failure
+                  fi
+
+                  if [ -z "$expected_sha" ]; then
+                    expected_sha="$component_sha"
+                    expected_sha_component="$name"
+                    echo "PASS: Component $name (baseline SHA: $component_sha)"
+                    continue
+                  fi
+
+                  if [[ "$component_sha" != "$expected_sha" ]]; then
+                    echo "FAIL: Component $name has SHA $component_sha but expected $expected_sha (from $expected_sha_component)."
+                    write_failure
+                  fi
+
+                  echo "PASS: Component $name (SHA: $component_sha)"
+                done <<< "$components"
+
+                if [ -z "$expected_sha" ]; then
+                  echo "ERROR: No components found matching repo name $REPO_NAME."
+                  write_failure
+                fi
+
+                echo "All monorepo components share SHA $expected_sha."
+                echo "{\"result\":\"SUCCESS\",\"successes\":1,\"failures\":0,\"warnings\":0,\"timestamp\":\"$(date -u +%s)\"}" > "$RESULT_FILE"
+        params:
+          - name: SNAPSHOT
+            value: $(params.SNAPSHOT)
