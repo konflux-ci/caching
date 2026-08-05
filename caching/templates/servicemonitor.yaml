@@ -39,8 +39,7 @@ spec:
       honorLabels: true
       {{- if .Values.prometheus.serviceMonitor.perSiteTLS.enabled }}
       tlsConfig:
-        {{- $clusterDomain := (default "cluster.local" .Values.clusterDomain) }}
-        {{- $svcFQDN := printf "%s.%s.svc.%s" .Values.squid.name (include "caching.squid.namespace" .) $clusterDomain }}
+        {{- $svcFQDN := include "caching.squid.fqdn" . }}
         serverName: {{ .Values.prometheus.serviceMonitor.perSiteTLS.serverName | default $svcFQDN }}
         insecureSkipVerify: {{ .Values.prometheus.serviceMonitor.perSiteTLS.insecureSkipVerify | default false }}
         {{- with .Values.prometheus.serviceMonitor.perSiteTLS.ca }}

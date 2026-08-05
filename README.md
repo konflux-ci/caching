@@ -68,8 +68,8 @@ This project uses hermetic (network-isolated) builds in Konflux CI. See [HERMETI
 # Same namespace
 curl --proxy http://squid:3128 http://httpbin.org/ip
 
-# Cross-namespace
-curl --proxy http://squid.caching.svc.cluster.local:3128 http://httpbin.org/ip
+# Cross-namespace (replace <NAMESPACE> with your deployment namespace, default: "caching")
+curl --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 http://httpbin.org/ip
 ```
 
 #### Testing with a curl Pod
@@ -77,11 +77,11 @@ curl --proxy http://squid.caching.svc.cluster.local:3128 http://httpbin.org/ip
 ```bash
 # Test HTTP proxy
 kubectl run test-curl --image=curlimages/curl:latest --rm -it -- \
-    sh -c 'curl --proxy http://squid.caching.svc.cluster.local:3128 http://httpbin.org/ip'
+    sh -c 'curl --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 http://httpbin.org/ip'
 
 # Test HTTPS via SSL-bump (-k to skip cert verification)
 kubectl run test-curl-ssl --image=curlimages/curl:latest --rm -it -- \
-    sh -c 'curl -k --proxy http://squid.caching.svc.cluster.local:3128 https://httpbin.org/ip'
+    sh -c 'curl -k --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 https://httpbin.org/ip'
 ```
 
 ### From Your Local Machine
@@ -118,6 +118,7 @@ helm install caching ./caching --set environment=dev --set nginx.enabled=true
 | `selfsigned-certificate.enabled` | `true` | Create certificate resources |
 | `squidExporter.enabled` | `true` | Enable Prometheus metrics |
 | `nginx.enabled` | `false` | Deploy NGINX reverse proxy |
+| `clusterDomain` | `""` (defaults to `cluster.local`) | Cluster DNS domain for FQDN generation |
 
 ## Testing
 

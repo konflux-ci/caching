@@ -99,11 +99,11 @@ curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
 
 # From within the cluster (creates a temporary test pod)
 kubectl run test-curl --image=curlimages/curl:latest --rm -it -- \
-    sh -c 'curl --proxy http://squid.caching.svc.cluster.local:3128 http://httpbin.org/ip'
+    sh -c 'curl --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 http://httpbin.org/ip'
 
 # Test HTTPS via SSL-bump
 kubectl run test-curl-ssl --image=curlimages/curl:latest --rm -it -- \
-    sh -c 'curl -k --proxy http://squid.caching.svc.cluster.local:3128 https://httpbin.org/ip'
+    sh -c 'curl -k --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 https://httpbin.org/ip'
 ```
 
 ## Mage Command Reference

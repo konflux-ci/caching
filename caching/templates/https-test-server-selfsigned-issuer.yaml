@@ -40,12 +40,12 @@ spec:
   secretName: test-server-tls
   duration: 2160h # 90d
   renewBefore: 360h # 15d
-  commonName: test-server.{{ include "caching.squid.namespace" . }}.svc.cluster.local
+  commonName: {{ include "caching.test-server.fqdn" . }}
   dnsNames:
   - test-server
   - test-server.{{ include "caching.squid.namespace" . }}
   - test-server.{{ include "caching.squid.namespace" . }}.svc
-  - test-server.{{ include "caching.squid.namespace" . }}.svc.cluster.local
+  - {{ include "caching.test-server.fqdn" . }}
   issuerRef:
     name: test-server-ca-issuer
     kind: ClusterIssuer

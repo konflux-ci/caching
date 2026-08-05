@@ -34,8 +34,7 @@ spec:
       honorLabels: true
       {{- if .Values.nginx.tls.enabled }}
       tlsConfig:
-        {{- $clusterDomain := (default "cluster.local" .Values.clusterDomain) }}
-        {{- $svcFQDN := printf "%s.%s.svc.%s" .Values.nginx.name $nginxNamespace $clusterDomain }}
+        {{- $svcFQDN := include "caching.nginx.fqdn" . }}
         serverName: {{ .Values.prometheus.serviceMonitor.nginxTLS.serverName | default $svcFQDN }}
         insecureSkipVerify: {{ .Values.prometheus.serviceMonitor.nginxTLS.insecureSkipVerify | default false }}
         {{- with .Values.prometheus.serviceMonitor.nginxTLS.ca }}
