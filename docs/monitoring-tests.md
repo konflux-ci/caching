@@ -46,8 +46,8 @@ fi
 # Remove any existing deployment
 helm uninstall caching 2>/dev/null || true
 
-# Remove namespace
-kubectl delete namespace caching 2>/dev/null || true
+# Remove namespaces (covers both legacy and dual-namespace modes)
+kubectl delete namespace caching squid-proxy nginx-proxy 2>/dev/null || true
 
 # Wait for cleanup
 sleep 10

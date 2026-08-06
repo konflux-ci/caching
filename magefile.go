@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/konflux-ci/caching/internal"
 	"github.com/magefile/mage/mg"
@@ -41,6 +42,8 @@ const (
 	// TestContainerfile is the path to the Containerfile for tests
 	testContainerfile = "test.Containerfile"
 	chartPath         = "./caching"
+	squidNamespace    = "squid-proxy"
+	nginxNamespace    = "nginx-proxy"
 )
 
 // Default target - shows available targets
@@ -429,53 +432,106 @@ func (Build) LoadTestImage() error {
 	return nil
 }
 
-// CachingHelm:Up deploys the caching Helm chart to the cluster
-func (CachingHelm) Up() error {
-	// Ensure dependencies are met (squid, test, and access-log-exporter images needed)
-	mg.Deps(Build.LoadSquid, Build.LoadTestImage, Build.LoadAccessLogExporter)
-
-	fmt.Println("⚓ Deploying caching Helm chart...")
-
-	// Ensure required helm repositories are available
+// helmSetup ensures helm repositories and chart dependencies are ready
+func helmSetup() error {
 	fmt.Printf("📦 Ensuring helm repositories are available...\n")
 	err := internal.EnsureHelmRepo("jetstack", "https://charts.jetstack.io")
 	if err != nil {
 		return fmt.Errorf("failed to ensure jetstack repository: %w", err)
 	}
 
-	// Build helm dependencies from lock file
 	fmt.Printf("📦 Building helm dependencies...\n")
 	err = sh.Run("helm", "dependency", "build", chartPath)
 	if err != nil {
 		return fmt.Errorf("failed to build helm dependencies: %w", err)
 	}
+	return nil
+}
 
-	fmt.Printf("⚓ Installing/upgrading caching helm chart (release: caching) and waiting for readiness...\n")
-	err = sh.Run(
-		"helm",
-		"upgrade",
-		"caching",
-		chartPath,
+// namespaceExists checks if a Kubernetes namespace exists
+func namespaceExists(name string) (bool, error) {
+	out, err := sh.Output("kubectl", "get", "namespace", name, "--ignore-not-found", "-o", "name")
+	if err != nil {
+		return false, fmt.Errorf("failed to check namespace %s: %w", name, err)
+	}
+	return out != "", nil
+}
+
+// showComponentStatus shows pods, services, and statefulsets for a component in a namespace
+func showComponentStatus(namespace, component string) {
+	label := strings.ToUpper(component[:1]) + component[1:]
+
+	fmt.Printf("🖥️  %s pod status (namespace: %s):\n", label, namespace)
+	err := sh.RunV("kubectl", "get", "pods", "-n", namespace, "-l", "app.kubernetes.io/name="+component)
+	if err != nil {
+		fmt.Printf("⚠️  Could not get %s pod status: %v\n", component, err)
+	}
+
+	fmt.Printf("🌐 %s service status (namespace: %s):\n", label, namespace)
+	err = sh.RunV("kubectl", "get", "svc", "-n", namespace, "-l", "app.kubernetes.io/name="+component)
+	if err != nil {
+		fmt.Printf("⚠️  Could not get %s service status: %v\n", component, err)
+	}
+
+	fmt.Printf("📦 %s statefulset status (namespace: %s):\n", label, namespace)
+	err = sh.RunV("kubectl", "get", "statefulset", "-n", namespace, "-l", "app.kubernetes.io/name="+component)
+	if err != nil {
+		fmt.Printf("⚠️  Could not get %s statefulset status: %v\n", component, err)
+	}
+}
+
+// helmDeploy runs the common deploy flow: deps, setup, helm upgrade, status check.
+func helmDeploy(extraSets ...string) error {
+	mg.Deps(Build.LoadSquid, Build.LoadTestImage, Build.LoadAccessLogExporter)
+
+	if err := helmSetup(); err != nil {
+		return err
+	}
+
+	args := []string{
+		"upgrade", "caching", chartPath,
 		"--install",
 		"--set", "environment=dev",
 		"--set", "nginx.enabled=true",
-		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
-		"--wait",
-		"--timeout=300s",
-		"--debug",
-	)
-	if err != nil {
+		"--set", "test.labelFilter=" + os.Getenv("GINKGO_LABEL_FILTER"),
+		"--wait", "--timeout=300s", "--debug",
+	}
+	for _, s := range extraSets {
+		args = append(args, "--set", s)
+	}
+
+	if err := sh.Run("helm", args...); err != nil {
 		return fmt.Errorf("failed to install/upgrade helm chart: %w", err)
 	}
 
-	// Show comprehensive deployment status
 	fmt.Printf("🔍 Verifying deployment status...\n")
-	err = (CachingHelm{}).Status()
-	if err != nil {
+	if err := (CachingHelm{}).Status(); err != nil {
 		return fmt.Errorf("deployment verification failed: %w", err)
 	}
 
+	return nil
+}
+
+// CachingHelm:Up deploys the caching Helm chart to the cluster
+func (CachingHelm) Up() error {
+	fmt.Println("⚓ Deploying caching Helm chart...")
+	if err := helmDeploy(); err != nil {
+		return err
+	}
 	fmt.Printf("✅ Caching helm chart deployed successfully!\n")
+	return nil
+}
+
+// CachingHelm:UpIndependent deploys the caching Helm chart with squid and nginx in separate namespaces
+func (CachingHelm) UpIndependent() error {
+	fmt.Println("⚓ Deploying caching Helm chart in independent namespace mode...")
+	fmt.Printf("  Squid namespace: %s\n", squidNamespace)
+	fmt.Printf("  Nginx namespace: %s\n", nginxNamespace)
+
+	if err := helmDeploy("squid.namespace="+squidNamespace, "nginx.namespace="+nginxNamespace); err != nil {
+		return err
+	}
+	fmt.Printf("✅ Caching helm chart deployed in independent namespace mode!\n")
 	return nil
 }
 
@@ -501,12 +557,18 @@ func (CachingHelm) Down() error {
 		return fmt.Errorf("failed to uninstall helm chart: %w", err)
 	}
 
-	// Wait for caching namespace to be fully deleted
-	err = internal.WaitForNamespaceDeleted("caching")
-	if err != nil {
-		fmt.Printf("⚠️  Warning: %v\n", err)
-		// Don't fail the function, just warn - the namespace might be stuck
+	// Wait for all possible namespaces concurrently (handles non-existent namespaces gracefully)
+	var wg sync.WaitGroup
+	for _, ns := range []string{"caching", squidNamespace, nginxNamespace} {
+		wg.Add(1)
+		go func(ns string) {
+			defer wg.Done()
+			if err := internal.WaitForNamespaceDeleted(ns); err != nil {
+				fmt.Printf("⚠️  Warning: %v\n", err)
+			}
+		}(ns)
 	}
+	wg.Wait()
 
 	fmt.Printf("✅ Caching helm chart removed successfully!\n")
 	return nil
@@ -539,46 +601,22 @@ func (CachingHelm) Status() error {
 		return fmt.Errorf("helm release not found: %w", err)
 	}
 
-	// Show squid pod status
-	fmt.Printf("🖥️  Squid pod status:\n")
-	err = sh.RunV("kubectl", "get", "pods", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
-	if err != nil {
-		fmt.Printf("⚠️  Could not get squid pod status: %v\n", err)
-	}
+	// Legacy mode: check components in the shared "caching" namespace
+	showComponentStatus("caching", "squid")
+	showComponentStatus("caching", "nginx")
 
-	// Show squid service status
-	fmt.Printf("🌐 Squid service status:\n")
-	err = sh.RunV("kubectl", "get", "svc", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
-	if err != nil {
-		fmt.Printf("⚠️  Could not get squid service status: %v\n", err)
+	// Independent mode: check component-specific namespaces if they exist
+	if exists, nsErr := namespaceExists(squidNamespace); nsErr != nil {
+		fmt.Printf("⚠️  Warning: %v\n", nsErr)
+	} else if exists {
+		fmt.Printf("\n📋 Independent mode namespace detected: %s\n", squidNamespace)
+		showComponentStatus(squidNamespace, "squid")
 	}
-
-	// Show squid statefulset status
-	fmt.Printf("📦 Squid statefulset status:\n")
-	err = sh.RunV("kubectl", "get", "statefulset", "-n", "caching", "-l", "app.kubernetes.io/name=squid")
-	if err != nil {
-		fmt.Printf("⚠️  Could not get squid statefulset status: %v\n", err)
-	}
-
-	// Show nginx pod status
-	fmt.Printf("🖥️  Nginx pod status:\n")
-	err = sh.RunV("kubectl", "get", "pods", "-n", "caching", "-l", "app.kubernetes.io/name=nginx")
-	if err != nil {
-		fmt.Printf("⚠️  Could not get nginx pod status: %v\n", err)
-	}
-
-	// Show nginx service status
-	fmt.Printf("🌐 Nginx service status:\n")
-	err = sh.RunV("kubectl", "get", "svc", "-n", "caching", "-l", "app.kubernetes.io/name=nginx")
-	if err != nil {
-		fmt.Printf("⚠️  Could not get nginx service status: %v\n", err)
-	}
-
-	// Show nginx statefulset status
-	fmt.Printf("📦 Nginx statefulset status:\n")
-	err = sh.RunV("kubectl", "get", "statefulset", "-n", "caching", "-l", "app.kubernetes.io/name=nginx")
-	if err != nil {
-		fmt.Printf("⚠️  Could not get nginx statefulset status: %v\n", err)
+	if exists, nsErr := namespaceExists(nginxNamespace); nsErr != nil {
+		fmt.Printf("⚠️  Warning: %v\n", nsErr)
+	} else if exists {
+		fmt.Printf("\n📋 Independent mode namespace detected: %s\n", nginxNamespace)
+		showComponentStatus(nginxNamespace, "nginx")
 	}
 
 	fmt.Printf("✅ Deployment status check completed!\n")
