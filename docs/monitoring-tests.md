@@ -238,7 +238,7 @@ kill $PF_PID 2>/dev/null || true
 ```bash
 # Create test pod and test proxy
 kubectl run test-client --image=curlimages/curl:latest --rm -it -- \
-  curl --proxy http://squid.caching.svc.cluster.local:3128 --connect-timeout 10 http://httpbin.org/ip
+  curl --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 --connect-timeout 10 http://httpbin.org/ip
 ```
 
 **Expected Result**: JSON response showing external IP, confirming proxy works from within cluster.

@@ -82,7 +82,7 @@ helm install caching ./caching --set prometheus.serviceMonitor.enabled=false
 scrape_configs:
   - job_name: 'squid-proxy'
     static_configs:
-      - targets: ['squid.caching.svc.cluster.local:9301']
+      - targets: ['squid.<NAMESPACE>.svc.<CLUSTER_DOMAIN>:9301']
     scrape_interval: 30s
     metrics_path: '/metrics'
 ```
@@ -139,10 +139,11 @@ The metrics are exposed on the service:
 
 ```bash
 # Standard squid-exporter metrics (from within the cluster)
-curl http://squid.caching.svc.cluster.local:9301/metrics
+# Replace <NAMESPACE> (default: "caching") and <CLUSTER_DOMAIN> (default: "cluster.local")
+curl http://squid.<NAMESPACE>.svc.<CLUSTER_DOMAIN>:9301/metrics
 
 # Per-site exporter metrics (from within the cluster — uses HTTPS)
-curl -k https://squid.caching.svc.cluster.local:9302/metrics
+curl -k https://squid.<NAMESPACE>.svc.<CLUSTER_DOMAIN>:9302/metrics
 ```
 
 ## Troubleshooting Metrics

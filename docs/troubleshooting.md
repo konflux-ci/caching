@@ -144,7 +144,7 @@ kubectl get pods -n caching
 
 # Verify proxy connectivity manually
 kubectl run debug --image=curlimages/curl:latest --rm -it -- \
-  curl -v --proxy http://squid.caching.svc.cluster.local:3128 http://httpbin.org/ip
+  curl -v --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 http://httpbin.org/ip
 
 # View test logs from helm tests
 kubectl logs -n caching -l app.kubernetes.io/component=test
@@ -177,7 +177,7 @@ kubectl get pods -n caching
 kubectl logs -n caching statefulset/squid
 
 # Test connectivity from within cluster
-kubectl run debug --image=curlimages/curl:latest --rm -it -- curl -v --proxy http://squid.caching.svc.cluster.local:3128 http://httpbin.org/ip
+kubectl run debug --image=curlimages/curl:latest --rm -it -- curl -v --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 http://httpbin.org/ip
 
 # Check service endpoints
 kubectl get endpoints -n caching

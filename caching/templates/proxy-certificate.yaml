@@ -15,7 +15,7 @@ spec:
   - localhost
   - {{ .Values.squid.name }}
   - {{ .Values.squid.name }}.{{ include "caching.squid.namespace" . }}.svc
-  - {{ .Values.squid.name }}.{{ include "caching.squid.namespace" . }}.svc.cluster.local
+  - {{ include "caching.squid.fqdn" . }}
 
   issuerRef:
     kind: ClusterIssuer

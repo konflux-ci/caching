@@ -1,6 +1,9 @@
 # Example Prometheus configuration for scraping Squid metrics
 # This file shows how to configure Prometheus to scrape metrics from the Squid exporter
 # when not using Prometheus Operator
+#
+# Replace <NAMESPACE> with your deployment namespace (default: "caching")
+# Replace <CLUSTER_DOMAIN> with your cluster DNS domain (default: "cluster.local")
 
 # Add this job to your prometheus.yml configuration file
 global:
@@ -10,7 +13,7 @@ scrape_configs:
   # Squid Caching Metrics
   - job_name: 'squid-proxy'
     static_configs:
-      - targets: ['squid.{{ .Values.namespace.name }}.svc.cluster.local:9301']  # Adjust namespace if different
+      - targets: ['squid.<NAMESPACE>.svc.<CLUSTER_DOMAIN>:9301']
     scrape_interval: 30s
     scrape_timeout: 10s
     metrics_path: '/metrics'
@@ -23,11 +26,11 @@ scrape_configs:
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: squid.{{ .Values.namespace.name }}.svc.cluster.local:9301
+        replacement: squid.<NAMESPACE>.svc.<CLUSTER_DOMAIN>:9301
       - target_label: service
-        replacement: squid-{{ .Values.namespace.name }}
+        replacement: squid-<NAMESPACE>
       - target_label: component
-        replacement: {{ .Values.namespace.name }}
+        replacement: <NAMESPACE>
 
     # Optional: Filter metrics to only include squid-related ones
     metric_relabel_configs:

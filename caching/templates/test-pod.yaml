@@ -32,9 +32,9 @@ spec:
     - name: TARGET_NAMESPACE
       value: {{ include "caching.squid.namespace" . | quote }}
     - name: SQUID_SERVICE
-      value: "{{ .Values.squid.name }}.{{ include "caching.squid.namespace" . }}.svc.cluster.local:{{ .Values.service.port }}"
+      value: "{{ include "caching.squid.fqdn" . }}:{{ .Values.service.port }}"
     - name: NGINX_SERVICE
-      value: "{{ .Values.nginx.name }}.{{ include "caching.nginx.namespace" . }}.svc.cluster.local:{{ .Values.nginx.service.port }}"
+      value: "{{ include "caching.nginx.fqdn" . }}:{{ .Values.nginx.service.port }}"
     - name: LABEL_FILTER
       value: {{ .Values.test.labelFilter | quote }}
     # Pass environment to test binary so it knows which image repos to use

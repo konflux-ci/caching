@@ -55,6 +55,38 @@ Determine namespace for Nginx component
 
 {{/*
 =============================================================================
+DNS / FQDN HELPERS
+=============================================================================
+*/}}
+
+{{/*
+Cluster DNS domain, defaulting to "cluster.local" when not set.
+*/}}
+{{- define "caching.clusterDomain" -}}
+{{- .Values.clusterDomain | default "cluster.local" | trimSuffix "." -}}
+{{- end }}
+
+{{/*
+Build a fully qualified domain name: <name>.<namespace>.svc.<clusterDomain>
+*/}}
+{{- define "caching.fqdn" -}}
+{{- printf "%s.%s.svc.%s" .name .namespace (include "caching.clusterDomain" .ctx) -}}
+{{- end }}
+
+{{- define "caching.squid.fqdn" -}}
+{{- include "caching.fqdn" (dict "name" .Values.squid.name "namespace" (include "caching.squid.namespace" .) "ctx" .) -}}
+{{- end }}
+
+{{- define "caching.nginx.fqdn" -}}
+{{- include "caching.fqdn" (dict "name" .Values.nginx.name "namespace" (include "caching.nginx.namespace" .) "ctx" .) -}}
+{{- end }}
+
+{{- define "caching.test-server.fqdn" -}}
+{{- include "caching.fqdn" (dict "name" "test-server" "namespace" (include "caching.squid.namespace" .) "ctx" .) -}}
+{{- end }}
+
+{{/*
+=============================================================================
 SQUID COMPONENT HELPERS
 =============================================================================
 */}}
