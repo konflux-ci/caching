@@ -1,13 +1,13 @@
 module github.com/konflux-ci/caching
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
 	github.com/cert-manager/cert-manager v1.20.3
 	github.com/google/go-containerregistry v0.21.8
 	github.com/intra-sh/icap v0.1.1
-	github.com/jkroepke/access-log-exporter v0.4.4
+	github.com/jkroepke/access-log-exporter v0.4.9
 	github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260716142834-0e0cf75be216
 	github.com/magefile/mage v1.17.2
 	github.com/onsi/ginkgo/v2 v2.32.0
@@ -59,7 +59,7 @@ require (
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.1 // indirect
-	github.com/go-logr/logr v1.4.3 // indirect
+	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-openapi/jsonpointer v0.24.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.6 // indirect
 	github.com/go-openapi/swag v0.27.0 // indirect
