@@ -286,12 +286,47 @@ spec:
                   secret_args=""
                 fi
 
-                # Prepare Helm chart with cert-manager dependency
+                # Prepare Helm chart with cert-manager dependency.
+                # Retry transient DNS/egress failures talking to charts.jetstack.io.
+                retry_cmd() {
+                  local description="$1"
+                  shift
+                  local max_attempts=8
+                  local delay=2
+                  local max_delay=30
+                  local attempt=1
+                  local rc=0
+                  while (( attempt <= max_attempts )); do
+                    echo "→ ${description} (attempt ${attempt}/${max_attempts})"
+                    # Capture status immediately: after `if cmd; then ...; fi`, $? is 0 even on failure.
+                    "$@" && return 0
+                    rc=$?
+                    if (( attempt == max_attempts )); then
+                      break
+                    fi
+                    echo "WARNING: ${description} failed with exit ${rc}; retrying in ${delay}s..." >&2
+                    sleep "${delay}"
+                    delay=$(( delay * 2 ))
+                    if (( delay > max_delay )); then
+                      delay=${max_delay}
+                    fi
+                    attempt=$(( attempt + 1 ))
+                  done
+                  echo "ERROR: ${description} failed after ${max_attempts} attempts" >&2
+                  return "${rc}"
+                }
+
                 echo "Adding jetstack Helm repository..."
-                helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
-                helm repo update
+                retry_cmd "fetch jetstack chart index" \
+                  curl -fsS --connect-timeout 5 --retry 0 --max-time 60 \
+                  -o /dev/null "https://charts.jetstack.io/index.yaml"
+                retry_cmd "helm repo add jetstack" \
+                  helm repo add jetstack https://charts.jetstack.io --force-update
+                retry_cmd "helm repo update jetstack" \
+                  helm repo update jetstack
                 cd caching
-                helm dependency build
+                retry_cmd "helm dependency build" \
+                  helm dependency build
 
                 # Parse image references
                 # Handle both tag (repo:tag) and digest (repo@sha256:...) formats
