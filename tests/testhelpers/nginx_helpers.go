@@ -18,17 +18,33 @@ import (
 // NginxValues holds Helm values for nginx configuration
 type NginxValues struct {
 	// Enabled must NOT have omitempty since we need to explicitly set false to disable
-	Enabled      bool                  `json:"enabled"`
-	Name         string                `json:"name,omitempty"`
-	Namespace    string                `json:"namespace,omitempty"`
-	ReplicaCount int                   `json:"replicaCount,omitempty"`
-	TLS          *NginxTLSValues       `json:"tls,omitempty"`
-	Upstream     *NginxUpstreamValues  `json:"upstream,omitempty"`
-	Auth         *NginxAuthValues      `json:"auth,omitempty"`
-	Cache        *NginxCacheValues     `json:"cache,omitempty"`
-	Service      *NginxServiceValues   `json:"service,omitempty"`
-	Affinity     json.RawMessage       `json:"affinity,omitempty"`
-	Exporter     *NginxExporterValues  `json:"exporter,omitempty"`
+	Enabled      bool                   `json:"enabled"`
+	Name         string                 `json:"name,omitempty"`
+	Namespace    string                 `json:"namespace,omitempty"`
+	ReplicaCount int                    `json:"replicaCount,omitempty"`
+	TLS          *NginxTLSValues        `json:"tls,omitempty"`
+	Upstream     *NginxUpstreamValues   `json:"upstream,omitempty"`
+	Auth         *NginxAuthValues       `json:"auth,omitempty"`
+	SubFilters   []NginxSubFilterValues `json:"subFilters,omitempty"`
+	Cache        *NginxCacheValues      `json:"cache,omitempty"`
+	Service      *NginxServiceValues    `json:"service,omitempty"`
+	Affinity     json.RawMessage        `json:"affinity,omitempty"`
+	Exporter     *NginxExporterValues   `json:"exporter,omitempty"`
+}
+
+// NginxSubFilterValues configures an ngx_http_sub_module rewrite location.
+type NginxSubFilterValues struct {
+	Location           string               `json:"location"`
+	Filters            []NginxSubFilterPair `json:"filters"`
+	Once               *bool                `json:"once,omitempty"`
+	Types              []string             `json:"types,omitempty"`
+	DisableCompression *bool                `json:"disableCompression,omitempty"`
+}
+
+// NginxSubFilterPair is one sub_filter string/replacement pair.
+type NginxSubFilterPair struct {
+	String      string `json:"string"`
+	Replacement string `json:"replacement"`
 }
 
 // NginxExporterValues holds access-log-exporter sidecar configuration

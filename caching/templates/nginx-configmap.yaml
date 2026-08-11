@@ -137,6 +137,47 @@ data:
                 access_log off;
             }
 
+            {{- range .Values.nginx.subFilters }}
+            # SubFilter location: {{ .location }}
+            location ~ {{ .location }} {
+                proxy_pass $upstream_url;
+                proxy_set_header Host $upstream_host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+
+                {{- if $.Values.nginx.auth.enabled }}
+                proxy_set_header Authorization "__AUTH_HEADER__";
+                {{- end }}
+
+                {{- /* Default disableCompression to true so sub_filter can see the body */}}
+                {{- if or (not (hasKey . "disableCompression")) .disableCompression }}
+                proxy_set_header Accept-Encoding "";
+                {{- end }}
+
+                {{- range .filters }}
+                sub_filter '{{ .string }}' '{{ .replacement }}';
+                {{- end }}
+
+                {{- if .types }}
+                sub_filter_types {{ join " " .types }};
+                {{- else }}
+                sub_filter_types application/json;
+                {{- end }}
+
+                {{- if kindIs "bool" .once }}
+                sub_filter_once {{ if .once }}on{{ else }}off{{ end }};
+                {{- else }}
+                sub_filter_once on;
+                {{- end }}
+
+                proxy_no_cache 1;
+                proxy_cache_bypass 1;
+
+                add_header X-Cache-Status "BYPASS" always;
+            }
+            {{- end }}
+
             {{- range .Values.nginx.cache.allowList }}
             # AllowList location matching pattern: {{ . }}
             location ~ {{ . }} {

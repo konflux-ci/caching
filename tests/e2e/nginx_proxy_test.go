@@ -1,6 +1,7 @@
 package e2e_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -29,6 +30,17 @@ var _ = Describe("Nginx Proxy Caching Tests", Label("nginx"), Ordered, Serial, f
 				Auth: &testhelpers.NginxAuthValues{
 					Enabled:    true,
 					SecretName: authSecretName,
+				},
+				SubFilters: []testhelpers.NginxSubFilterValues{
+					{
+						Location: `^/repository/[^/]+/config\.json$`,
+						Filters: []testhelpers.NginxSubFilterPair{
+							{
+								String:      `"auth-required":true`,
+								Replacement: `"auth-required":false`,
+							},
+						},
+					},
 				},
 				Cache: &testhelpers.NginxCacheValues{
 					AllowList: []string{"^/content/"},
@@ -102,5 +114,39 @@ var _ = Describe("Nginx Proxy Caching Tests", Label("nginx"), Ordered, Serial, f
 		cacheStatus := resp.Header.Get("X-Cache-Status")
 		Expect(cacheStatus).To(Equal("BYPASS"),
 			"Requests to non-matching paths should be BYPASS")
+	})
+
+	It("should apply configured sub_filter rewrites to matching responses", func() {
+		reqURL := testhelpers.GetNginxURL() + "/repository/cargo-proxy/config.json"
+		resp, err := client.Get(reqURL)
+		Expect(err).NotTo(HaveOccurred())
+		defer resp.Body.Close()
+
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		body, err := io.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+
+		var cfg map[string]interface{}
+		Expect(json.Unmarshal(body, &cfg)).To(Succeed())
+		Expect(cfg["auth-required"]).To(Equal(false),
+			"Proxy should apply configured sub_filter; body=%s", string(body))
+	})
+
+	It("should not rewrite responses outside subFilters locations", func() {
+		reqURL := testhelpers.GetNginxURL() + "/content/passthrough-test"
+		resp, err := client.Get(reqURL)
+		Expect(err).NotTo(HaveOccurred())
+		defer resp.Body.Close()
+
+		Expect(resp.StatusCode).To(Equal(http.StatusOK))
+		body, err := io.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(string(body)).To(ContainSubstring(`"message"`))
+
+		var cfg map[string]interface{}
+		Expect(json.Unmarshal(body, &cfg)).To(Succeed())
+		Expect(cfg["auth-required"]).To(Equal(true),
+			"Responses outside subFilters locations must pass through unmodified; body=%s", string(body))
 	})
 })

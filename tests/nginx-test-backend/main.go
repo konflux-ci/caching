@@ -88,12 +88,51 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 
 		response := map[string]interface{}{
-			"message":     "nginx-test-backend",
-			"request_id":  float64(count),
-			"timestamp":   float64(time.Now().Unix()),
-			"server_hits": float64(count),
+			"message":       "nginx-test-backend",
+			"auth-required": true,
+			"request_id":    float64(count),
+			"timestamp":     float64(time.Now().Unix()),
+			"server_hits":   float64(count),
 		}
 		json.NewEncoder(w).Encode(response)
+	})
+
+	// Sample registry config.json for testing ngx_http_sub_module rewrites.
+	// Path: /repository/<repo-name>/config.json
+	mux.HandleFunc("GET /repository/{repo}/config.json", func(w http.ResponseWriter, r *http.Request) {
+		if !checkAuth(w, r) {
+			return
+		}
+		if checkOverrideStatus(w, r) {
+			return
+		}
+
+		repo := r.PathValue("repo")
+		if repo == "" {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Compact JSON matching common registry index config shape:
+		// {"dl":"...","api":"...","auth-required":true}
+		cfg := struct {
+			DL           string `json:"dl"`
+			API          string `json:"api"`
+			AuthRequired bool   `json:"auth-required"`
+		}{
+			DL:           fmt.Sprintf("http://nexus-test/repository/%s/crates", repo),
+			API:          fmt.Sprintf("http://nexus-test/repository/%s/", repo),
+			AuthRequired: true,
+		}
+		body, err := json.Marshal(cfg)
+		if err != nil {
+			http.Error(w, "failed to encode config.json", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

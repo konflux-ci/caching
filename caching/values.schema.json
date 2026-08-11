@@ -724,6 +724,61 @@
           "required": ["enabled"],
           "additionalProperties": false
         },
+        "subFilters": {
+          "type": "array",
+          "description": "ngx_http_sub_module response rewrites. Each entry renders a location ~ block with sub_filter directives. Empty means no rewrite locations. Location patterns must not overlap nginx.cache.allowList; subFilters wins on overlap.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "string",
+                "pattern": "^[^{}'\";\\n\\r#]+$",
+                "description": "Regex used in 'location ~ <location>'. Must not contain braces, quotes, semicolons, newlines, or #. Must not overlap nginx.cache.allowList patterns."
+              },
+              "filters": {
+                "type": "array",
+                "description": "sub_filter string replacement pairs",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "string": {
+                      "type": "string",
+                      "pattern": "^[^'\\n\\r;]+$",
+                      "description": "Non-empty string to search for in the response body. Must not contain single quotes, newlines, or semicolons."
+                    },
+                    "replacement": {
+                      "type": "string",
+                      "pattern": "^[^'\\n\\r;]*$",
+                      "description": "Replacement string. Must not contain single quotes, newlines, or semicolons."
+                    }
+                  },
+                  "required": ["string", "replacement"],
+                  "additionalProperties": false
+                },
+                "minItems": 1
+              },
+              "once": {
+                "type": "boolean",
+                "description": "sub_filter_once; defaults to true when omitted"
+              },
+              "types": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9.+-]+/[a-zA-Z0-9.+-]+$",
+                  "description": "MIME type for sub_filter_types (e.g. application/json)."
+                },
+                "description": "sub_filter_types MIME types; defaults to application/json when omitted"
+              },
+              "disableCompression": {
+                "type": "boolean",
+                "description": "Clear Accept-Encoding so sub_filter sees an uncompressed body; defaults to true when omitted"
+              }
+            },
+            "required": ["location", "filters"],
+            "additionalProperties": false
+          }
+        },
         "cache": {
           "type": "object",
           "properties": {

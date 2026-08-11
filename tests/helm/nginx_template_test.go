@@ -307,8 +307,67 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 
 			configMap := extractNginxConfigMapSection(output)
 
-			// Auth header should appear in both cached location and default location
-			Expect(strings.Count(configMap, `proxy_set_header Authorization "__AUTH_HEADER__"`)).To(Equal(2), "Should have auth header in both locations")
+			Expect(strings.Count(configMap, `proxy_set_header Authorization "__AUTH_HEADER__"`)).To(Equal(2), "Should have auth header in allowList and default locations")
+		})
+
+		It("should not render sub_filter locations when subFilters is empty", func() {
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			Expect(configMap).NotTo(ContainSubstring("sub_filter"), "Should not render sub_filter without subFilters values")
+		})
+
+		It("should render sub_filter locations from nginx.subFilters values", func() {
+			once := true
+			disableCompression := true
+			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://backend:8080",
+					},
+					Auth: &testhelpers.NginxAuthValues{
+						Enabled:    true,
+						SecretName: "my-secret",
+					},
+					SubFilters: []testhelpers.NginxSubFilterValues{
+						{
+							Location: `^/repository/[^/]+/config\.json$`,
+							Filters: []testhelpers.NginxSubFilterPair{
+								{
+									String:      `"auth-required":true`,
+									Replacement: `"auth-required":false`,
+								},
+							},
+							Once:               &once,
+							DisableCompression: &disableCompression,
+						},
+					},
+					Cache: &testhelpers.NginxCacheValues{
+						AllowList: []string{`^/api/.*`},
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			Expect(configMap).To(ContainSubstring(`location ~ ^/repository/[^/]+/config\.json$`), "Should render configured rewrite location")
+			Expect(configMap).To(ContainSubstring(`sub_filter '"auth-required":true' '"auth-required":false'`), "Should render configured sub_filter pair")
+			Expect(configMap).To(ContainSubstring("sub_filter_types application/json"), "Should default sub_filter_types to application/json when omitted")
+			Expect(configMap).To(ContainSubstring("sub_filter_once on"), "Should render sub_filter_once on")
+			Expect(configMap).To(ContainSubstring(`proxy_set_header Accept-Encoding ""`), "Should disable upstream compression by default")
+			Expect(strings.Count(configMap, `proxy_set_header Authorization "__AUTH_HEADER__"`)).To(Equal(3), "Should have auth header in subFilter, allowList, and default locations")
+			Expect(configMap).To(ContainSubstring(`add_header X-Cache-Status "BYPASS" always`), "subFilter locations should report BYPASS cache status")
 		})
 
 		It("should render @handle_redirect when allowList has entries", func() {
