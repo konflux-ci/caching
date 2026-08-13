@@ -344,17 +344,14 @@ func (Build) LoadAccessLogExporter() error {
 
 	fmt.Println("📦 Loading access-log-exporter image into kind cluster...")
 
-	// Load image into kind cluster using process substitution
 	fmt.Printf("📤 Loading image into kind cluster '%s'...\n", clusterName)
-	err := sh.Run("bash", "-c", fmt.Sprintf("kind load image-archive --name %s <(podman save %s)", clusterName, accessLogExporterImageTag))
-	if err != nil {
-		return fmt.Errorf("failed to load access-log-exporter image into kind cluster: %w", err)
+	if err := internal.LoadImage(clusterName, accessLogExporterImageTag); err != nil {
+		return fmt.Errorf("failed to load access-log-exporter image: %w", err)
 	}
 
 	// Verify image is available in cluster
 	fmt.Printf("🔍 Verifying image is available in cluster...\n")
-	err = internal.GetNodeStatus(clusterName)
-	if err != nil {
+	if err := internal.GetNodeStatus(clusterName); err != nil {
 		return fmt.Errorf("failed to connect to cluster for verification: %w", err)
 	}
 
@@ -369,17 +366,14 @@ func (Build) LoadSquid() error {
 
 	fmt.Println("📦 Loading Squid image into kind cluster...")
 
-	// Load image into kind cluster using process substitution
 	fmt.Printf("📤 Loading image into kind cluster '%s'...\n", clusterName)
-	err := sh.Run("bash", "-c", fmt.Sprintf("kind load image-archive --name %s <(podman save %s)", clusterName, squidImageTag))
-	if err != nil {
-		return fmt.Errorf("failed to load image into kind cluster: %w", err)
+	if err := internal.LoadImage(clusterName, squidImageTag); err != nil {
+		return fmt.Errorf("failed to load squid image: %w", err)
 	}
 
 	// Verify image is available in cluster
 	fmt.Printf("🔍 Verifying image is available in cluster...\n")
-	err = internal.GetNodeStatus(clusterName)
-	if err != nil {
+	if err := internal.GetNodeStatus(clusterName); err != nil {
 		return fmt.Errorf("failed to connect to cluster for verification: %w", err)
 	}
 
@@ -418,10 +412,8 @@ func (Build) LoadTestImage() error {
 
 	fmt.Println("📦 Loading test image into kind cluster...")
 
-	// Load image into kind cluster using process substitution
 	fmt.Printf("📤 Loading image into kind cluster '%s'...\n", clusterName)
-	err := sh.Run("bash", "-c", fmt.Sprintf("kind load image-archive --name %s <(podman save %s)", clusterName, testImageTag))
-	if err != nil {
+	if err := internal.LoadImage(clusterName, testImageTag); err != nil {
 		return fmt.Errorf("failed to load test image into kind cluster: %w", err)
 	}
 
