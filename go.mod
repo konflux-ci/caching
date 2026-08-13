@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/boynux/squid-exporter v1.13.0
 	github.com/cert-manager/cert-manager v1.20.3
-	github.com/google/go-containerregistry v0.21.8
+	github.com/google/go-containerregistry v0.21.9
 	github.com/intra-sh/icap v0.1.1
 	github.com/jkroepke/access-log-exporter v0.4.4
 	github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260716142834-0e0cf75be216
