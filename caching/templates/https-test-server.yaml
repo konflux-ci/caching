@@ -73,7 +73,7 @@ data:
     # Listen on 8443 (non-privileged port) for OpenShift compatibility
     server {
         listen 8443 ssl;
-        server_name test-server.{{ include "caching.squid.namespace" . }}.svc.cluster.local;
+        server_name {{ include "caching.test-server.fqdn" . }};
 
         ssl_certificate /etc/nginx/tls/tls.crt;
         ssl_certificate_key /etc/nginx/tls/tls.key;

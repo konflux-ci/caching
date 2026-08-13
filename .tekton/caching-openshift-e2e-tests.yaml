@@ -74,7 +74,7 @@ spec:
               description: Container image for the caching-tester component
           steps:
             - name: extract
-              image: quay.io/konflux-ci/konflux-test:v1.5.4@sha256:dae74bf0d6fc349d3ae140d9e3a921ad5009fdf8dade3186bfd9b65fbe3a365b
+              image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
               script: |
                 #!/bin/bash
                 set -euo pipefail
@@ -125,7 +125,12 @@ spec:
           - name: workflow
             value: hypershift-hostedcluster-workflow
           - name: env
-            value: '{"COMPUTE_NODE_TYPE": "$(params.machine-type)", "HYPERSHIFT_NODE_COUNT": "3"}'
+            value: |
+              {
+                "COMPUTE_NODE_TYPE": "$(params.machine-type)",
+                "HYPERSHIFT_NODE_COUNT": "3",
+                "HOSTED_MANAGEMENT_CLUSTER": "hosted-mgmt2"
+              }
           - name: releases
             value: |
               {"latest":{"release":{"channel":"stable","version":"$(params.ocp-version)","architecture":"multi"}}}
@@ -146,7 +151,7 @@ spec:
                 secretName: $(params.kubeconfigSecretRef)
           steps:
             - name: create-namespace
-              image: quay.io/konflux-ci/konflux-test:v1.5.4@sha256:dae74bf0d6fc349d3ae140d9e3a921ad5009fdf8dade3186bfd9b65fbe3a365b
+              image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
               env:
                 - name: KUBECONFIG
                   value: /var/run/secrets/cluster/kubeconfig
@@ -227,7 +232,7 @@ spec:
                 secretName: $(params.kubeconfigSecretRef)
           steps:
             - name: deploy-and-test
-              image: quay.io/konflux-ci/konflux-test:v1.5.4@sha256:dae74bf0d6fc349d3ae140d9e3a921ad5009fdf8dade3186bfd9b65fbe3a365b
+              image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
               env:
                 - name: KUBECONFIG
                   value: /var/run/secrets/cluster/kubeconfig
