@@ -38,17 +38,10 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y podman
 
-    - name: Start podman services
+    - name: Start podman service
       run: |
-        # Two sockets: rootless for the devcontainer lifecycle (--userns=keep-id)
-        # and rootful for Kind, which avoids the rootless cgroup delegation check.
-        # The rootful socket is safe here because GitHub Actions runners are ephemeral.
-        # TODO: revert to rootless once Kind supports running without Delegate=yes
+        # Start user podman service for socket mounting
         systemctl --user start podman.socket
-        sudo systemctl start podman.socket
-        test -S /run/podman/podman.sock || { echo "::error::Rootful podman socket not found at /run/podman/podman.sock"; exit 1; }
-        sudo chgrp "$(id -g)" /run/podman/podman.sock
-        sudo chmod 660 /run/podman/podman.sock
 
     - name: Initialize devcontainer environment
       run: |
@@ -82,7 +75,7 @@ jobs:
           --security-opt=label=disable \
           --privileged \
           -v $PWD:/workspaces/caching \
-          -v /run/podman/podman.sock:/var/run/podman.sock:Z \
+          -v ${XDG_RUNTIME_DIR}/podman/podman.sock:/var/run/podman.sock:Z \
           -e CONTAINER_HOST=unix:///var/run/podman.sock \
           devcontainer:latest \
           sleep infinity

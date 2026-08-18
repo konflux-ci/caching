@@ -38,20 +38,6 @@ func ExportKubeconfig(name string) error {
 	return sh.Run("kind", "export", "kubeconfig", "--name", name)
 }
 
-// LoadImage loads a container image into the Kind cluster's control-plane node
-func LoadImage(clusterName, imageTag string) error {
-	nodeName := clusterName + "-control-plane" // single-node cluster
-	q := func(s string) string { return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'" }
-	cmd := fmt.Sprintf(
-		"set -o pipefail; podman save --format docker-archive %s | podman exec -i %s ctr --namespace=k8s.io images import --digests -",
-		q(imageTag), q(nodeName),
-	)
-	if err := sh.Run("bash", "-c", cmd); err != nil {
-		return fmt.Errorf("loading image %s into cluster %s: %w", imageTag, clusterName, err)
-	}
-	return nil
-}
-
 // GetClusterInfo gets cluster info for the given cluster
 func GetClusterInfo(name string) (string, error) {
 	return sh.Output("kubectl", "cluster-info", "--context", "kind-"+name)
