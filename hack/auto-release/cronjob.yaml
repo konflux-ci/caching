@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auto-release-cronjob
+  namespace: konflux-vanguard-tenant
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: auto-release-cronjob
+  namespace: konflux-vanguard-tenant
+rules:
+  - apiGroups: ["appstudio.redhat.com"]
+    resources: ["snapshots"]
+    verbs: ["get", "list"]
+  - apiGroups: ["appstudio.redhat.com"]
+    resources: ["releases"]
+    verbs: ["get", "list", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: auto-release-cronjob
+  namespace: konflux-vanguard-tenant
+subjects:
+  - kind: ServiceAccount
+    name: auto-release-cronjob
+    namespace: konflux-vanguard-tenant
+roleRef:
+  kind: Role
+  name: auto-release-cronjob
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: auto-release-caching
+  namespace: konflux-vanguard-tenant
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300
+      backoffLimit: 0
+      template:
+        spec:
+          serviceAccountName: auto-release-cronjob
+          restartPolicy: Never
+          containers:
+            - name: auto-release
+              image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
+              command: ["/bin/bash", "-c"]
+              args:
+                - |
+                  set -euo pipefail
+
+                  APPLICATION="caching"
+                  NAMESPACE="konflux-vanguard-tenant"
+                  RELEASE_PLAN="caching-release-to-quay-rhtap-ser"
+
+                  echo "Checking for consistent snapshots to auto-release..."
+
+                  SNAPSHOTS=$(kubectl get snapshots -n "$NAMESPACE" \
+                    -l "appstudio.openshift.io/application=$APPLICATION,test.appstudio.openshift.io/type=component" \
+                    -o json)
+
+                  CANDIDATE=$(echo "$SNAPSHOTS" | jq -r '
+                    [.items[] |
+                      select(.metadata.annotations["test.appstudio.openshift.io/integration-workflow"] == "push") |
+                      select(
+                        [.spec.components[].source.git.revision] | unique | length == 1
+                      ) |
+                      select(
+                        (.status.conditions // []) |
+                        any(.type == "AppStudioTestSucceeded" and .reason == "Passed")
+                      )
+                    ] | max_by(.metadata.creationTimestamp) // empty |
+                    {name: .metadata.name, sha: (.spec.components[0].source.git.revision // "unknown")}
+                  ')
+
+                  if [ -z "$CANDIDATE" ] || [ "$CANDIDATE" = "null" ]; then
+                    echo "No snapshot with all tests passed found."
+                    exit 0
+                  fi
+
+                  read -r SNAPSHOT_NAME SNAPSHOT_SHA < <(echo "$CANDIDATE" | jq -r '[.name, .sha] | @tsv')
+                  echo "Found consistent snapshot: $SNAPSHOT_NAME (SHA: ${SNAPSHOT_SHA:0:12})"
+
+                  # Check if a Release already exists for this snapshot
+                  EXISTING=$(kubectl get releases -n "$NAMESPACE" \
+                    -l "release.appstudio.openshift.io/snapshot=$SNAPSHOT_NAME" \
+                    -o jsonpath='{.items[*].metadata.name}' 2>/dev/null || true)
+
+                  if [ -n "$EXISTING" ]; then
+                    echo "Release already exists for $SNAPSHOT_NAME: $EXISTING"
+                    exit 0
+                  fi
+
+                  echo "Creating Release for snapshot $SNAPSHOT_NAME..."
+                  kubectl create -f - <<EOF
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  generateName: caching-auto-
+  namespace: $NAMESPACE
+  labels:
+    appstudio.openshift.io/application: $APPLICATION
+    release.appstudio.openshift.io/snapshot: $SNAPSHOT_NAME
+    release.appstudio.openshift.io/automated: "true"
+spec:
+  snapshot: $SNAPSHOT_NAME
+  releasePlan: $RELEASE_PLAN
+  gracePeriodDays: 7
+EOF
+
+                  echo "Release created successfully for snapshot $SNAPSHOT_NAME"
