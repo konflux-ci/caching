@@ -60,6 +60,10 @@ This single command creates a Kind cluster, builds images, deploys the Helm char
 
 This project uses hermetic (network-isolated) builds in Konflux CI. See [HERMETIC-BUILDS.md](./HERMETIC-BUILDS.md) for guidance on updating dependency lock files.
 
+## Usage
+
+How to call the proxy from in-cluster and locally: [Using the Proxy](#using-the-proxy).
+
 ## Using the Proxy
 
 ### From Within the Cluster
