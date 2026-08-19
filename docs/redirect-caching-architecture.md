@@ -119,6 +119,24 @@ sequenceDiagram
 | `nginx.cache.size` | `1024` MiB | `1024` MiB | Maximum disk cache size |
 | `inactive` | `7d` (hardcoded) | `7d` | Evict items not accessed within this period |
 | `nginx.cache.allowList` | `[]` | configured | URL patterns routed through redirect caching |
+| `nginx.subFilters` | `[]` | configured | Response body rewrites; see [below](#response-body-rewrites-nginxsubfilters) |
 
 > **Note:** Even with a 30-day TTL, items not accessed for 7 days are evicted due to the
 > hardcoded `inactive=7d` setting in the nginx ConfigMap.
+
+## Response body rewrites (`nginx.subFilters`)
+
+The nginx proxy can rewrite response bodies for specific URL patterns via `nginx.subFilters`
+in Helm values. Chart defaults leave this disabled (`subFilters: []`); operators configure
+paths and replacement strings at deploy time.
+
+Each entry renders a dedicated `location ~` block that proxies to the upstream (with optional
+auth header injection), applies `sub_filter` string replacements on the response body, and
+bypasses the redirect cache (`proxy_no_cache` / `proxy_cache_bypass`).
+
+**Precedence:** `subFilters` locations are declared before `allowList` locations in nginx.conf.
+If a URL matches both, the `subFilters` block wins. Avoid overlapping patterns.
+
+`sub_filter` performs exact string replacement (not JSON-aware). Filter strings must not
+contain single quotes, newlines, or semicolons (enforced by `values.schema.json`). See
+`caching/values.yaml` for an example entry.

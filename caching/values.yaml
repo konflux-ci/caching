@@ -485,6 +485,16 @@ nginx:
     # The secret must have a key named "authorization"
     secretName: ""
 
+  # Response body rewrites (sub_filter). Empty = disabled.
+  # See docs/redirect-caching-architecture.md#response-body-rewrites-nginxsubfilters.
+  # Example:
+  # subFilters:
+  #   - location: '^/repository/[^/]+/config\.json$'
+  #     filters:
+  #       - string: '"auth-required":true'
+  #         replacement: '"auth-required":false'
+  subFilters: []
+
   # Cache configuration
   cache:
     # List of regex patterns for paths to cache
