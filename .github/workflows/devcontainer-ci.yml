@@ -38,10 +38,22 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y podman
 
-    - name: Start podman service
+    - name: Configure rootless podman for cgroup delegation
       run: |
-        # Start user podman service for socket mounting
-        systemctl --user start podman.socket
+        # kind queries `podman info` over the socket; podman reports the cgroup
+        # controllers present in the serving daemon's own cgroup, and kind
+        # requires the cpu controller there. Declaring Delegate=yes on the user
+        # podman service makes systemd enable the delegated controllers
+        # (including cpu) in the daemon's cgroup.
+        mkdir -p ~/.config/systemd/user/podman.service.d
+        printf '[Service]\nDelegate=yes\n' > ~/.config/systemd/user/podman.service.d/delegate.conf
+        systemctl --user daemon-reload
+
+    - name: Start podman services
+      run: |
+        # podman.socket exposes the socket the devcontainer mounts; podman.service
+        # is the daemon kind talks to.
+        systemctl --user start podman.socket podman.service
 
     - name: Initialize devcontainer environment
       run: |

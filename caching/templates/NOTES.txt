@@ -1,18 +1,36 @@
 {{- $squidNamespace := include "caching.squid.namespace" . -}}
-Your Squid proxy has been deployed to the '{{ $squidNamespace }}' namespace.
+{{- $nginxNamespace := include "caching.nginx.namespace" . -}}
+{{- if .Values.squid.enabled }}
+=== Squid Forward Proxy ===
+
+Deployed to the '{{ $squidNamespace }}' namespace.
 
 To connect from other pods within the Kubernetes cluster:
 - From inside the '{{ $squidNamespace }}' namespace:
   http://{{ .Values.squid.name }}:{{ .Values.service.port }}
 
-- From any namespace:
+- From any namespace (FQDN):
   http://{{ include "caching.squid.fqdn" . }}:{{ .Values.service.port }}
-
 
 For local testing, you can forward the service port to your machine:
 1. Get the pod name:
    export POD_NAME=$(kubectl get pods --namespace {{ $squidNamespace }} -l "app.kubernetes.io/name={{ .Values.squid.name }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
 
 2. Forward the port:
-   echo "Forwarding Squid proxy to http://127.0.0.1:3128"
-   kubectl --namespace {{ $squidNamespace }} port-forward $POD_NAME 3128:3128
+   echo "Forwarding Squid proxy to http://127.0.0.1:{{ .Values.service.port }}"
+   kubectl --namespace {{ $squidNamespace }} port-forward $POD_NAME {{ .Values.service.port }}:{{ .Values.service.port }}
+{{- end }}
+{{- if .Values.nginx.enabled }}
+
+=== Nginx Reverse Proxy ===
+
+Deployed to the '{{ $nginxNamespace }}' namespace.
+
+To connect from other pods within the Kubernetes cluster:
+- From inside the '{{ $nginxNamespace }}' namespace:
+  {{ if .Values.nginx.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.nginx.name }}:{{ .Values.nginx.service.port }}
+
+- From any namespace (FQDN):
+  {{ if .Values.nginx.tls.enabled }}https{{ else }}http{{ end }}://{{ include "caching.nginx.fqdn" . }}:{{ .Values.nginx.service.port }}
+
+{{- end }}
