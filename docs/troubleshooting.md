@@ -79,7 +79,7 @@ Look for:
 **Solution**: Clean up and reinstall:
 ```bash
 helm uninstall caching 2>/dev/null || true
-kubectl delete namespace caching 2>/dev/null || true
+kubectl delete namespace caching squid-proxy nginx-proxy 2>/dev/null || true
 # Wait a few seconds for cleanup
 sleep 5
 helm install caching ./caching

@@ -124,8 +124,9 @@ Run `mage -l` for the full list. Key commands:
 | `mage build:loadAccessLogExporter` | Load access-log-exporter into cluster |
 | **Deployment** | |
 | `mage cachingHelm:up` | Deploy/upgrade helm chart |
+| `mage cachingHelm:upIndependent` | Deploy with squid/nginx in separate namespaces |
 | `mage cachingHelm:down` | Remove deployment |
-| `mage cachingHelm:status` | Check deployment status |
+| `mage cachingHelm:status` | Check deployment status (all namespaces) |
 | `mage cachingHelm:upClean` | Force redeploy |
 | **Testing** | |
 | `mage test:unit` | Run unit tests (no cluster) |
