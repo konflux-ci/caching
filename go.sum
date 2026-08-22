@@ -232,8 +232,8 @@ github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnr
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/klauspost/compress v1.19.1 h1:VsB4HPswih7mmZ8WleSFQ75c/Ui1M4trX5oAsJnhSlk=
 github.com/klauspost/compress v1.19.1/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
-github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260716142834-0e0cf75be216 h1:CnkF4TI411322qe18I9W1HZKuxL8O+sFtyGOvBr8ndE=
-github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260716142834-0e0cf75be216/go.mod h1:i6BCROSU0M/Fk4QhzBbnY4R6JVq0hU7jlUSSxjd8dD4=
+github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260811133333-454aceabdba8 h1:HOmRiqTtG4oJuXBxWxSe/0PLf7z8FfHXMfLl3Xp+wDA=
+github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260811133333-454aceabdba8/go.mod h1:i6BCROSU0M/Fk4QhzBbnY4R6JVq0hU7jlUSSxjd8dD4=
 github.com/kr/pretty v0.2.1/go.mod h1:ipq/a2n7PKx3OHsz4KJII5eveXtPO4qwEXGdVfWzfnI=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
