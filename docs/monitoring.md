@@ -63,7 +63,7 @@ prometheus:
     namespace: ""  # Leave empty to use the same namespace as the app
 ```
 
-When enabled, the ServiceMonitor exposes endpoints for both exporters: `9301` (standard, HTTP) and `9302` (per-site, **HTTPS**). The per-site endpoint is scraped with `scheme: https` by default, with TLS configured via `prometheus.serviceMonitor.perSiteTLS` (defaults to the `caching-tls` secret).
+When enabled, the ServiceMonitor exposes endpoints for both exporters: `9301` (standard, HTTP) and `9302` (per-site, **HTTPS**). The per-site endpoint is scraped with `scheme: https` by default, with TLS configured via `prometheus.serviceMonitor.perSiteTLS` (auto-derives the CA secret name as `<namespace>-tls`, e.g., `caching-tls` when deployed to the `caching` namespace).
 
 ### Option 2: Manual Prometheus Configuration
 

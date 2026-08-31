@@ -396,8 +396,9 @@ prometheus:
       # Leave empty to auto-derive: <service>.<namespace>.svc.<cluster-domain>
       serverName: ""
       # If you don't have a CA handy, you can point to a Secret with ca.crt
+      # Leave secretName empty to auto-derive: <squid-namespace>-tls
       ca:
-        secretName: "caching-tls"
+        secretName: ""
         # key: "ca.crt" # optional, defaults to ca.crt
       # Alternatively, reference a mounted CA file path inside Prometheus
       # caFile: "/etc/prometheus/configmaps/proxy-ca/ca.crt"

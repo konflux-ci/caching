@@ -43,12 +43,15 @@ spec:
         serverName: {{ .Values.prometheus.serviceMonitor.perSiteTLS.serverName | default $svcFQDN }}
         insecureSkipVerify: {{ .Values.prometheus.serviceMonitor.perSiteTLS.insecureSkipVerify | default false }}
         {{- with .Values.prometheus.serviceMonitor.perSiteTLS.ca }}
+        {{- $defaultSecretName := printf "%s-tls" (include "caching.squid.namespace" $) }}
         ca:
           secret:
-            name: {{ .secretName }}
+            name: {{ .secretName | default $defaultSecretName }}
             key: {{ .key | default "ca.crt" }}
         {{- end }}
-        caFile: {{ .Values.prometheus.serviceMonitor.perSiteTLS.caFile }}
+        {{- with .Values.prometheus.serviceMonitor.perSiteTLS.caFile }}
+        caFile: {{ . }}
+        {{- end }}
       {{- end }}
     {{- end }}
 {{- end }} 

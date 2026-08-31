@@ -439,7 +439,6 @@
                     "secretName": { "type": "string" },
                     "key": { "type": "string" }
                   },
-                  "required": ["secretName"],
                   "additionalProperties": false
                 },
                 "caFile": { "type": "string" }
