@@ -48,7 +48,7 @@ Local and CI use dedicated checks; most are **not** run inside the devcontainer 
 All dependencies must be locked for network-isolated CI builds. When adding dependencies, update:
 - `go.mod` / `go.sum` — Go modules (`go mod tidy`)
 - `rpms.in.yaml` → regenerate `rpms.lock.yaml` — RPM packages
-- `artifacts.lock.yaml` — Go/Helm toolchain versions
+- `artifacts.lock.yaml` — external artifacts (Helm chart deps for caching-tester)
 - `tools.go` — build-time Go tool imports
 Forgetting lock files will break Konflux CI. See `HERMETIC-BUILDS.md`.
 
