@@ -74,7 +74,7 @@ spec:
               description: Container image for the caching-tester component
           steps:
             - name: extract
-              image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
+              image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
               script: |
                 #!/bin/bash
                 set -euo pipefail
@@ -151,7 +151,7 @@ spec:
                 secretName: $(params.kubeconfigSecretRef)
           steps:
             - name: create-namespace
-              image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
+              image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
               env:
                 - name: KUBECONFIG
                   value: /var/run/secrets/cluster/kubeconfig
@@ -232,7 +232,7 @@ spec:
                 secretName: $(params.kubeconfigSecretRef)
           steps:
             - name: deploy-and-test
-              image: quay.io/konflux-ci/konflux-test:v1.5.6@sha256:365b172d2a8a145406f028d0a94a77b489fbdf9d84e5bd9529b1c3ad72f077b1
+              image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
               env:
                 - name: KUBECONFIG
                   value: /var/run/secrets/cluster/kubeconfig
