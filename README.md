@@ -1,5 +1,7 @@
 # Squid Proxy for Kubernetes
 
+<!-- Temporary change to trigger cache-proxy-enabled staging pipelines. Do not merge. -->
+
 A Helm chart for deploying a Squid HTTP proxy in Kubernetes, with SSL-bump support, caching, and Prometheus monitoring. Deploys into a dedicated `caching` namespace.
 
 ## Prerequisites
