@@ -24,6 +24,12 @@
   "gomod": {
     "packageRules": [
       {
+        "description": "Enable Go version directive updates",
+        "matchDepNames": ["go"],
+        "matchDepTypes": ["golang"],
+        "rangeStrategy": "bump"
+      },
+      {
         "description": "Disable updates for indirect Go dependencies since they are resolved by go mod tidy based on direct dependency requirements",
         "matchDepTypes": ["indirect"],
         "enabled": false
@@ -135,12 +141,16 @@
       ]
     },
     {
-      "description": "Auto-merge Go toolchain patch updates (go.mod and Containerfile)",
+      "description": "Group Go toolchain updates (go.mod and Containerfile)",
       "groupName": "go-toolchain",
       "matchDatasources": [
         "golang-version",
         "custom.golang-with-checksum"
-      ],
+      ]
+    },
+    {
+      "description": "Auto-merge Go toolchain patch updates (go.mod and Containerfile)",
+      "matchDepNames": ["go"],
       "matchUpdateTypes": [
         "patch"
       ],
