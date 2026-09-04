@@ -1,6 +1,6 @@
 module github.com/konflux-ci/caching
 
-go 1.26.4
+go 1.27.1
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
