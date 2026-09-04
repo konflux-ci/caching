@@ -146,7 +146,8 @@
       "matchDatasources": [
         "golang-version",
         "custom.golang-with-checksum"
-      ]
+      ],
+      "separateMinorPatch": true
     },
     {
       "description": "Auto-merge Go toolchain patch updates (go.mod and Containerfile)",
