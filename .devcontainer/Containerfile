@@ -26,13 +26,18 @@ RUN curl -fsSL "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o go.
 # Set Go environment
 ENV PATH="/usr/local/go/bin:$PATH"
 
-# Install kind, mage, ginkgo CLI, and dlv debugger 
+# Install kind, mage, ginkgo CLI, and dlv debugger
+WORKDIR /tmp/caching
+COPY go.mod go.sum ./
+
 RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.29.0/kind-linux-amd64 && \
     chmod +x ./kind && \
     mv ./kind /usr/local/bin/kind && \
-    GOBIN=/usr/local/bin go install github.com/magefile/mage@v1.15.0 && \
-    GOBIN=/usr/local/bin go install github.com/onsi/ginkgo/v2/ginkgo@latest && \
-    GOBIN=/usr/local/bin go install github.com/go-delve/delve/cmd/dlv@latest
+    go build -o /usr/local/bin/mage github.com/magefile/mage && \
+    go build -o /usr/local/bin/ginkgo github.com/onsi/ginkgo/v2/ginkgo && \
+    go build -o /usr/local/bin/dlv github.com/go-delve/delve/cmd/dlv
+
+WORKDIR /
 
 # Install mirrord binary securely from GitHub releases (specific version)
 ARG MIRRORD_VERSION=3.217.1
@@ -40,24 +45,24 @@ RUN curl -fsSL "https://github.com/metalbear-co/mirrord/releases/download/${MIRR
     chmod +x /usr/local/bin/mirrord
 
 # Create a non-root user 'vscode' to run as, and grant it passwordless sudo.
-ARG USERNAME=vscode
+ARG DEV_USER=vscode
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 
-RUN groupadd --gid $USER_GID $USERNAME && \
-    useradd --uid $USER_UID --gid $USER_GID -m $USERNAME && \
-    echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME && \
-    chmod 0440 /etc/sudoers.d/$USERNAME
+RUN groupadd --gid $USER_GID $DEV_USER && \
+    useradd --uid $USER_UID --gid $USER_GID -m $DEV_USER && \
+    echo $DEV_USER ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$DEV_USER && \
+    chmod 0440 /etc/sudoers.d/$DEV_USER
 
 # Add Go bin directory to the vscode user's PATH
 # Ignoring hadolint because in this case we don't want variables expanded during
 # the container build.
 # hadolint ignore=SC2016
-RUN echo 'export PATH="$PATH:$HOME/go/bin"' >> /home/$USERNAME/.bashrc
+RUN echo 'export PATH="$PATH:$HOME/go/bin"' >> /home/$DEV_USER/.bashrc
 
 # Prepare GOPATH for the vscode user with correct ownership
-RUN mkdir -p /home/$USERNAME/go/bin && \
-    chown -R $USERNAME:$USERNAME /home/$USERNAME/go
+RUN mkdir -p /home/$DEV_USER/go/bin && \
+    chown -R $DEV_USER:$DEV_USER /home/$DEV_USER/go
 
 # Switch to the non-root user
-USER $USERNAME
+USER $DEV_USER

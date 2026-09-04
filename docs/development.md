@@ -30,7 +30,7 @@ fs.inotify.max_user_instances=1024
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) (Kubernetes in Docker)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [Helm](https://helm.sh/docs/intro/install/) v3.x
-- [Mage](https://magefile.org/) - `go install github.com/magefile/mage@v1.16.1`
+- [Mage](https://magefile.org/) - From the repository root, run `go install github.com/magefile/mage` to use the version in `go.mod`.
 - [mirrord](https://mirrord.dev/docs/overview/quick-start/) (optional, for e2e tests)
 - [gcc](https://gcc.gnu.org/) (for CGO)
 

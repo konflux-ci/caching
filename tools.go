@@ -8,7 +8,9 @@ package tools
 
 import (
 	_ "github.com/boynux/squid-exporter"
+	_ "github.com/go-delve/delve/cmd/dlv"
 	_ "github.com/jkroepke/access-log-exporter/cmd/access-log-exporter"
+	_ "github.com/magefile/mage"
 	_ "github.com/onsi/ginkgo/v2/ginkgo"
 	_ "helm.sh/helm/v3/cmd/helm"
 	// Test dependencies - imported here so Cachi2 will prefetch them
@@ -17,4 +19,3 @@ import (
 	_ "github.com/pmezard/go-difflib/difflib"
 	_ "github.com/prashantv/gostub"
 )
-
