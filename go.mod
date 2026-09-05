@@ -4,7 +4,7 @@ go 1.26.7
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
-	github.com/cert-manager/cert-manager v1.20.3
+	github.com/cert-manager/cert-manager v1.21.1
 	github.com/go-delve/delve v1.27.1
 	github.com/google/go-containerregistry v0.22.0
 	github.com/intra-sh/icap v0.1.1
@@ -178,7 +178,7 @@ require (
 	k8s.io/streaming v0.37.0 // indirect
 	k8s.io/utils v0.0.0-20260626114624-be93311217bd // indirect
 	oras.land/oras-go/v2 v2.6.1 // indirect
-	sigs.k8s.io/gateway-api v1.5.1 // indirect
+	sigs.k8s.io/gateway-api v1.6.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/kustomize/api v0.21.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.21.1 // indirect
