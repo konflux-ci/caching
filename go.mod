@@ -6,7 +6,7 @@ require (
 	github.com/boynux/squid-exporter v1.13.0
 	github.com/cert-manager/cert-manager v1.20.3
 	github.com/go-delve/delve v1.27.1
-	github.com/google/go-containerregistry v0.22.0
+	github.com/google/go-containerregistry v0.22.1
 	github.com/intra-sh/icap v0.1.1
 	github.com/jkroepke/access-log-exporter v0.4.4
 	github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260827155954-c914ae07e9f0
