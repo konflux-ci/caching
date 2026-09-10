@@ -151,7 +151,7 @@ func CreateNginxCertificate(ctx context.Context, client *certmanagerclient.Clien
 				Algorithm: certmanagerv1.ECDSAKeyAlgorithm,
 				Size:      256,
 			},
-			IssuerRef: certmanagermeta.ObjectReference{
+			IssuerRef: certmanagermeta.IssuerReference{
 				Name:  Namespace + "-ca-issuer",
 				Kind:  "ClusterIssuer",
 				Group: "cert-manager.io",
