@@ -207,13 +207,13 @@ arches:
     name: perl-Class-Struct
     evr: 0.68-512.2.el10_0
     sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-DBI-1.643-26.el10_2.3.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-DBI-1.643-26.el10_2.4.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 736532
-    checksum: sha256:50ee769c79947e3f5ce8c3d7b209a907cd10d514ea4884cc9e83a146b09fcf32
+    size: 736520
+    checksum: sha256:a787f60a6bb027f6846d0285a90aa0c4406856891b338500a78882ee5dc495fd
     name: perl-DBI
-    evr: 1.643-26.el10_2.3
-    sourcerpm: perl-DBI-1.643-26.el10_2.3.src.rpm
+    evr: 1.643-26.el10_2.4
+    sourcerpm: perl-DBI-1.643-26.el10_2.4.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Data-Dumper-2.189-512.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 61309
@@ -403,6 +403,13 @@ arches:
     name: perl-Math-Complex
     evr: 1.62-512.2.el10_0
     sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Module-Load-0.36-511.el10.noarch.rpm
+    repoid: ubi-10-for-x86_64-appstream-rpms
+    size: 20049
+    checksum: sha256:02bbf3334a092a2cb1598bc1b1bb63277aa3eafbff0c73e83dfc3cb660fb9470
+    name: perl-Module-Load
+    evr: 1:0.36-511.el10
+    sourcerpm: perl-Module-Load-0.36-511.el10.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Mozilla-CA-20231213-5.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 16659
