@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/konflux-ci/caching/internal"
 	"sigs.k8s.io/yaml"
 
 	. "github.com/onsi/gomega"
@@ -611,12 +612,17 @@ func UpgradeChart(releaseName, chartName string, valuesFile string) error {
 // UpgradeChartWithArgs performs a helm upgrade with additional --set arguments
 func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extraArgs []string) error {
 	fmt.Printf("Upgrading helm release '%s' with chart '%s'...\n", releaseName, chartName)
+	compatibilityArgs, err := internal.HelmCompatibilityArgs()
+	if err != nil {
+		return err
+	}
 
 	// Build helm command as a shell string
 	// Use default namespace for Helm release metadata (matches magefile.go)
 	// Resources created in caching namespace (from chart's namespace templates)
 	// Increase history-max to prevent "secret not found" errors when multiple tests upgrade
 	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=300s", "--history-max=50", "--debug"}
+	cmdParts = append(cmdParts, compatibilityArgs...)
 
 	// Values file is provided by callers
 	cmdParts = append(cmdParts, "--values", valuesFile)

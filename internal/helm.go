@@ -2,10 +2,36 @@ package internal
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/magefile/mage/sh"
 )
+
+// HelmCompatibilityArgs returns version-dependent arguments needed for Helm compatibility.
+func HelmCompatibilityArgs() ([]string, error) {
+	version, err := sh.Output("helm", "version", "--template", "{{ .Version }}")
+	if err != nil {
+		return nil, fmt.Errorf("failed to determine Helm version: %w", err)
+	}
+
+	version = strings.TrimPrefix(strings.TrimSpace(version), "v")
+	majorString, _, found := strings.Cut(version, ".")
+	if !found {
+		return nil, fmt.Errorf("unsupported Helm version format %q", version)
+	}
+	major, err := strconv.Atoi(majorString)
+	if err != nil {
+		return nil, fmt.Errorf("unsupported Helm version format %q: %w", version, err)
+	}
+
+	if major < 4 {
+		return nil, nil
+	}
+
+	return []string{"--server-side=false"}, nil
+}
 
 // ReleaseExists checks if a helm release exists
 func ReleaseExists(name string) (bool, error) {

@@ -487,6 +487,10 @@ func helmDeploy(extraSets ...string) error {
 	if err := helmSetup(); err != nil {
 		return err
 	}
+	compatibilityArgs, err := internal.HelmCompatibilityArgs()
+	if err != nil {
+		return err
+	}
 
 	args := []string{
 		"upgrade", "caching", chartPath,
@@ -496,6 +500,7 @@ func helmDeploy(extraSets ...string) error {
 		"--set", "test.labelFilter=" + os.Getenv("GINKGO_LABEL_FILTER"),
 		"--wait", "--timeout=300s", "--debug",
 	}
+	args = append(args, compatibilityArgs...)
 	for _, s := range extraSets {
 		args = append(args, "--set", s)
 	}
@@ -753,17 +758,23 @@ func runClusterTests(replicaCount int) error {
 // Errors are logged as warnings but don't cause the function to fail
 func resetCachingToDefaults() {
 	fmt.Println("🔄 Resetting caching chart to values.yaml defaults...")
-	err := sh.Run(
-		"helm",
+	compatibilityArgs, err := internal.HelmCompatibilityArgs()
+	if err != nil {
+		fmt.Printf("⚠️  Warning: Failed to determine Helm compatibility arguments: %v\n", err)
+		return
+	}
+	args := []string{
 		"upgrade",
 		"caching",
 		chartPath,
 		"--set", "environment=dev",
 		"--set", "nginx.enabled=true",
-		"--set", "test.labelFilter="+os.Getenv("GINKGO_LABEL_FILTER"),
+		"--set", "test.labelFilter=" + os.Getenv("GINKGO_LABEL_FILTER"),
 		"--wait",
 		"--timeout=300s",
-	)
+	}
+	args = append(args, compatibilityArgs...)
+	err = sh.Run("helm", args...)
 	if err != nil {
 		fmt.Printf("⚠️  Warning: Failed to reset caching chart to values.yaml defaults: %v\n", err)
 	}
@@ -794,15 +805,21 @@ func (Test) ClusterMultiReplica() error {
 	mg.Deps(CachingHelm{}.Up)
 
 	fmt.Println("🧪 Upgrading deployment to 3 replicas...")
+	compatibilityArgs, err := internal.HelmCompatibilityArgs()
+	if err != nil {
+		return err
+	}
 
 	// Upgrade deployment to 3 replicas
-	err := sh.RunWith(map[string]string{
-		"SQUID_REPLICA_COUNT": "3",
-	}, "helm", "upgrade", "caching", chartPath,
+	args := []string{"upgrade", "caching", chartPath,
 		"-n=default", "--wait", "--timeout=300s", "--history-max=50",
 		"--set", "replicaCount=3",
 		"--set", "nginx.enabled=true",
-		"--set", "environment=dev")
+		"--set", "environment=dev"}
+	args = append(args, compatibilityArgs...)
+	err = sh.RunWith(map[string]string{
+		"SQUID_REPLICA_COUNT": "3",
+	}, "helm", args...)
 	if err != nil {
 		return fmt.Errorf("failed to set replica count to 3: %w", err)
 	}

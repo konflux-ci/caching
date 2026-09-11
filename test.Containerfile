@@ -44,6 +44,9 @@ RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
 # Copy test source files maintaining directory structure
 COPY tests/ ./tests/
 
+# Copy shared helpers imported by the test packages
+COPY internal/ ./internal/
+
 # Copy caching chart
 COPY caching/ ./caching/
 
