@@ -98,8 +98,12 @@ curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
 ## Helm Configuration
 
 ```bash
-# Full install with cert-manager (default)
-helm install caching ./caching
+# Full install or upgrade with cert-manager using Helm 4.
+# Client-side apply avoids the bundled cert-manager/trust-manager webhook startup race.
+helm upgrade --install caching ./caching --server-side=false
+
+# Helm 3 already uses client-side apply and does not support --server-side.
+helm upgrade --install caching ./caching
 
 # Without deploying cert-manager (requires cert-manager already installed on the cluster)
 # Note: Certificate resources are still created — cert-manager must be present
