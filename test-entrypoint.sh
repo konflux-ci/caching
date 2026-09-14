@@ -5,9 +5,9 @@ set -euo pipefail
 # This script prepares the environment and runs Ginkgo E2E tests
 
 echo "=== Starting Ginkgo E2E Tests ==="
-echo "Target namespace: ${TARGET_NAMESPACE:-caching}"
-echo "Squid service: ${SQUID_SERVICE:-squid.caching.svc.cluster.local:3128}"
-echo "Nginx service: ${NGINX_SERVICE:-nginx.caching.svc.cluster.local:8080}"
+echo "Squid namespace: ${SQUID_NAMESPACE:-squid-proxy}"
+echo "Squid service: ${SQUID_SERVICE:-squid.squid-proxy.svc.cluster.local:3128}"
+echo "Nginx service: ${NGINX_SERVICE:-nginx.nginx-proxy.svc.cluster.local:8080}"
 
 # Build helm chart dependencies in a writable temp directory
 # The /app directory is read-only, so we need to copy the chart to /tmp

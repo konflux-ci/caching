@@ -29,8 +29,10 @@ spec:
     command:
     - /app/test-entrypoint.sh
     env:
-    - name: TARGET_NAMESPACE
+    - name: SQUID_NAMESPACE
       value: {{ include "caching.squid.namespace" . | quote }}
+    - name: NGINX_NAMESPACE
+      value: {{ include "caching.nginx.namespace" . | quote }}
     - name: SQUID_SERVICE
       value: "{{ include "caching.squid.fqdn" . }}:{{ .Values.service.port }}"
     - name: NGINX_SERVICE

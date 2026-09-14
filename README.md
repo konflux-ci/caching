@@ -1,6 +1,6 @@
-# Squid Proxy for Kubernetes
+# Caching Proxies for Kubernetes
 
-A Helm chart for deploying a Squid HTTP proxy in Kubernetes, with SSL-bump support, caching, and Prometheus monitoring. Deploys into a dedicated `caching` namespace.
+A Helm chart for deploying independently toggleable Squid forward and Nginx reverse proxies in Kubernetes, with caching and Prometheus monitoring. The chart manages the `squid-proxy` and `nginx-proxy` namespaces for the enabled components.
 
 ## Prerequisites
 
@@ -72,7 +72,7 @@ How to call the proxy from in-cluster and locally: [Using the Proxy](#using-the-
 # Same namespace
 curl --proxy http://squid:3128 http://httpbin.org/ip
 
-# Cross-namespace (replace <NAMESPACE> with your deployment namespace, default: "caching")
+# Cross-namespace (replace <NAMESPACE> with your deployment namespace, default: "squid-proxy")
 curl --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 http://httpbin.org/ip
 ```
 
@@ -91,7 +91,7 @@ kubectl run test-curl-ssl --image=curlimages/curl:latest --rm -it -- \
 ### From Your Local Machine
 
 ```bash
-kubectl port-forward -n caching svc/squid 3128:3128
+kubectl port-forward -n squid-proxy svc/squid 3128:3128
 curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
 ```
 
@@ -122,9 +122,11 @@ helm install caching ./caching --set environment=dev --set nginx.enabled=true
 | `selfsigned-certificate.enabled` | `true` | Create certificate resources |
 | `squidExporter.enabled` | `true` | Enable Prometheus metrics |
 | `nginx.enabled` | `false` | Deploy NGINX reverse proxy |
-| `squid.namespace` | `""` (shared namespace) | Namespace for Squid proxy components; set to deploy independently |
-| `nginx.namespace` | `""` (shared namespace) | Namespace for NGINX reverse proxy components; set to deploy independently |
+| `squid.namespace` | `"squid-proxy"` | Namespace for Squid proxy components |
+| `nginx.namespace` | `"nginx-proxy"` | Namespace for NGINX reverse proxy components |
 | `clusterDomain` | `""` (defaults to `cluster.local`) | Cluster DNS domain for FQDN generation |
+
+Squid and Nginx deploy into `squid-proxy` and `nginx-proxy` by default. Override these with `squid.namespace` and `nginx.namespace`.
 
 ## Testing
 
@@ -157,7 +159,7 @@ Prometheus monitoring is enabled by default with two exporters:
 
 ```bash
 # View metrics
-kubectl port-forward -n caching svc/squid 9301:9301
+kubectl port-forward -n squid-proxy svc/squid 9301:9301
 curl http://localhost:9301/metrics
 ```
 
@@ -168,8 +170,8 @@ For detailed configuration, see [docs/monitoring.md](docs/monitoring.md).
 ### Quick Diagnostics
 
 ```bash
-kubectl get pods -n caching
-kubectl logs -n caching -l app.kubernetes.io/name=squid -c squid
+kubectl get pods -n squid-proxy
+kubectl logs -n squid-proxy -l app.kubernetes.io/name=squid -c squid
 mage cachingHelm:status
 ```
 
@@ -179,7 +181,7 @@ mage cachingHelm:status
 |-------|----------|
 | Cluster exists error | `kind export kubeconfig --name caching` |
 | Image pull errors | `mage build:loadSquid` |
-| Namespace errors | `helm uninstall caching && kubectl delete ns caching squid-proxy nginx-proxy` |
+| Namespace errors | `helm uninstall caching && kubectl delete ns squid-proxy nginx-proxy` |
 | Connection refused | Check squid ACLs cover your pod CIDR |
 
 For detailed troubleshooting, see [docs/troubleshooting.md](docs/troubleshooting.md).
@@ -192,7 +194,7 @@ mage clean
 
 # Manual
 helm uninstall caching
-kubectl delete namespace caching squid-proxy nginx-proxy
+kubectl delete namespace squid-proxy nginx-proxy
 kind delete cluster --name caching
 ```
 
