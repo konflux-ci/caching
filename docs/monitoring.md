@@ -63,7 +63,7 @@ prometheus:
     namespace: ""  # Leave empty to use the same namespace as the app
 ```
 
-When enabled, the ServiceMonitor exposes endpoints for both exporters: `9301` (standard, HTTP) and `9302` (per-site, **HTTPS**). The per-site endpoint is scraped with `scheme: https` by default, with TLS configured via `prometheus.serviceMonitor.perSiteTLS` (auto-derives the CA secret name as `<namespace>-tls`, e.g., `caching-tls` when deployed to the `caching` namespace).
+When enabled, the ServiceMonitor exposes endpoints for both exporters: `9301` (standard, HTTP) and `9302` (per-site, **HTTPS**). The per-site endpoint is scraped with `scheme: https` by default, with TLS configured via `prometheus.serviceMonitor.perSiteTLS` (auto-derives the CA secret name as `<namespace>-tls`, e.g., `squid-proxy-tls` when deployed to the `squid-proxy` namespace).
 
 ### Option 2: Manual Prometheus Configuration
 
@@ -117,7 +117,7 @@ scrape_configs:
 
 ```bash
 # Forward the standard squid-exporter metrics port
-kubectl port-forward -n caching svc/squid 9301:9301
+kubectl port-forward -n squid-proxy svc/squid 9301:9301
 
 # View standard metrics in your browser or with curl
 curl http://localhost:9301/metrics
@@ -127,7 +127,7 @@ Per-site exporter metrics (note: port 9302 uses **HTTPS**):
 
 ```bash
 # Forward the per-site exporter metrics port
-kubectl port-forward -n caching svc/squid 9302:9302
+kubectl port-forward -n squid-proxy svc/squid 9302:9302
 
 # View per-site metrics (TLS, skip cert verification for local testing)
 curl -k https://localhost:9302/metrics
@@ -139,7 +139,7 @@ The metrics are exposed on the service:
 
 ```bash
 # Standard squid-exporter metrics (from within the cluster)
-# Replace <NAMESPACE> (default: "caching") and <CLUSTER_DOMAIN> (default: "cluster.local")
+# Replace <NAMESPACE> (default: "squid-proxy") and <CLUSTER_DOMAIN> (default: "cluster.local")
 curl http://squid.<NAMESPACE>.svc.<CLUSTER_DOMAIN>:9301/metrics
 
 # Per-site exporter metrics (from within the cluster — uses HTTPS)
