@@ -5,12 +5,14 @@
 # See https://fullsend.sh/docs/guides/infrastructure/layered-config-reference
 version: "1"
 roles:
-    - fullsend
     - triage
     - coder
-    - fix
     - review
+    - fix
     - prioritize
+agents:
+    - name: retro
+      enabled: false
 allowed_remote_resources:
     - https://raw.githubusercontent.com/fullsend-ai/fullsend/
     - https://raw.githubusercontent.com/fullsend-ai/agents/
