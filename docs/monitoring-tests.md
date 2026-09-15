@@ -46,8 +46,8 @@ fi
 # Remove any existing deployment
 helm uninstall caching 2>/dev/null || true
 
-# Remove namespaces (covers both legacy and dual-namespace modes)
-kubectl delete namespace caching squid-proxy nginx-proxy 2>/dev/null || true
+# Remove namespaces (component namespaces)
+kubectl delete namespace squid-proxy nginx-proxy 2>/dev/null || true
 
 # Wait for cleanup
 sleep 10
@@ -72,10 +72,10 @@ helm install caching ./caching \
 #### 2.2 Verify Pod Readiness
 ```bash
 # Wait for pods to be ready
-kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=squid -n caching --timeout=120s
+kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=squid -n squid-proxy --timeout=120s
 
 # Check pod status
-kubectl get pods -n caching -o wide
+kubectl get pods -n squid-proxy -o wide
 ```
 
 **Expected Result**: Pod shows `2/2 Running` (squid + squid-exporter containers).
@@ -83,10 +83,10 @@ kubectl get pods -n caching -o wide
 #### 2.3 Verify Service Creation
 ```bash
 # Check service
-kubectl get svc -n caching
+kubectl get svc -n squid-proxy
 
 # Check service details
-kubectl describe svc squid -n caching
+kubectl describe svc squid -n squid-proxy
 ```
 
 **Expected Result**: Service exposes ports 3128 (proxy) and 9301 (metrics).
@@ -94,10 +94,10 @@ kubectl describe svc squid -n caching
 #### 2.4 Verify ServiceMonitor (if Prometheus Operator available)
 ```bash
 # Check ServiceMonitor
-kubectl get servicemonitor -n caching
+kubectl get servicemonitor -n squid-proxy
 
 # Check ServiceMonitor details
-kubectl describe servicemonitor squid -n caching
+kubectl describe servicemonitor squid -n squid-proxy
 ```
 
 **Expected Result**: ServiceMonitor created with correct selector and endpoints.
@@ -107,11 +107,11 @@ kubectl describe servicemonitor squid -n caching
 #### 3.1 Verify Container Configuration
 ```bash
 # Get pod name
-POD_NAME=$(kubectl get pods -n caching -l app.kubernetes.io/name=squid -o jsonpath="{.items[0].metadata.name}")
+POD_NAME=$(kubectl get pods -n squid-proxy -l app.kubernetes.io/name=squid -o jsonpath="{.items[0].metadata.name}")
 echo "Testing pod: $POD_NAME"
 
 # Check container names
-kubectl get pod $POD_NAME -n caching -o jsonpath='{.spec.containers[*].name}'
+kubectl get pod $POD_NAME -n squid-proxy -o jsonpath='{.spec.containers[*].name}'
 ```
 
 **Expected Result**: Shows both `squid` and `squid-exporter` containers.
@@ -119,10 +119,10 @@ kubectl get pod $POD_NAME -n caching -o jsonpath='{.spec.containers[*].name}'
 #### 3.2 Check Container Logs
 ```bash
 # Check squid container logs
-kubectl logs -n caching $POD_NAME -c squid --tail=10
+kubectl logs -n squid-proxy $POD_NAME -c squid --tail=10
 
 # Check squid-exporter container logs
-kubectl logs -n caching $POD_NAME -c squid-exporter --tail=10
+kubectl logs -n squid-proxy $POD_NAME -c squid-exporter --tail=10
 ```
 
 **Expected Result**:
@@ -134,7 +134,7 @@ kubectl logs -n caching $POD_NAME -c squid-exporter --tail=10
 #### 4.1 Test Direct Metrics Access
 ```bash
 # Port forward to metrics endpoint
-kubectl port-forward -n caching $POD_NAME 9301:9301 &
+kubectl port-forward -n squid-proxy $POD_NAME 9301:9301 &
 PF_PID=$!
 sleep 3
 
@@ -150,7 +150,7 @@ kill $PF_PID 2>/dev/null || true
 #### 4.2 Test Service-Based Metrics Access
 ```bash
 # Port forward via service
-kubectl port-forward -n caching svc/squid 9301:9301 &
+kubectl port-forward -n squid-proxy svc/squid 9301:9301 &
 PF_PID=$!
 sleep 3
 
@@ -166,7 +166,7 @@ kill $PF_PID 2>/dev/null || true
 #### 4.3 Verify Specific Metrics
 ```bash
 # Port forward for detailed metrics check
-kubectl port-forward -n caching svc/squid 9301:9301 &
+kubectl port-forward -n squid-proxy svc/squid 9301:9301 &
 PF_PID=$!
 sleep 3
 
@@ -187,7 +187,7 @@ kill $PF_PID 2>/dev/null || true
 #### 5.1 Test Cache Manager Access
 ```bash
 # Port forward to proxy port
-kubectl port-forward -n caching $POD_NAME 3128:3128 &
+kubectl port-forward -n squid-proxy $POD_NAME 3128:3128 &
 PF_PID=$!
 sleep 3
 
@@ -203,7 +203,7 @@ kill $PF_PID 2>/dev/null || true
 #### 5.2 Test Cache Manager Counters
 ```bash
 # Port forward to proxy port
-kubectl port-forward -n caching $POD_NAME 3128:3128 &
+kubectl port-forward -n squid-proxy $POD_NAME 3128:3128 &
 PF_PID=$!
 sleep 3
 
@@ -221,7 +221,7 @@ kill $PF_PID 2>/dev/null || true
 #### 6.1 Test Basic Proxy Functionality
 ```bash
 # Port forward to proxy port
-kubectl port-forward -n caching $POD_NAME 3128:3128 &
+kubectl port-forward -n squid-proxy $POD_NAME 3128:3128 &
 PF_PID=$!
 sleep 3
 
@@ -248,7 +248,7 @@ kubectl run test-client --image=curlimages/curl:latest --rm -it -- \
 #### 7.1 Test Metrics Generation After Proxy Usage
 ```bash
 # Generate some proxy traffic
-kubectl port-forward -n caching $POD_NAME 3128:3128 &
+kubectl port-forward -n squid-proxy $POD_NAME 3128:3128 &
 PF_PROXY_PID=$!
 sleep 3
 
@@ -261,7 +261,7 @@ kill $PF_PROXY_PID 2>/dev/null || true
 sleep 2
 
 # Check if metrics reflect the traffic
-kubectl port-forward -n caching $POD_NAME 9301:9301 &
+kubectl port-forward -n squid-proxy $POD_NAME 9301:9301 &
 PF_METRICS_PID=$!
 sleep 3
 
@@ -297,15 +297,15 @@ For rapid testing during development:
 helm install caching ./caching --set cert-manager.enabled=false --wait
 
 # Quick functionality test
-kubectl port-forward -n caching svc/squid 3128:3128 &
+kubectl port-forward -n squid-proxy svc/squid 3128:3128 &
 curl --proxy http://localhost:3128 http://httpbin.org/ip
 pkill -f "kubectl port-forward.*3128"
 
 # Quick metrics test
-kubectl port-forward -n caching svc/squid 9301:9301 &
+kubectl port-forward -n squid-proxy svc/squid 9301:9301 &
 curl -s http://localhost:9301/metrics | grep squid_up
 pkill -f "kubectl port-forward.*9301"
 
 # Quick cleanup
-helm uninstall caching && kubectl delete namespace caching
+helm uninstall caching && kubectl delete namespace squid-proxy nginx-proxy
 ```

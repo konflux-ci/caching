@@ -53,7 +53,7 @@ var _ = Describe("Nginx Proxy Caching Tests", Label("nginx"), Ordered, Serial, f
 
 		DeferCleanup(func() {
 			fmt.Println("Cleaning up auth secret...")
-			err = clientset.CoreV1().Secrets(namespace).Delete(ctx, authSecretName,
+			err = clientset.CoreV1().Secrets(testhelpers.NginxNamespace).Delete(ctx, authSecretName,
 				metav1.DeleteOptions{})
 			Expect(err).NotTo(HaveOccurred())
 		})

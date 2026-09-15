@@ -54,13 +54,13 @@ var _ = Describe("NGINX access log format for access-log-exporter", Label("nginx
 
 		By("Polling for the detailed format log line to appear")
 		Eventually(func() bool {
-			pods, err := testhelpers.GetPods(ctx, clientset, namespace, testhelpers.NginxStatefulSetName)
+			pods, err := testhelpers.GetPods(ctx, clientset, testhelpers.NginxNamespace, testhelpers.NginxStatefulSetName)
 			if err != nil || len(pods) == 0 {
 				return false
 			}
 
 			for _, pod := range pods {
-				logs, err := testhelpers.GetPodLogsSince(ctx, clientset, namespace, pod.Name, nginxContainerName, &before)
+				logs, err := testhelpers.GetPodLogsSince(ctx, clientset, testhelpers.NginxNamespace, pod.Name, nginxContainerName, &before)
 				if err != nil {
 					continue
 				}
@@ -90,16 +90,16 @@ var _ = Describe("NGINX access log format for access-log-exporter", Label("nginx
 		restConfig, err := testhelpers.GetRESTConfig()
 		Expect(err).NotTo(HaveOccurred())
 
-		pods, err := testhelpers.GetPods(ctx, clientset, namespace, testhelpers.NginxStatefulSetName)
+		pods, err := testhelpers.GetPods(ctx, clientset, testhelpers.NginxNamespace, testhelpers.NginxStatefulSetName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pods).NotTo(BeEmpty())
 
 		// Request from inside the pod (localhost); nginx allows 127.0.0.1.
 		url := "http://127.0.0.1:8081/stub_status"
 		var stdout, stderr string
-		stdout, stderr, err = testhelpers.ExecCommandInPod(ctx, clientset, restConfig, namespace, pods[0].Name, nginxContainerName, []string{"curl", "-s", url})
+		stdout, stderr, err = testhelpers.ExecCommandInPod(ctx, clientset, restConfig, testhelpers.NginxNamespace, pods[0].Name, nginxContainerName, []string{"curl", "-s", url})
 		if err != nil && (strings.Contains(err.Error(), "executable file not found") || strings.Contains(err.Error(), "not found in $PATH")) {
-			stdout, stderr, err = testhelpers.ExecCommandInPod(ctx, clientset, restConfig, namespace, pods[0].Name, nginxContainerName, []string{"wget", "-qO-", url})
+			stdout, stderr, err = testhelpers.ExecCommandInPod(ctx, clientset, restConfig, testhelpers.NginxNamespace, pods[0].Name, nginxContainerName, []string{"wget", "-qO-", url})
 		}
 		if err != nil {
 			if strings.Contains(err.Error(), "executable file not found") || strings.Contains(err.Error(), "not found in $PATH") {
@@ -113,7 +113,7 @@ var _ = Describe("NGINX access log format for access-log-exporter", Label("nginx
 	})
 
 	It("should not allow access to stub_status from outside the pod", func() {
-		pods, err := testhelpers.GetPods(ctx, clientset, namespace, testhelpers.NginxStatefulSetName)
+		pods, err := testhelpers.GetPods(ctx, clientset, testhelpers.NginxNamespace, testhelpers.NginxStatefulSetName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(pods).NotTo(BeEmpty())
 		nginxPodIP := pods[0].Status.PodIP
@@ -122,26 +122,26 @@ var _ = Describe("NGINX access log format for access-log-exporter", Label("nginx
 		// Run a one-off pod that curls stub_status from outside (pod IP, not localhost); expect 403
 		curlPodName := "curl-stub-status-test"
 		curlPod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: curlPodName, Namespace: namespace},
+			ObjectMeta: metav1.ObjectMeta{Name: curlPodName, Namespace: testhelpers.NginxNamespace},
 			Spec: corev1.PodSpec{
 				RestartPolicy: corev1.RestartPolicyNever,
 				Containers: []corev1.Container{{
-					Name:  "curl",
-					Image: "curlimages/curl:8.11.1@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69",
+					Name:    "curl",
+					Image:   "curlimages/curl:8.11.1@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69",
 					Command: []string{"sh", "-c"},
-					Args:   []string{fmt.Sprintf("curl -s -o /dev/stdout -w '%%{http_code}' http://%s:8081/stub_status", nginxPodIP)},
+					Args:    []string{fmt.Sprintf("curl -s -o /dev/stdout -w '%%{http_code}' http://%s:8081/stub_status", nginxPodIP)},
 				}},
 			},
 		}
-		_, err = clientset.CoreV1().Pods(namespace).Create(ctx, curlPod, metav1.CreateOptions{})
+		_, err = clientset.CoreV1().Pods(testhelpers.NginxNamespace).Create(ctx, curlPod, metav1.CreateOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		DeferCleanup(func() {
-			_ = clientset.CoreV1().Pods(namespace).Delete(ctx, curlPodName, metav1.DeleteOptions{})
+			_ = clientset.CoreV1().Pods(testhelpers.NginxNamespace).Delete(ctx, curlPodName, metav1.DeleteOptions{})
 		})
 
 		By("Waiting for curl pod to complete")
 		err = wait.PollUntilContextTimeout(ctx, 2*time.Second, testhelpers.Timeout, true, func(ctx context.Context) (bool, error) {
-			p, getErr := clientset.CoreV1().Pods(namespace).Get(ctx, curlPodName, metav1.GetOptions{})
+			p, getErr := clientset.CoreV1().Pods(testhelpers.NginxNamespace).Get(ctx, curlPodName, metav1.GetOptions{})
 			if getErr != nil {
 				return false, getErr
 			}
@@ -150,7 +150,7 @@ var _ = Describe("NGINX access log format for access-log-exporter", Label("nginx
 		Expect(err).NotTo(HaveOccurred(), "curl pod did not complete in time")
 
 		logOpts := &corev1.PodLogOptions{Container: "curl"}
-		logs, err := clientset.CoreV1().Pods(namespace).GetLogs(curlPodName, logOpts).DoRaw(ctx)
+		logs, err := clientset.CoreV1().Pods(testhelpers.NginxNamespace).GetLogs(curlPodName, logOpts).DoRaw(ctx)
 		Expect(err).NotTo(HaveOccurred())
 		logStr := strings.TrimSpace(string(logs))
 		// curl -w '%{http_code}' prints the code at the end; body may be empty or "403 Forbidden"
