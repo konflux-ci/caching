@@ -124,7 +124,8 @@ data:
             # DNS via the resolver directive. A static proxy_pass URL is only
             # resolved once at config load; using a variable enables re-resolution
             # based on the resolver's valid interval.
-            {{- $upstreamURL := .Values.nginx.upstream.url }}
+            {{- $backendFQDN := include "caching.fqdn" (dict "name" "nginx-test-backend" "namespace" (include "caching.nginx.namespace" .) "ctx" .) }}
+            {{- $upstreamURL := .Values.nginx.upstream.url | default (printf "http://%s:9090" $backendFQDN) }}
             {{- $upstreamParsed := urlParse $upstreamURL }}
             set $upstream_url "{{ $upstreamURL }}";
             set $upstream_host "{{ $upstreamParsed.host }}";
