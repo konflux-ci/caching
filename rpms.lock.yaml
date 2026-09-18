@@ -123,13 +123,13 @@ arches:
     name: httpd-filesystem
     evr: 2.4.63-13.el10_2.6
     sourcerpm: httpd-2.4.63-13.el10_2.6.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-211.54.1.el10_2.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-211.56.1.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 3718077
-    checksum: sha256:a7c90ce4c499b865c507583354ed6731aeeba286408dd7195e30b16e8cfebeac
+    size: 3738117
+    checksum: sha256:0b88b9032629a400ae760499213bfacce9542c37b0d415e59aeb256a1ee4a8f6
     name: kernel-headers
-    evr: 6.12.0-211.54.1.el10_2
-    sourcerpm: kernel-6.12.0-211.54.1.el10_2.src.rpm
+    evr: 6.12.0-211.56.1.el10_2
+    sourcerpm: kernel-6.12.0-211.56.1.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/l/libecap-1.0.1-19.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 29616
@@ -172,27 +172,27 @@ arches:
     name: libxkbcommon
     evr: 1.7.0-4.el10
     sourcerpm: libxkbcommon-1.7.0-4.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/o/openssl-devel-3.5.5-6.el10_2.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/o/openssl-devel-3.5.8-1.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 4405781
-    checksum: sha256:289aebc8c0ea3b76e03aa18f8e192e66d4528325a883ef21ae009902ba9e00c4
+    size: 4433101
+    checksum: sha256:b4edabb7640bdc31d4bf718070d010aeb59741beb54c16153c5d17b41e93c0df
     name: openssl-devel
-    evr: 1:3.5.5-6.el10_2
-    sourcerpm: openssl-3.5.5-6.el10_2.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-AutoLoader-5.74-512.2.el10_0.noarch.rpm
+    evr: 1:3.5.8-1.el10_2
+    sourcerpm: openssl-3.5.8-1.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-AutoLoader-5.74-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 22487
-    checksum: sha256:3adf5d0aea219502bc653e3ea9d1fafe4a918e1037a0fb5dfba66d46332b79ff
+    size: 26422
+    checksum: sha256:bb19724c1172dc09ee19c26871152ae42fc415344f83ab2baa42aa096220a63c
     name: perl-AutoLoader
-    evr: 5.74-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-B-1.89-512.2.el10_0.x86_64.rpm
+    evr: 5.74-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-B-1.89-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 182303
-    checksum: sha256:3498bc9bfbc115339fa7656a048804d2bb2cb94603eae20579d61325bc5f76f0
+    size: 187565
+    checksum: sha256:ca48fdc20045cda96b86bd23667ea8b3d7a0a6b7302a3f4f974df74273c61d43
     name: perl-B
-    evr: 1.89-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.89-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Carp-1.54-511.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 32152
@@ -200,13 +200,13 @@ arches:
     name: perl-Carp
     evr: 1.54-511.el10
     sourcerpm: perl-Carp-1.54-511.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Class-Struct-0.68-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Class-Struct-0.68-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 23329
-    checksum: sha256:ddd41baecacfec46ed07973db48326a7ebf483dcc6ca2b10b049350202b629c4
+    size: 27265
+    checksum: sha256:a09900d358c9980ff778ff8bfb75d13028bdb4065ab52fb508149f1c216a2303
     name: perl-Class-Struct
-    evr: 0.68-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 0.68-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-DBI-1.643-26.el10_2.4.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 736520
@@ -242,13 +242,13 @@ arches:
     name: perl-Digest-SHA
     evr: 1:6.04-512.el10
     sourcerpm: perl-Digest-SHA-6.04-512.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-DynaLoader-1.56-512.2.el10_0.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-DynaLoader-1.56-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 27388
-    checksum: sha256:555e30ab2d2404338ace142d45f1356a3df0edcef144b64bae767804854ea6a2
+    size: 31339
+    checksum: sha256:f4dc0cae55a3873176c87a86ed39663c40365db8ee68061d2745dace46192b7b
     name: perl-DynaLoader
-    evr: 1.56-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.56-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Encode-3.21-511.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 1120252
@@ -256,20 +256,20 @@ arches:
     name: perl-Encode
     evr: 4:3.21-511.el10
     sourcerpm: perl-Encode-3.21-511.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-English-1.11-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-English-1.11-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 14654
-    checksum: sha256:2ca988270d8b49543679b7d91f2907d42164b3fa13a6d798c0ce3838086385a9
+    size: 18589
+    checksum: sha256:443550171132c1272229c33a0d1d917c3559cf11c52902b5eef4591820f20c2e
     name: perl-English
-    evr: 1.11-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Errno-1.38-512.2.el10_0.x86_64.rpm
+    evr: 1.11-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Errno-1.38-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 16022
-    checksum: sha256:abc756c019b587b027bc05e4dc186769183b89b4d09cae0128c5ed59c392b0c0
+    size: 19975
+    checksum: sha256:1c56ee6d403bab3720410ab8b8a58884875613ae28b1932f624fbdeb592714d2
     name: perl-Errno
-    evr: 1.38-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.38-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Error-0.17029-18.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 47042
@@ -284,20 +284,20 @@ arches:
     name: perl-Exporter
     evr: 5.78-511.el10
     sourcerpm: perl-Exporter-5.78-511.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Fcntl-1.18-512.2.el10_0.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Fcntl-1.18-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 31237
-    checksum: sha256:d09c7fbc0e8fd2f14a89a06db601849d62ae265ad5f16a8a0b1031595b6b6ddf
+    size: 35187
+    checksum: sha256:07f375ba0edff5420b17ed4206f1c78bb318ffde39eb0dc9d8f06bdffae65edf
     name: perl-Fcntl
-    evr: 1.18-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-File-Basename-2.86-512.2.el10_0.noarch.rpm
+    evr: 1.18-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-File-Basename-2.86-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 18308
-    checksum: sha256:d88970e5564011deb70fc23854ee947fd99c5a9432b0698c986c1ceb50697bc9
+    size: 22251
+    checksum: sha256:5dbe9129690efedfef04e1d257c526e7aee99db61bd91e71484bc62e4add4c16
     name: perl-File-Basename
-    evr: 2.86-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 2.86-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-File-Path-2.18-512.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 35579
@@ -312,20 +312,20 @@ arches:
     name: perl-File-Temp
     evr: 1:0.231.100-512.el10
     sourcerpm: perl-File-Temp-0.231.100-512.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-File-stat-1.14-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-File-stat-1.14-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 18196
-    checksum: sha256:b3cf1e12c99db5efe270c1b3c0f1bc476c11ce8767c546ebb330c9e2913cde99
+    size: 22138
+    checksum: sha256:20dfe9203e8695f07b39fedf51a181a27593779a567fea769750f308731a28b5
     name: perl-File-stat
-    evr: 1.14-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-FileHandle-2.05-512.2.el10_0.noarch.rpm
+    evr: 1.14-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-FileHandle-2.05-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 16609
-    checksum: sha256:35e8eba7fb360961b2e6851e89a882f13237de7eea29e62b5c607f56d6453fa7
+    size: 20546
+    checksum: sha256:b8cf07a92ebfc5f3f3ad2b104b3c5c523a8f2518c75ea0719cf29cbcbdebf622
     name: perl-FileHandle
-    evr: 2.05-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 2.05-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Getopt-Long-2.58-3.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 69925
@@ -333,13 +333,13 @@ arches:
     name: perl-Getopt-Long
     evr: 1:2.58-3.el10
     sourcerpm: perl-Getopt-Long-2.58-3.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Getopt-Std-1.14-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Getopt-Std-1.14-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 16805
-    checksum: sha256:ed4c349c5eec1c88418ce923908d6084ce4bfc22825c02aab4c0cf77b7f27bf5
+    size: 20741
+    checksum: sha256:185c7418709f22db5a08fbd68236f1ed321b1e828fd2c678b456feacf27bf2b1
     name: perl-Getopt-Std
-    evr: 1.14-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.14-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Git-2.52.0-1.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 44019
@@ -354,13 +354,13 @@ arches:
     name: perl-HTTP-Tiny
     evr: 0.088-512.el10
     sourcerpm: perl-HTTP-Tiny-0.088-512.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-IO-1.55-512.2.el10_0.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-IO-1.55-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 82592
-    checksum: sha256:564e49789131c4e7111f2855d40a44db902cf5cb6867aa72ccc515b091ee793e
+    size: 87878
+    checksum: sha256:0d36b9c2e660ac67780743996304a396afdf33ef76d56785cf41dcb47097b846
     name: perl-IO
-    evr: 1.55-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.55-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-IO-Socket-IP-0.42-512.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 46270
@@ -375,13 +375,13 @@ arches:
     name: perl-IO-Socket-SSL
     evr: 2.085-3.el10
     sourcerpm: perl-IO-Socket-SSL-2.085-3.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-IPC-Open3-1.22-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-IPC-Open3-1.22-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 23118
-    checksum: sha256:5e90fee835d98079d15ccda622084965b94f7ca44a17c511b3573743f6b37d07
+    size: 27063
+    checksum: sha256:528428cfb77491ef21fb107294381feccc08943c031229e9aee66104aa75e6d5
     name: perl-IPC-Open3
-    evr: 1.22-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.22-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-MIME-Base64-3.16-511.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 34915
@@ -396,13 +396,13 @@ arches:
     name: perl-Math-BigInt
     evr: 1:2.0030.03-3.el10
     sourcerpm: perl-Math-BigInt-2.0030.03-3.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Math-Complex-1.62-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Math-Complex-1.62-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 47917
-    checksum: sha256:e5d458f446049d2294b5e8ce6d64be018fa9b000a73c83b97dd498bcb8bc3449
+    size: 51841
+    checksum: sha256:6c88a275ef9bbdfefde4efe4a12baddc8ec5e05ec62e9b3769b6c3a6b19e1f8b
     name: perl-Math-Complex
-    evr: 1.62-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.62-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Module-Load-0.36-511.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 20049
@@ -417,13 +417,13 @@ arches:
     name: perl-Mozilla-CA
     evr: 20231213-5.el10
     sourcerpm: perl-Mozilla-CA-20231213-5.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-NDBM_File-1.17-512.2.el10_0.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-NDBM_File-1.17-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 23810
-    checksum: sha256:448b3f9668f29575e455be7d310a6d5030716c0f1f996e8bb26065fee270d826
+    size: 27863
+    checksum: sha256:82e12fae31f711c8a287d887afdd1969eac2541d6cf3b23a47d6e872b7a6c423
     name: perl-NDBM_File
-    evr: 1.17-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.17-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Net-SSLeay-1.94-8.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 389523
@@ -431,13 +431,13 @@ arches:
     name: perl-Net-SSLeay
     evr: 1.94-8.el10
     sourcerpm: perl-Net-SSLeay-1.94-8.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-POSIX-2.20-512.2.el10_0.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-POSIX-2.20-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 99788
-    checksum: sha256:5ecb25caa7ff8df8c7ba0e6f99aa46f3701fe0092dd406c265b0f5a6057be2d6
+    size: 103719
+    checksum: sha256:b7d036db98860078d0755fa8790e69cfd6320f07d96db50b8edafaddfad5bb62
     name: perl-POSIX
-    evr: 2.20-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 2.20-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-PathTools-3.91-512.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 91403
@@ -480,13 +480,13 @@ arches:
     name: perl-Scalar-List-Utils
     evr: 5:1.63-511.el10
     sourcerpm: perl-Scalar-List-Utils-1.63-511.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-SelectSaver-1.02-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-SelectSaver-1.02-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 12745
-    checksum: sha256:230fffbfb3a30a6015c4393db819ab32438b07eeb1d9d77c9ff9e5040104da7b
+    size: 16679
+    checksum: sha256:15683a0debfc26284f806085400578b9169b665e9a8d6a85b035d55401792ecb
     name: perl-SelectSaver
-    evr: 1.02-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.02-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Socket-2.038-511.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 60108
@@ -501,13 +501,13 @@ arches:
     name: perl-Storable
     evr: 1:3.32-511.el10
     sourcerpm: perl-Storable-3.32-511.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Symbol-1.09-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Symbol-1.09-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 15287
-    checksum: sha256:f0689e090f5a7e58b22516fe6b3fbb0039a4be5113e7dbdcc3e9a8a668a17c8a
+    size: 19225
+    checksum: sha256:435a6381ec6ab206fc580917fae0fa4b981c3348c98a2951b27fee452f1a5889
     name: perl-Symbol
-    evr: 1.09-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.09-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Term-ANSIColor-5.01-512.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 52067
@@ -557,13 +557,13 @@ arches:
     name: perl-URI
     evr: 5.27-3.el10
     sourcerpm: perl-URI-5.27-3.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-base-2.27-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-base-2.27-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 17341
-    checksum: sha256:287ea390eee501bd5a8f615589df285926eb7986c2384728bee729fbd7117bea
+    size: 21264
+    checksum: sha256:fd0c3533eecf3acaae4968dda7e7019498fc0b9aacc80bfa2c191a2bb8762c13
     name: perl-base
-    evr: 2.27-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 2.27-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-constant-1.33-512.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 26066
@@ -571,27 +571,27 @@ arches:
     name: perl-constant
     evr: 1.33-512.el10
     sourcerpm: perl-constant-1.33-512.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-if-0.61.000-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-if-0.61.000-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 15075
-    checksum: sha256:54ad6569e062d15cd55f84dab92b0283735a4e9ec9adc7ff14555705066f09d1
+    size: 19017
+    checksum: sha256:6633dcfb384e9e62b81bb75e79dc8892cad5aa067193154f7a8dd07189e1351f
     name: perl-if
-    evr: 0.61.000-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-interpreter-5.40.2-512.2.el10_0.x86_64.rpm
+    evr: 0.61.000-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-interpreter-5.40.2-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 74653
-    checksum: sha256:9534bd1ab99ae2656b3033e80cf779f6e000e71cb2b420ac56fcf21d2e5362d7
+    size: 78603
+    checksum: sha256:3e3e25218e1299a14cd9d48e83e666df212c1e828d433a53110f009d8da93d9d
     name: perl-interpreter
-    evr: 4:5.40.2-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-lib-0.65-512.2.el10_0.x86_64.rpm
+    evr: 4:5.40.2-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-lib-0.65-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 16018
-    checksum: sha256:1a3fa707640b818197a5f3727cf1ca492740c795da08f97fc640daeb2028749b
+    size: 19971
+    checksum: sha256:a3dcc8855937b785005809885120d0650ab1006582ac62d0ede7dc0032e74353
     name: perl-lib
-    evr: 0.65-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 0.65-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-libnet-3.15-512.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 134460
@@ -599,41 +599,41 @@ arches:
     name: perl-libnet
     evr: 3.15-512.el10
     sourcerpm: perl-libnet-3.15-512.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-libs-5.40.2-512.2.el10_0.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-libs-5.40.2-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 2513332
-    checksum: sha256:f9a10f985ae25572388de77da570960d1b200ac1d0e61ff17255a9892ef5330c
+    size: 2519373
+    checksum: sha256:5e1303edcc1c5fdbeed8a1264af4cebee983acb3b6a3735245e151496b3366fd
     name: perl-libs
-    evr: 4:5.40.2-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-locale-1.12-512.2.el10_0.noarch.rpm
+    evr: 4:5.40.2-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-locale-1.12-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 14690
-    checksum: sha256:20d56c81a8673dd9dbf294733196197fb8f900b153b88f802dd9bc85e0bd2a6d
+    size: 18634
+    checksum: sha256:a0a9d2e42da26f086046f0f708cc37819f2ab9d7c59dffaa014786d7cd0e8823
     name: perl-locale
-    evr: 1.12-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-mro-1.29-512.2.el10_0.x86_64.rpm
+    evr: 1.12-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-mro-1.29-515.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 31503
-    checksum: sha256:1dbfc0656bbd7a8f4b167bc76dde1af8ff1b471b346110a83874ff570a7b8927
+    size: 35461
+    checksum: sha256:ec9938a15934801a5947a9022a65d73988cae13c77e4dfe926762f4e7aceb063
     name: perl-mro
-    evr: 1.29-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-overload-1.37-512.2.el10_0.noarch.rpm
+    evr: 1.29-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-overload-1.37-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 47373
-    checksum: sha256:516e303994e70249739c7375ede3f2622831b816a0762e9147dbb2f030d43fc9
+    size: 51320
+    checksum: sha256:3082541b29d0e0dcba0ab87b2515b60c173d0aa5d3fe76ce3ce8eb067dbe6668
     name: perl-overload
-    evr: 1.37-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-overloading-0.02-512.2.el10_0.noarch.rpm
+    evr: 1.37-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-overloading-0.02-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 13955
-    checksum: sha256:20d3c52eaea4dc758eb0a84ce26ae1d0cc3b556f64d9accbdfd60640cad8b435
+    size: 17884
+    checksum: sha256:9580567af6d1a37641677655dc51be300a8c4b026906254078a192ffad447268
     name: perl-overloading
-    evr: 0.02-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 0.02-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-parent-0.241-512.el10.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 17274
@@ -648,13 +648,13 @@ arches:
     name: perl-podlators
     evr: 1:5.01-511.el10
     sourcerpm: perl-podlators-5.01-511.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-vars-1.05-512.2.el10_0.noarch.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-vars-1.05-515.el10_2.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 14049
-    checksum: sha256:12d8f33c30ae5907ea1510b5c415b66a0a9ed2c02680fc5b68d6145dc5a2d3b4
+    size: 17977
+    checksum: sha256:1f1137469608a6dd9d1f8fa8768874fa3f0a4f46dcc13a5957904d77e5802f81
     name: perl-vars
-    evr: 1.05-512.2.el10_0
-    sourcerpm: perl-5.40.2-512.2.el10_0.src.rpm
+    evr: 1.05-515.el10_2
+    sourcerpm: perl-5.40.2-515.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/s/squid-6.10-12.el10_2.1.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 4179920
@@ -900,13 +900,13 @@ arches:
     name: libedit
     evr: 3.1-52.20230828cvs.el10
     sourcerpm: libedit-3.1-52.20230828cvs.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libevent-2.1.12-16.el10.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libevent-2.1.13-1.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 271480
-    checksum: sha256:0cfcc4c1b669d1b334e416230aa3b3e1a91531b96892e52e724242a89d1e75fa
+    size: 274092
+    checksum: sha256:ab7d30edcca15aacf17962e25430fad1bdb172c2ab05f27e67ca9f7ed14fdb03
     name: libevent
-    evr: 2.1.12-16.el10
-    sourcerpm: libevent-2.1.12-16.el10.src.rpm
+    evr: 2.1.13-1.el10_2
+    sourcerpm: libevent-2.1.13-1.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/l/libfdisk-2.40.2-18.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 171123
@@ -1019,6 +1019,13 @@ arches:
     name: openssh-clients
     evr: 9.9p1-25.el10_2
     sourcerpm: openssh-9.9p1-25.el10_2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/o/openssl-libs-3.5.8-1.el10_2.x86_64.rpm
+    repoid: ubi-10-for-x86_64-baseos-rpms
+    size: 2374781
+    checksum: sha256:f7a77a5c5897d4bf6e3abcf536c6d92bb60cf698db4e2334908dabdbac54486a
+    name: openssl-libs
+    evr: 1:3.5.8-1.el10_2
+    sourcerpm: openssl-3.5.8-1.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/p/pam-1.6.1-9.el10_2.1.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 606013
