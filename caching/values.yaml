@@ -366,10 +366,15 @@ trust-manager:
 selfsigned-certificate:
   enabled: true  # Enable certificate creation - needed for SSL functionality
 
-# Issuer configuration
-# Creates a self-signed issuer and bundle in the cert-manager namespace
+# Distributes the proxy root CA through a cluster-scoped trust-manager Bundle
 selfsigned-bundle:
-  enabled: true  # Set to true to create a self-signed issuer and bundle
+  enabled: true  # Set to false to stop managing the Bundle; CA resources are controlled separately
+  # Empty uses <squid-namespace>-ca-bundle. Preserve caching-ca-bundle during proxy migration.
+  name: ""
+  # Additional trust-manager sources, appended to this proxy's root CA.
+  # Secret sources must exist in trust-manager's configured trust namespace.
+  # Passed through to Bundle.spec.sources; trust-manager validates source fields.
+  additionalSources: []
 
 # Prometheus monitoring configuration
 prometheus:
