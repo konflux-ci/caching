@@ -394,11 +394,13 @@ type ServiceValues struct {
 }
 
 type SquidValues struct {
-	Enabled *bool  `json:"enabled,omitempty"`
-	Name    string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+	Enabled   *bool  `json:"enabled,omitempty"`
+	Name      string `json:"name,omitempty"`
 }
 
 type SquidHelmValues struct {
+	SelfsignedBundle   *SelfsignedBundleValues   `json:"selfsigned-bundle,omitempty"`
 	Squid              *SquidValues              `json:"squid,omitempty"`
 	SquidExporter      *SquidExporterValues      `json:"squidExporter,omitempty"`
 	Cache              *CacheValues              `json:"cache,omitempty"`
@@ -412,6 +414,13 @@ type SquidHelmValues struct {
 	Service            *ServiceValues            `json:"service,omitempty"`
 	Prometheus         *PrometheusValues         `json:"prometheus,omitempty"`
 	Test               *TestValues               `json:"test,omitempty"`
+}
+
+// SelfsignedBundleValues holds trust-manager Bundle configuration.
+type SelfsignedBundleValues struct {
+	Enabled           *bool                    `json:"enabled,omitempty"`
+	Name              string                   `json:"name,omitempty"`
+	AdditionalSources []map[string]interface{} `json:"additionalSources,omitempty"`
 }
 
 // TestValues holds test configuration

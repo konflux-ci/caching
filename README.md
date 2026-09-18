@@ -105,7 +105,7 @@ helm install caching ./caching
 # Note: Certificate resources are still created — cert-manager must be present
 helm install caching ./caching --set installCertManagerComponents=false
 
-# Disable TLS certificate resources (cert-manager still deployed)
+# Disable Bundle creation and cert-manager installation; certificate resources remain enabled
 helm install caching ./caching --set installCertManagerComponents=false --set selfsigned-bundle.enabled=false
 
 # Local development
@@ -119,6 +119,8 @@ helm install caching ./caching --set environment=dev --set nginx.enabled=true
 | `environment` | `release` | `dev` (local images), `prerelease`, `release` (Quay) |
 | `installCertManagerComponents` | `true` | Deploy cert-manager and trust-manager |
 | `selfsigned-bundle.enabled` | `true` | Create trust bundle resource |
+| `selfsigned-bundle.name` | `""` | Override Bundle name; empty uses `<squid-namespace>-ca-bundle` |
+| `selfsigned-bundle.additionalSources` | `[]` | Additional trust-manager CA sources; Secret sources must exist in the configured trust namespace |
 | `selfsigned-certificate.enabled` | `true` | Create certificate resources |
 | `squidExporter.enabled` | `true` | Enable Prometheus metrics |
 | `nginx.enabled` | `false` | Deploy NGINX reverse proxy |

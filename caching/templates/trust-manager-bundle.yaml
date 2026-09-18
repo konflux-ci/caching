@@ -2,7 +2,7 @@
 apiVersion: trust.cert-manager.io/v1alpha1
 kind: Bundle
 metadata:
-  name: {{ include "caching.squid.namespace" . }}-ca-bundle
+  name: {{ default (printf "%s-ca-bundle" (include "caching.squid.namespace" .)) (index .Values "selfsigned-bundle").name }}
   labels:
     {{- include "caching.squid.labels" . | nindent 4 }}
 spec:
@@ -10,6 +10,9 @@ spec:
   - secret:
       name: "{{ include "caching.squid.namespace" . }}-root-ca-secret"
       key: "ca.crt"
+  {{- with (index .Values "selfsigned-bundle").additionalSources }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
   target:
     configMap:
       key: "ca-bundle.crt"

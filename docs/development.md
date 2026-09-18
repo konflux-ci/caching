@@ -206,7 +206,7 @@ helm install caching ./caching --set installCertManagerComponents=false
 # Install cert-manager + trust-manager without creating certificate resources
 helm install caching ./caching --set selfsigned-issuer.enabled=false
 
-# Disable TLS certificate resources (cert-manager still deployed)
+# Disable Bundle creation and cert-manager installation; certificate resources remain enabled
 helm install caching ./caching --set installCertManagerComponents=false --set selfsigned-bundle.enabled=false
 
 # Local development
