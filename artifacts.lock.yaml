@@ -1,5 +1,12 @@
 ---
 metadata:
   version: "1.0"
-artifacts: []
-
+artifacts:
+  # Helm chart dependencies for caching/ (pinned to caching/Chart.lock).
+  # Used by hermetic caching-tester builds so e2e tests do not fetch jetstack at runtime.
+  - download_url: "https://charts.jetstack.io/charts/cert-manager-v1.20.3.tgz"
+    checksum: "sha256:ef5d707f5afbb2c3ce9892f5ff3fca0dec6864db8830a1c454b3d4822c485843"
+    filename: "cert-manager-v1.20.3.tgz"
+  - download_url: "https://charts.jetstack.io/charts/trust-manager-v0.24.0.tgz"
+    checksum: "sha256:0de4bbef2d1a013bd4a91c6f59a9cb0273dda9a785e018a9a16e8f2b096af823"
+    filename: "trust-manager-v0.24.0.tgz"
