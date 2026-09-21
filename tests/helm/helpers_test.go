@@ -86,3 +86,8 @@ func extractNginxServiceMonitorSection(helmOutput string) string {
 func extractSquidServiceMonitorSection(helmOutput string) string {
 	return extractSection(helmOutput, "# Source: caching/templates/servicemonitor.yaml")
 }
+
+// extractTrustManagerBundleSection extracts just the trust-manager bundle YAML for precise testing
+func extractTrustManagerBundleSection(helmOutput string) string {
+	return extractSection(helmOutput, "# Source: caching/templates/trust-manager-bundle.yaml")
+}

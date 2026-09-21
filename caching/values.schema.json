@@ -560,6 +560,17 @@
         "enabled": {
           "type": "boolean",
           "description": "Create self-signed bundle"
+        },
+        "name": {
+          "type": "string",
+          "description": "Bundle name override; empty uses <squid-namespace>-ca-bundle"
+        },
+        "additionalSources": {
+          "type": "array",
+          "description": "Additional trust-manager Bundle sources appended to the proxy root CA",
+          "items": {
+            "type": "object"
+          }
         }
       },
       "additionalProperties": false
