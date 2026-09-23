@@ -25,7 +25,7 @@ The following files control which dependencies are available during hermetic bui
 
 | File | Purpose | Update Frequency |
 |------|---------|------------------|
-| `artifacts.lock.yaml` | Version locks for external artifacts (currently empty) | Rarely (only if external downloads needed) |
+| `artifacts.lock.yaml` | Version locks for external artifacts (Helm chart deps for caching-tester) | When `caching/Chart.lock` dependency versions change |
 | `rpms.in.yaml` | Declares required RPM packages (including go-toolset) | When adding system packages |
 | `rpms.lock.yaml` | Auto-generated transitive RPM dependencies | After changing `rpms.in.yaml` |
 | `go.mod` / `go.sum` | Go module dependencies | When adding/updating Go modules |
@@ -71,6 +71,18 @@ Important: Replace `<BASE_IMAGE_WITH_DIGEST>` with the exact image and digest fr
 
 **Step 3:** Commit both files.
 
+
+### Updating Helm Chart Dependencies (caching-tester)
+
+The caching-tester image vendors `cert-manager` and `trust-manager` chart archives so OpenShift e2e (`helm test`) does not fetch `charts.jetstack.io` at runtime. Those archives are prefetched by Hermeto's generic fetcher from `artifacts.lock.yaml`.
+
+When bumping chart dependency versions in `caching/Chart.yaml` / `caching/Chart.lock`:
+
+1. Download the matching chart archives from jetstack and record `sha256` checksums.
+2. Update the `download_url`, `checksum`, and `filename` entries in `artifacts.lock.yaml`.
+3. Keep filenames in the form `<chart>-<version>.tgz` (for example `cert-manager-v1.20.3.tgz`).
+
+`caching-tester` Pipelines-as-Code definitions must keep `{"type": "generic", "path": "."}` in `prefetch-input` for this to work under hermetic builds.
 
 ### Adding Build Tools
 
@@ -136,8 +148,9 @@ Manual intervention may be required for:
 
 - Adding new system packages (RPMs)
 - Adding new build-time tools
+- Bumping Helm chart dependencies used by caching-tester (`artifacts.lock.yaml` must stay aligned with `caching/Chart.lock`)
 
-Go and Helm versions are automatically updated by Mintmaker and Renovate respectively, so manual upgrades are rarely needed. When manual updates are necessary, they require modifying the appropriate lock files and, in the case of RPMs, regenerating the dependency lock file.
+Go and Helm CLI versions are automatically updated by Mintmaker and Renovate respectively, so manual upgrades are rarely needed. When manual updates are necessary, they require modifying the appropriate lock files and, in the case of RPMs, regenerating the dependency lock file.
 
 ## References
 

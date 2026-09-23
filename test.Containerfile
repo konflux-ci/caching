@@ -50,6 +50,24 @@ COPY caching/ ./caching/
 # Copy test entrypoint script
 COPY --chmod=0755 test-entrypoint.sh ./test-entrypoint.sh
 
+# Vendor helm chart dependencies into the image so in-cluster helm tests do not
+# need egress to charts.jetstack.io. Hermetic Konflux builds prefetch these via
+# artifacts.lock.yaml (generic fetcher); local non-hermetic builds fetch live.
+RUN mkdir -p caching/charts && \
+    if ls /cachi2/output/deps/generic/cert-manager-*.tgz >/dev/null 2>&1; then \
+      cp /cachi2/output/deps/generic/cert-manager-*.tgz \
+         /cachi2/output/deps/generic/trust-manager-*.tgz \
+         caching/charts/; \
+    elif [ -f /cachi2/cachi2.env ]; then \
+      echo "ERROR: hermetic build missing prefetched helm charts in /cachi2/output/deps/generic/" >&2; \
+      ls -la /cachi2/output/deps/generic/ >&2 || true; \
+      exit 1; \
+    else \
+      helm repo add jetstack https://charts.jetstack.io && \
+      helm dependency build ./caching; \
+    fi && \
+    ls -la caching/charts/
+
 # Compile tests, mirrord target, and nginx test backend server
 RUN if [ -f /cachi2/cachi2.env ]; then . /cachi2/cachi2.env; fi && \
     ginkgo build ./tests/e2e && \
