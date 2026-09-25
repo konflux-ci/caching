@@ -135,8 +135,8 @@ spec:
             value: |
               {"latest":{"release":{"channel":"stable","version":"$(params.ocp-version)","architecture":"multi"}}}
 
-      # Create namespace on the ephemeral cluster for secret copying and deployment
-      - name: create-namespace
+      # Create component namespaces on the ephemeral cluster for secret copying and deployment
+      - name: create-namespaces
         runAfter:
           - provision-cluster
         params:
@@ -150,7 +150,7 @@ spec:
               secret:
                 secretName: $(params.kubeconfigSecretRef)
           steps:
-            - name: create-namespace
+            - name: create-namespaces
               image: quay.io/konflux-ci/konflux-test:v1.5.8@sha256:ce93e7ff1618deda40a66d90289d8fee1bf1ac151c06f1defd33d2a56dbd2b94
               env:
                 - name: KUBECONFIG
@@ -162,13 +162,23 @@ spec:
               script: |
                 #!/bin/bash
                 set -euo pipefail
-                echo "Creating caching namespace on ephemeral cluster..."
+                echo "Creating component namespaces on ephemeral cluster..."
 
                 cat <<EOF | oc apply -f -
                 apiVersion: v1
                 kind: Namespace
                 metadata:
-                  name: caching
+                  name: squid-proxy
+                  labels:
+                    app.kubernetes.io/managed-by: Helm
+                  annotations:
+                    meta.helm.sh/release-name: caching
+                    meta.helm.sh/release-namespace: default
+                ---
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: nginx-proxy
                   labels:
                     app.kubernetes.io/managed-by: Helm
                   annotations:
@@ -176,12 +186,12 @@ spec:
                     meta.helm.sh/release-namespace: default
                 EOF
 
-                echo "Namespace created with Helm ownership labels"
+                echo "Namespaces created with Helm ownership labels"
 
       # Copy secrets from Konflux namespace to the ephemeral cluster
-      - name: copy-secrets
+      - name: copy-secrets-squid
         runAfter:
-          - create-namespace
+          - create-namespaces
         taskRef:
           resolver: git
           params:
@@ -195,7 +205,27 @@ spec:
           - name: clusterCredentialsSecretRef
             value: $(tasks.provision-cluster.results.secretRef)
           - name: namespace
-            value: caching
+            value: squid-proxy
+          - name: labelSelector
+            value: "appstudio.redhat.com/internal=true"
+
+      - name: copy-secrets-nginx
+        runAfter:
+          - create-namespaces
+        taskRef:
+          resolver: git
+          params:
+            - name: url
+              value: https://github.com/openshift/konflux-tasks
+            - name: revision
+              value: $(params.openshift-ci-tasks-revision)
+            - name: pathInRepo
+              value: tasks/copy-secrets-to-ephemeral-cluster/0.1/copy-secrets-to-ephemeral-cluster.yaml
+        params:
+          - name: clusterCredentialsSecretRef
+            value: $(tasks.provision-cluster.results.secretRef)
+          - name: namespace
+            value: nginx-proxy
           - name: labelSelector
             value: "appstudio.redhat.com/internal=true"
 
@@ -204,7 +234,8 @@ spec:
         runAfter:
           - test-metadata
           - extract-snapshot-images
-          - copy-secrets
+          - copy-secrets-squid
+          - copy-secrets-nginx
         params:
           - name: kubeconfigSecretRef
             value: $(tasks.provision-cluster.results.secretRef)
@@ -265,12 +296,12 @@ spec:
                 git checkout $(params.git-revision)
 
                 # Use default namespace for Helm release (matches magefile.go behavior)
-                # Resources will be created in "caching" namespace (from chart's values.yaml default)
+                # Resources use the squid-proxy and nginx-proxy namespaces from chart defaults
                 namespace="default"
 
                 # Check for image pull secrets in the resource namespace
-                echo "Checking for image pull secrets in caching namespace..."
-                pull_secrets=$(oc get secrets -n "caching" -o json | \
+                echo "Checking for image pull secrets in squid-proxy namespace..."
+                pull_secrets=$(oc get secrets -n "squid-proxy" -o json | \
                   jq -r '.items[] | select(.type=="kubernetes.io/dockerconfigjson") | .metadata.name' 2>/dev/null || echo "")
 
                 if [ -n "$pull_secrets" ]; then
@@ -352,12 +383,12 @@ spec:
                 if ! helm test caching --namespace "$namespace" --timeout 90m; then
                   echo "ERROR: Helm test failed!"
                   echo "=== caching-test pod logs (failure) ==="
-                  oc logs -n caching caching-test --tail=2000 2>&1 || true
+                  oc logs -n squid-proxy caching-test --tail=2000 2>&1 || true
                   exit 1
                 fi
 
                 echo "Helm tests succeeded, capturing caching-test logs for diagnostics..."
                 echo "=== caching-test pod logs (success) ==="
-                oc logs -n caching caching-test --tail=2000 2>&1 || true
+                oc logs -n squid-proxy caching-test --tail=2000 2>&1 || true
 
                 echo "All E2E tests passed!"

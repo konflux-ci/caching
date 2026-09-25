@@ -345,14 +345,14 @@ func ValidateServerHit(response *TestServerResponse, expectedRequestID float64, 
 }
 
 // WaitForStatefulSetReady waits for a statefulset to be ready and all replica pods to be present
-func WaitForStatefulSetReady(ctx context.Context, client kubernetes.Interface, name string) (*v1.StatefulSet, error) {
+func WaitForStatefulSetReady(ctx context.Context, client kubernetes.Interface, namespace, name string) (*v1.StatefulSet, error) {
 	fmt.Printf("Waiting for %s statefulset to be ready...\n", name)
 
 	var expectedReplicas int32
 	var statefulSet *v1.StatefulSet
 	Eventually(func() error {
 		var err error
-		statefulSet, err = client.AppsV1().StatefulSets(Namespace).Get(ctx, name, metav1.GetOptions{})
+		statefulSet, err = client.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
 		if err != nil {
 			return fmt.Errorf("failed to get statefulsets: %w", err)
 		}
@@ -370,7 +370,7 @@ func WaitForStatefulSetReady(ctx context.Context, client kubernetes.Interface, n
 	}, 120*time.Second, 5*time.Second).Should(Succeed())
 
 	fmt.Printf("Waiting for %d pod(s) to be present and ready...\n", expectedReplicas)
-	pods, err := GetPods(ctx, client, Namespace, name)
+	pods, err := GetPods(ctx, client, namespace, name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pods: %w", err)
 	}
@@ -556,7 +556,7 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 	}
 
 	// Get current statefulset for image preservation logic
-	statefulSet, err := client.AppsV1().StatefulSets(Namespace).Get(ctx, SquidStatefulSetName, metav1.GetOptions{})
+	statefulSet, err := client.AppsV1().StatefulSets(SquidNamespace).Get(ctx, SquidStatefulSetName, metav1.GetOptions{})
 
 	// Handle replica count logic:
 	// 1. If SQUID_REPLICA_COUNT env var does not exist or equals 0 -> use value from values.yaml (don't set ReplicaCount)
@@ -599,12 +599,12 @@ func ConfigureSquidWithHelm(ctx context.Context, client kubernetes.Interface, va
 		return fmt.Errorf("failed to upgrade squid with helm: %w", err)
 	}
 
-	_, err = WaitForStatefulSetReady(ctx, client, SquidStatefulSetName)
+	_, err = WaitForStatefulSetReady(ctx, client, SquidNamespace, SquidStatefulSetName)
 	if err != nil {
 		return fmt.Errorf("failed to wait for squid statefulset to be ready: %w", err)
 	}
 
-	_, err = WaitForStatefulSetReady(ctx, client, NginxStatefulSetName)
+	_, err = WaitForStatefulSetReady(ctx, client, NginxNamespace, NginxStatefulSetName)
 	if err != nil {
 		return fmt.Errorf("failed to wait for nginx statefulset to be ready: %w", err)
 	}
@@ -623,12 +623,14 @@ func UpgradeChartWithArgs(releaseName, chartName string, valuesFile string, extr
 
 	// Build helm command as a shell string
 	// Use default namespace for Helm release metadata (matches magefile.go)
-	// Resources created in caching namespace (from chart's namespace templates)
+	// Resources created in component namespaces (from chart's namespace templates)
 	// Increase history-max to prevent "secret not found" errors when multiple tests upgrade
 	cmdParts := []string{"helm", "upgrade", "--install", releaseName, chartName, "-n=default", "--wait", "--timeout=300s", "--history-max=50", "--debug"}
 
 	// Values file is provided by callers
-	cmdParts = append(cmdParts, "--values", valuesFile)
+	cmdParts = append(cmdParts, "--values", valuesFile,
+		"--set", "squid.namespace="+SquidNamespace,
+		"--set", "nginx.namespace="+NginxNamespace)
 
 	// Append any extra arguments (e.g., --set flags)
 	if len(extraArgs) > 0 {
@@ -1246,7 +1248,7 @@ func ExecCommandInPodWithWriters(ctx context.Context, client kubernetes.Interfac
 
 // GetNginxTestBackendURL returns the URL for the nginx test backend service.
 func GetNginxTestBackendURL() string {
-	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", NginxTestBackendServiceName, Namespace, NginxTestBackendPort)
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", NginxTestBackendServiceName, NginxNamespace, NginxTestBackendPort)
 }
 
 // CreateAuthSecret creates a Kubernetes secret with a Basic Auth authorization header value.
@@ -1257,18 +1259,18 @@ func CreateAuthSecret(ctx context.Context, client kubernetes.Interface, secretNa
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      secretName,
-			Namespace: Namespace,
+			Namespace: NginxNamespace,
 		},
 		StringData: map[string]string{
 			"authorization": authValue,
 		},
 	}
 
-	_, err := client.CoreV1().Secrets(Namespace).Create(ctx, secret, metav1.CreateOptions{})
+	_, err := client.CoreV1().Secrets(NginxNamespace).Create(ctx, secret, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to create auth secret: %w", err)
 	}
 
-	fmt.Printf("Created auth secret '%s' in namespace '%s'\n", secretName, Namespace)
+	fmt.Printf("Created auth secret '%s' in namespace '%s'\n", secretName, NginxNamespace)
 	return nil
 }

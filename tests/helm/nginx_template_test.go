@@ -899,7 +899,7 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			Expect(configMap).To(ContainSubstring("namespace: nginx-proxy"), "ConfigMap should be in nginx-proxy namespace")
 		})
 
-		It("should use default caching namespace when nginx.namespace is empty", func() {
+		It("should use default nginx-proxy namespace when nginx.namespace is omitted", func() {
 			output, err := testhelpers.RenderHelmTemplate(chartPath, testhelpers.SquidHelmValues{
 				Nginx: &testhelpers.NginxValues{
 					Enabled: true,
@@ -910,12 +910,12 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			// All nginx resources should be in default caching namespace
+			// All nginx resources should be in default nginx-proxy namespace
 			statefulSet := extractNginxStatefulSetSection(output)
-			Expect(statefulSet).To(ContainSubstring("namespace: caching"), "StatefulSet should be in caching namespace")
+			Expect(statefulSet).To(ContainSubstring("namespace: nginx-proxy"), "StatefulSet should be in nginx-proxy namespace")
 
 			service := extractNginxServiceSection(output)
-			Expect(service).To(ContainSubstring("namespace: caching"), "Service should be in caching namespace")
+			Expect(service).To(ContainSubstring("namespace: nginx-proxy"), "Service should be in nginx-proxy namespace")
 		})
 
 		It("should use correct namespace in test backend URL when nginx has custom namespace", func() {
@@ -926,10 +926,7 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 				},
 				Nginx: &testhelpers.NginxValues{
 					Enabled:   true,
-					Namespace: "nginx-proxy",
-					Upstream: &testhelpers.NginxUpstreamValues{
-						URL: "http://nginx-test-backend.nginx-proxy.svc.cluster.local:9090",
-					},
+					Namespace: "reverse-proxy",
 				},
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -937,8 +934,8 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			configMap := extractNginxConfigMapSection(output)
 
 			// Test backend URL should use nginx's custom namespace
-			Expect(configMap).To(ContainSubstring(`set $upstream_url "http://nginx-test-backend.nginx-proxy.svc.cluster.local:9090"`), "Test backend URL should use nginx's custom namespace")
-			Expect(configMap).To(ContainSubstring(`set $upstream_host "nginx-test-backend.nginx-proxy.svc.cluster.local:9090"`), "Upstream host should match test backend in custom namespace")
+			Expect(configMap).To(ContainSubstring(`set $upstream_url "http://nginx-test-backend.reverse-proxy.svc.cluster.local:9090"`), "Test backend URL should use nginx's custom namespace")
+			Expect(configMap).To(ContainSubstring(`set $upstream_host "nginx-test-backend.reverse-proxy.svc.cluster.local:9090"`), "Upstream host should match test backend in custom namespace")
 		})
 	})
 })

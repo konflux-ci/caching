@@ -94,7 +94,7 @@ After deploying, confirm the proxy is working:
 
 ```bash
 # From your local machine (port-forward)
-kubectl port-forward -n caching svc/squid 3128:3128
+kubectl port-forward -n squid-proxy svc/squid 3128:3128
 curl --proxy http://127.0.0.1:3128 http://httpbin.org/ip
 
 # From within the cluster (creates a temporary test pod)
@@ -123,8 +123,7 @@ Run `mage -l` for the full list. Key commands:
 | `mage build:accessLogExporter` | Build access-log-exporter image (for use as sidecar with nginx) |
 | `mage build:loadAccessLogExporter` | Load access-log-exporter into cluster |
 | **Deployment** | |
-| `mage cachingHelm:up` | Deploy/upgrade helm chart |
-| `mage cachingHelm:upIndependent` | Deploy with squid/nginx in separate namespaces |
+| `mage cachingHelm:up` | Deploy/upgrade Helm chart in separate component namespaces |
 | `mage cachingHelm:down` | Remove deployment |
 | `mage cachingHelm:status` | Check deployment status (all namespaces) |
 | `mage cachingHelm:upClean` | Force redeploy |
@@ -190,10 +189,12 @@ kind load image-archive --name caching <(podman save localhost/konflux-ci/cachin
 ```bash
 # Deploy for local dev — enables nginx reverse proxy (required for access-log-exporter sidecar)
 helm install caching ./caching --set environment=dev --set nginx.enabled=true
-kubectl get pods -n caching
+kubectl get pods -n squid-proxy
 ```
 
 ### Helm Configuration Examples
+
+Use distinct, non-empty names for `squid.namespace` and `nginx.namespace`. Test and mirrord resources use the Squid namespace. Configure namespace annotations with `squid.namespaceAnnotations` and `nginx.namespaceAnnotations`; `{}` or `null` applies no annotations.
 
 ```bash
 # Full install with cert-manager
@@ -224,7 +225,7 @@ mage clean              # Remove cluster + images (recommended)
 ```bash
 # Remove Helm release and namespace
 helm uninstall caching
-kubectl delete namespace caching
+kubectl delete namespace squid-proxy nginx-proxy
 
 # Remove cert-manager namespace (if installed via chart)
 kubectl delete namespace cert-manager

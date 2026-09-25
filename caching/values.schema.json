@@ -361,25 +361,6 @@
       "type": "object",
       "description": "Affinity rules for pod scheduling"
     },
-    "namespace": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "caching",
-          "description": "Namespace name"
-        },
-        "annotations": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "description": "Namespace annotations"
-        }
-      },
-      "required": ["name"],
-      "additionalProperties": false
-    },
     "installCertManagerComponents": {
       "type": "boolean",
       "description": "Install cert-manager and trust-manager components"
@@ -643,19 +624,19 @@
         },
         "namespace": {
           "type": "string",
-          "description": "Namespace where squid will be deployed. Leave empty to use shared namespace.name for backward compatibility.",
+          "description": "Namespace managed by the chart for squid.",
           "maxLength": 63,
-          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         },
         "namespaceAnnotations": {
           "type": ["object", "null"],
-          "description": "Annotations to apply to the squid namespace when squid.namespace is set. If empty, falls back to namespace.annotations. Set to null to explicitly opt out.",
+          "description": "Annotations applied to the squid namespace. Use {} or null for no annotations.",
           "additionalProperties": {
             "type": "string"
           }
         }
       },
-      "required": ["enabled", "name"],
+      "required": ["enabled", "name", "namespace"],
       "additionalProperties": false
     },
     "nginx": {
@@ -672,13 +653,13 @@
         },
         "namespace": {
           "type": "string",
-          "description": "Namespace where nginx will be deployed. Leave empty to use shared namespace.name for backward compatibility.",
+          "description": "Namespace managed by the chart for nginx.",
           "maxLength": 63,
-          "pattern": "^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
         },
         "namespaceAnnotations": {
           "type": ["object", "null"],
-          "description": "Annotations to apply to the nginx namespace when nginx.namespace is set. If empty, falls back to namespace.annotations. Set to null to explicitly opt out.",
+          "description": "Annotations applied to the nginx namespace. Use {} or null for no annotations.",
           "additionalProperties": {
             "type": "string"
           }
@@ -709,7 +690,7 @@
           "properties": {
             "url": {
               "type": "string",
-              "description": "URL of the upstream server to proxy to"
+              "description": "Upstream URL; empty selects the chart test backend in nginx.namespace and clusterDomain"
             },
             "readTimeout": {
               "type": "string",
@@ -844,7 +825,7 @@
           }
         }
       },
-      "required": ["enabled"],
+      "required": ["enabled", "namespace"],
       "additionalProperties": false
     },
     "nexus": {
@@ -857,8 +838,7 @@
     "replicaCount",
     "image",
     "serviceAccount",
-    "service",
-    "namespace"
+    "service"
   ],
   "additionalProperties": false,
   "$defs": {

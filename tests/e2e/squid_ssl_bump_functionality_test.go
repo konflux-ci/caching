@@ -26,7 +26,7 @@ var _ = Describe("Squid SSL-Bump Functionality", Ordered, Serial, func() {
 		statefulSet   *appsv1.StatefulSet
 	)
 
-	const testServerURL = "https://test-server." + namespace + ".svc.cluster.local:443"
+	testServerURL := "https://test-server." + namespace + ".svc.cluster.local:443"
 
 	BeforeAll(func() {
 		err := testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.SquidHelmValues{
