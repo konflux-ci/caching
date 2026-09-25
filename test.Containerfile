@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:26dc3089ab24491c1ba01ab92a7d502d181425b6021e362a07484daee696a3aa
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:e3a5632d7ae8a97e06f634522d06187f12793e90ac0d7b51bc671c83a96d8eda
 
 # Install required packages for Go and testing
 # Note: curl-minimal is already present in ubi10-minimal
