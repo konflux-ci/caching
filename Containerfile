@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:26dc3089ab24491c1ba01ab92a7d502d181425b6021e362a07484daee696a3aa AS squid-base
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:e3a5632d7ae8a97e06f634522d06187f12793e90ac0d7b51bc671c83a96d8eda AS squid-base
 
 # default port providing cache service
 EXPOSE 3128
@@ -20,7 +20,7 @@ RUN chown -R root:root /etc/squid/squid.conf /var/log/squid /var/spool/squid /ru
 # ==========================================
 # Stage 2: Combined Go builder (toolchain + exporters + helpers)
 # ==========================================
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:26dc3089ab24491c1ba01ab92a7d502d181425b6021e362a07484daee696a3aa AS go-builder
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:e3a5632d7ae8a97e06f634522d06187f12793e90ac0d7b51bc671c83a96d8eda AS go-builder
 
 ARG ENABLE_COVERAGE=false
 
@@ -95,7 +95,7 @@ RUN --mount=type=cache,target=/tmp/go-cache \
 # Stage: access-log-exporter only (for use as sidecar with nginx monitoring).
 # Build with: podman build --target access-log-exporter -t access-log-exporter .
 # ==========================================
-FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:26dc3089ab24491c1ba01ab92a7d502d181425b6021e362a07484daee696a3aa AS access-log-exporter
+FROM registry.access.redhat.com/ubi10/ubi-minimal@sha256:e3a5632d7ae8a97e06f634522d06187f12793e90ac0d7b51bc671c83a96d8eda AS access-log-exporter
 
 ENV NAME="konflux-ci/access-log-exporter"
 ENV SUMMARY="Access-log-exporter for Prometheus metrics from NGINX access logs (Konflux CI)"
