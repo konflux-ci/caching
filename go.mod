@@ -11,7 +11,7 @@ require (
 	github.com/jkroepke/access-log-exporter v0.4.4
 	github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20260925101333-acbb0b17d1c8
 	github.com/magefile/mage v1.17.2
-	github.com/onsi/ginkgo/v2 v2.32.2
+	github.com/onsi/ginkgo/v2 v2.33.0
 	github.com/onsi/gomega v1.44.0
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prashantv/gostub v1.1.0
