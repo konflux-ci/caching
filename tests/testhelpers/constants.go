@@ -1,20 +1,21 @@
 package testhelpers
 
-import "time"
+import (
+	"os"
+	"time"
+)
 
 // Test configuration constants shared across all test packages
 const (
 	// General constants
-	Namespace = "caching"
-	Timeout   = 60 * time.Second
-	Interval  = 2 * time.Second
+	Timeout  = 60 * time.Second
+	Interval = 2 * time.Second
 
 	// Squid constants
 	SquidServiceName     = "squid"
 	SquidStatefulSetName = "squid"
 	SquidContainerName   = "squid"
 	SquidComponentLabel  = "squid-caching"
-	SquidTLSSecretName   = Namespace + "-tls"
 
 	// Nginx constants
 	NginxServiceName     = "nginx"
@@ -27,3 +28,17 @@ const (
 	NginxTestBackendServiceName = "nginx-test-backend"
 	NginxTestBackendPort        = 9090
 )
+
+// Component namespaces follow the Helm test pod configuration, with local defaults.
+var (
+	SquidNamespace     = namespaceFromEnv("SQUID_NAMESPACE", "squid-proxy")
+	NginxNamespace     = namespaceFromEnv("NGINX_NAMESPACE", "nginx-proxy")
+	SquidTLSSecretName = SquidNamespace + "-tls"
+)
+
+func namespaceFromEnv(key, fallback string) string {
+	if namespace := os.Getenv(key); namespace != "" {
+		return namespace
+	}
+	return fallback
+}

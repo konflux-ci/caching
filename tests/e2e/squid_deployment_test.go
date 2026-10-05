@@ -53,9 +53,9 @@ func generateCacheBuster(testName string) string {
 var _ = Describe("Squid Helm Chart StatefulSet", func() {
 
 	Describe("Namespace", func() {
-		It("should have the caching namespace created", func() {
+		It("should have the Squid namespace created", func() {
 			ns, err := clientset.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
-			Expect(err).NotTo(HaveOccurred(), "Failed to get caching namespace")
+			Expect(err).NotTo(HaveOccurred(), "Failed to get Squid namespace")
 			Expect(ns.Name).To(Equal(namespace))
 			Expect(ns.Status.Phase).To(Equal(corev1.NamespaceActive))
 		})
@@ -488,8 +488,8 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 				Expect(caIssuer.Spec.CA.SecretName).To(Equal(namespace+"-root-ca-secret"), "CA issuer should reference the "+namespace+"-root-ca-secret")
 			})
 
-			It("should have the caching certificate created in caching namespace", func() {
-				// Get the caching certificate from the caching namespace
+			It("should have the caching certificate created in Squid namespace", func() {
+				// Get the caching certificate from the Squid namespace
 				cachingCert, err := certManagerClient.CertmanagerV1().Certificates(namespace).Get(ctx, namespace+"-cert", metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred(), "Failed to get caching certificate")
 				Expect(cachingCert).NotTo(BeNil(), "Caching Certificate should not be nil")
@@ -521,7 +521,7 @@ var _ = Describe("Squid Helm Chart StatefulSet", func() {
 			})
 
 			It("should have the TLS secret created with certificate data", func() {
-				// Get the TLS secret from the caching namespace
+				// Get the TLS secret from the Squid namespace
 				tlsSecret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, testhelpers.SquidTLSSecretName, metav1.GetOptions{})
 				Expect(err).NotTo(HaveOccurred(), "Failed to get TLS secret")
 				Expect(tlsSecret).NotTo(BeNil(), "TLS Secret should not be nil")

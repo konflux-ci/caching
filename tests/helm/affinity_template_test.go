@@ -20,7 +20,7 @@ var _ = Describe("Helm Template Affinity Configuration", func() {
 
 			// Check that the squid statefulset is present
 			Expect(output).To(ContainSubstring("name: "+testhelpers.SquidStatefulSetName), "Should contain squid statefulset")
-			Expect(output).To(ContainSubstring("namespace: "+testhelpers.Namespace), "Should be in caching namespace")
+			Expect(output).To(ContainSubstring("namespace: squid-proxy"), "Should be in squid-proxy namespace")
 
 			// Check for anti-affinity configuration
 			Expect(output).To(ContainSubstring("podAntiAffinity"), "Should contain podAntiAffinity")

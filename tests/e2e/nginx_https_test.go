@@ -45,7 +45,7 @@ var _ = Describe("Nginx HTTPS Tests", Label("nginx"), Ordered, Serial, func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		secret, err := clientset.CoreV1().Secrets(namespace).Get(ctx, "nginx-tls", metav1.GetOptions{})
+		secret, err := clientset.CoreV1().Secrets(testhelpers.NginxNamespace).Get(ctx, "nginx-tls", metav1.GetOptions{})
 		Expect(err).NotTo(HaveOccurred(), "failed to get TLS secret")
 
 		caCert, ok := secret.Data["ca.crt"]
@@ -57,7 +57,7 @@ var _ = Describe("Nginx HTTPS Tests", Label("nginx"), Ordered, Serial, func() {
 
 	It("should serve metrics over HTTPS when TLS is enabled", func() {
 		metricsURL := fmt.Sprintf("https://%s.%s.svc.cluster.local:9113/metrics",
-			testhelpers.NginxServiceName, namespace)
+			testhelpers.NginxServiceName, testhelpers.NginxNamespace)
 		resp, err := httpsClient.Get(metricsURL)
 		Expect(err).NotTo(HaveOccurred())
 		defer resp.Body.Close()

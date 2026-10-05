@@ -64,7 +64,7 @@ kind load image-archive --name caching <(podman save localhost/konflux-ci/squid:
 
 **Solution**: This is usually resolved by the correct security context in our chart. Verify:
 ```bash
-kubectl describe pod -n caching $(kubectl get pods -n caching -o name | head -1)
+kubectl describe pod -n squid-proxy $(kubectl get pods -n squid-proxy -o name | head -1)
 ```
 
 Look for:
@@ -79,7 +79,7 @@ Look for:
 **Solution**: Clean up and reinstall:
 ```bash
 helm uninstall caching 2>/dev/null || true
-kubectl delete namespace caching squid-proxy nginx-proxy 2>/dev/null || true
+kubectl delete namespace squid-proxy nginx-proxy 2>/dev/null || true
 # Wait a few seconds for cleanup
 sleep 5
 helm install caching ./caching
@@ -105,7 +105,7 @@ kubectl cluster-info dump | grep -i cidr
 
 **Solution**: Ensure downward API is configured (automatically handled by Helm chart):
 ```bash
-kubectl describe pod -n caching <test-pod-name>
+kubectl describe pod -n squid-proxy <test-pod-name>
 ```
 
 ### 8. Mirrord Connection Issues
@@ -115,10 +115,10 @@ kubectl describe pod -n caching <test-pod-name>
 **Solution**: Verify mirrord infrastructure is deployed and working:
 ```bash
 # Verify mirrord target pod is ready
-kubectl get pods -n caching -l app.kubernetes.io/component=mirrord-target
+kubectl get pods -n squid-proxy -l app.kubernetes.io/component=mirrord-target
 
 # Check mirrord target pod logs
-kubectl logs -n caching mirrord-test-target
+kubectl logs -n squid-proxy mirrord-test-target
 
 # Verify mirrord configuration
 cat .mirrord/mirrord.json
@@ -140,14 +140,14 @@ mage test:cluster  # Check output for detailed error messages
 mage cachingHelm:status
 
 # Check if all pods are running
-kubectl get pods -n caching
+kubectl get pods -n squid-proxy
 
 # Verify proxy connectivity manually
 kubectl run debug --image=curlimages/curl:latest --rm -it -- \
   curl -v --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 http://httpbin.org/ip
 
 # View test logs from helm tests
-kubectl logs -n caching -l app.kubernetes.io/component=test
+kubectl logs -n squid-proxy -l app.kubernetes.io/component=test
 ```
 
 ### 10. Working with Existing kind Clusters (Dev Container Users)
@@ -171,23 +171,23 @@ kind create cluster --name caching
 
 ```bash
 # Check pod status
-kubectl get pods -n caching
+kubectl get pods -n squid-proxy
 
 # View pod logs (Squid runs as a StatefulSet)
-kubectl logs -n caching statefulset/squid
+kubectl logs -n squid-proxy statefulset/squid
 
 # Test connectivity from within cluster
 kubectl run debug --image=curlimages/curl:latest --rm -it -- curl -v --proxy http://squid.<NAMESPACE>.svc.cluster.local:3128 http://httpbin.org/ip
 
 # Check service endpoints
-kubectl get endpoints -n caching
+kubectl get endpoints -n squid-proxy
 
 # Verify test infrastructure (when running tests)
-kubectl get pods -n caching -l app.kubernetes.io/component=mirrord-target
-kubectl get pods -n caching -l app.kubernetes.io/component=test
+kubectl get pods -n squid-proxy -l app.kubernetes.io/component=mirrord-target
+kubectl get pods -n squid-proxy -l app.kubernetes.io/component=test
 
 # View test logs from helm tests
-kubectl logs -n caching -l app.kubernetes.io/component=test
+kubectl logs -n squid-proxy -l app.kubernetes.io/component=test
 ```
 
 ## Health Checks
@@ -206,21 +206,21 @@ This is normal - Kubernetes is performing TCP health checks without sending comp
 
 1. **Check if the squid container is running**:
    ```bash
-   kubectl get pods -n caching
-   kubectl logs -n caching statefulset/squid -c squid-exporter
+   kubectl get pods -n squid-proxy
+   kubectl logs -n squid-proxy statefulset/squid -c squid-exporter
    ```
 
 2. **Verify cache manager access**:
    ```bash
    # Test from within the pod
-   kubectl exec -n caching statefulset/squid -c squid-exporter -- \
+   kubectl exec -n squid-proxy statefulset/squid -c squid-exporter -- \
      curl -s http://localhost:3128/squid-internal-mgr/info
    ```
 
 3. **Check ServiceMonitor (if using Prometheus Operator)**:
    ```bash
-   kubectl get servicemonitor -n caching
-   kubectl describe servicemonitor -n caching squid
+   kubectl get servicemonitor -n squid-proxy
+   kubectl describe servicemonitor -n squid-proxy squid
    ```
 
 ### Metrics Access Denied

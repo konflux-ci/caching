@@ -101,7 +101,7 @@ func NewNginxClient() *http.Client {
 
 // GetNginxURL returns the URL for the nginx service
 func GetNginxURL() string {
-	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", NginxServiceName, Namespace, NginxPort)
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", NginxServiceName, NginxNamespace, NginxPort)
 }
 
 // NewNginxHTTPSClient creates HTTPS client with custom CA
@@ -125,7 +125,7 @@ func NewNginxHTTPSClient(caCert []byte) (*http.Client, error) {
 
 // GetNginxHTTPSURL returns HTTPS URL for nginx service
 func GetNginxHTTPSURL() string {
-	return fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", NginxServiceName, Namespace, NginxHTTPSPort)
+	return fmt.Sprintf("https://%s.%s.svc.cluster.local:%d", NginxServiceName, NginxNamespace, NginxHTTPSPort)
 }
 
 // CreateNginxCertificate creates a cert-manager Certificate resource for nginx
@@ -133,7 +133,7 @@ func CreateNginxCertificate(ctx context.Context, client *certmanagerclient.Clien
 	cert := &certmanagerv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "nginx-cert",
-			Namespace: Namespace,
+			Namespace: NginxNamespace,
 		},
 		Spec: certmanagerv1.CertificateSpec{
 			SecretName:  secretName,
@@ -144,26 +144,26 @@ func CreateNginxCertificate(ctx context.Context, client *certmanagerclient.Clien
 			},
 			DNSNames: []string{
 				NginxServiceName,
-				fmt.Sprintf("%s.%s.svc", NginxServiceName, Namespace),
-				fmt.Sprintf("%s.%s.svc.cluster.local", NginxServiceName, Namespace),
+				fmt.Sprintf("%s.%s.svc", NginxServiceName, NginxNamespace),
+				fmt.Sprintf("%s.%s.svc.cluster.local", NginxServiceName, NginxNamespace),
 			},
 			PrivateKey: &certmanagerv1.CertificatePrivateKey{
 				Algorithm: certmanagerv1.ECDSAKeyAlgorithm,
 				Size:      256,
 			},
 			IssuerRef: certmanagermeta.IssuerReference{
-				Name:  Namespace + "-ca-issuer",
+				Name:  SquidNamespace + "-ca-issuer",
 				Kind:  "ClusterIssuer",
 				Group: "cert-manager.io",
 			},
 		},
 	}
 
-	_, err := client.CertmanagerV1().Certificates(Namespace).Create(ctx, cert, metav1.CreateOptions{})
+	_, err := client.CertmanagerV1().Certificates(NginxNamespace).Create(ctx, cert, metav1.CreateOptions{})
 	return err
 }
 
 // DeleteNginxCertificate deletes the cert-manager Certificate resource for nginx
 func DeleteNginxCertificate(ctx context.Context, client *certmanagerclient.Clientset) error {
-	return client.CertmanagerV1().Certificates(Namespace).Delete(ctx, "nginx-cert", metav1.DeleteOptions{})
+	return client.CertmanagerV1().Certificates(NginxNamespace).Delete(ctx, "nginx-cert", metav1.DeleteOptions{})
 }

@@ -1,23 +1,11 @@
-{{- if and .Values.squid.enabled .Values.squid.namespace }}
-{{- $baseAnnotations := .Values.namespace.annotations | default dict }}
-{{- $squidNs := include "caching.squid.namespace" . }}
-{{- $isExplicitNull := kindIs "invalid" .Values.squid.namespaceAnnotations }}
-{{- $squidAnnotations := dict }}
-{{- if not $isExplicitNull }}
-{{- if .Values.squid.namespaceAnnotations }}
-{{- $squidAnnotations = .Values.squid.namespaceAnnotations }}
-{{- else }}
-{{- $squidAnnotations = $baseAnnotations }}
-{{- end }}
-{{- end }}
----
+{{- if or .Values.squid.enabled .Values.test.enabled .Values.mirrord.enabled }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ $squidNs }}
+  name: {{ include "caching.squid.namespace" . }}
   labels:
-    name: {{ $squidNs }}
-{{- with $squidAnnotations }}
+    name: {{ include "caching.squid.namespace" . }}
+{{- with .Values.squid.namespaceAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
 {{- end }}

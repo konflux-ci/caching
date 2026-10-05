@@ -23,8 +23,9 @@ var (
 	suiteReplicaCount int32 // Will be set from env var or default to 1
 )
 
+var namespace = testhelpers.SquidNamespace
+
 const (
-	namespace          = testhelpers.Namespace
 	deploymentName     = testhelpers.SquidStatefulSetName
 	serviceName        = testhelpers.SquidServiceName
 	timeout            = testhelpers.Timeout
@@ -119,7 +120,7 @@ var _ = BeforeSuite(func() {
 	} else {
 		// No env var set, try to read from existing deployment
 		fmt.Printf("DEBUG: SQUID_REPLICA_COUNT not set, reading from statefulset...\n")
-		statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.Namespace).Get(ctx, testhelpers.SquidStatefulSetName, metav1.GetOptions{})
+		statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, testhelpers.SquidStatefulSetName, metav1.GetOptions{})
 		if err == nil && statefulSet != nil && statefulSet.Spec.Replicas != nil {
 			suiteReplicaCount = *statefulSet.Spec.Replicas
 			fmt.Printf("DEBUG: Using replica count from existing statefulset: %d\n", suiteReplicaCount)

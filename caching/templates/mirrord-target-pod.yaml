@@ -25,6 +25,10 @@ spec:
         - containerPort: 9090
           name: http
       env:
+        - name: SQUID_NAMESPACE
+          value: {{ include "caching.squid.namespace" . | quote }}
+        - name: NGINX_NAMESPACE
+          value: {{ include "caching.nginx.namespace" . | quote }}
         - name: POD_IP
           valueFrom:
             fieldRef:

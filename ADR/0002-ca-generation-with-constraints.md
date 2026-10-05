@@ -94,7 +94,7 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: vault-issuer-sign-intermediate
-  namespace: caching
+  namespace: squid-proxy
 spec:
   vault:
     path: pki_squid_my_cluster_root/root/sign-intermediate
@@ -114,7 +114,7 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: squid-intermediate-ca
-  namespace: caching
+  namespace: squid-proxy
 spec:
   isCA: true
   commonName: "Squid Bumping CA"
@@ -141,7 +141,7 @@ spec:
 - Root CA public certificate stored in Vault KV
 - External Secrets Operator syncs Root CA public cert to `cert-manager` namespace
 - trust-manager Bundle distributes Root CA to all namespaces
-- Intermediate CA stored in `caching` namespace (managed by cert-manager)
+- Intermediate CA stored in `squid-proxy` namespace (managed by cert-manager)
 - Squid uses Intermediate CA
 
 **Example trust-manager Bundle manifest:**
@@ -251,13 +251,13 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: vault-issuer
-  namespace: caching
+  namespace: squid-proxy
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: vault-issuer
-  namespace: caching
+  namespace: squid-proxy
 rules:
   - apiGroups: ['']
     resources: ['serviceaccounts/token']
@@ -268,7 +268,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: vault-issuer
-  namespace: caching
+  namespace: squid-proxy
 subjects:
   - kind: ServiceAccount
     name: cert-manager
@@ -310,7 +310,7 @@ roleRef:
 ```bash
 vault write auth/kubernetes-auth/role/vault-issuer-role \
   bound_service_account_names=vault-issuer \
-  bound_service_account_namespaces=caching \
+  bound_service_account_namespaces=squid-proxy \
   policies=pki_squid_my_cluster_root-sign-intermediate \
   ttl=1h
 ```
@@ -368,7 +368,7 @@ This phase issues a new, valid Intermediate CA so Squid can resume its work.
 1. **Delete Intermediate CA Certificate Resource**: Delete the compromised Certificate
    resource from Kubernetes to force cert-manager to request a new one:
    ```bash
-   kubectl delete certificate squid-intermediate-ca -n caching
+   kubectl delete certificate squid-intermediate-ca -n squid-proxy
    ```
 
 2. **Recreate Certificate Resource**: Recreate the Certificate resource (can be handled
@@ -382,7 +382,7 @@ This phase issues a new, valid Intermediate CA so Squid can resume its work.
 4. **Restart Squid**: Restart the Squid deployment to load the new, valid Intermediate
    CA:
    ```bash
-   kubectl rollout restart deployment squid -n caching
+   kubectl rollout restart deployment squid -n squid-proxy
    ```
 
 Service is now restored. The new Intermediate CA is trusted by all pods because both are

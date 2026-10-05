@@ -42,12 +42,12 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 			Timeout: 10 * time.Second,
 		}
 		metricsURL = fmt.Sprintf("http://%s.%s.svc.cluster.local:9113/metrics",
-			testhelpers.NginxServiceName, namespace)
+			testhelpers.NginxServiceName, testhelpers.NginxNamespace)
 	})
 
 	Describe("Deployment Configuration", func() {
 		It("should deploy NGINX StatefulSet with access-log-exporter sidecar", func() {
-			statefulSet, err := clientset.AppsV1().StatefulSets(namespace).Get(ctx, testhelpers.NginxStatefulSetName, metav1.GetOptions{})
+			statefulSet, err := clientset.AppsV1().StatefulSets(testhelpers.NginxNamespace).Get(ctx, testhelpers.NginxStatefulSetName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get NGINX statefulset")
 
 			// Verify access-log-exporter container exists
@@ -75,7 +75,7 @@ var _ = Describe("NGINX Access-Log-Exporter Integration", Label("nginx", "monito
 		})
 
 		It("should expose metrics endpoint through service", func() {
-			service, err := clientset.CoreV1().Services(namespace).Get(ctx, testhelpers.NginxServiceName, metav1.GetOptions{})
+			service, err := clientset.CoreV1().Services(testhelpers.NginxNamespace).Get(ctx, testhelpers.NginxServiceName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get NGINX service")
 
 			// Verify service has metrics port

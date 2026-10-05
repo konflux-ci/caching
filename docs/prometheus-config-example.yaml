@@ -2,7 +2,7 @@
 # This file shows how to configure Prometheus to scrape metrics from the Squid exporter
 # when not using Prometheus Operator
 #
-# Replace <NAMESPACE> with your deployment namespace (default: "caching")
+# Replace <NAMESPACE> with your deployment namespace (default: "squid-proxy")
 # Replace <CLUSTER_DOMAIN> with your cluster DNS domain (default: "cluster.local")
 
 # Add this job to your prometheus.yml configuration file
