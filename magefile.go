@@ -51,6 +51,15 @@ func Default() error {
 	return sh.Run("mage", "-l")
 }
 
+// BuildProxy validates the deployed proxy and default build CA bundle using tenant build pods.
+// Requires BUILD_PROXY_TEST_NAMESPACE and BUILD_PROXY_TEST_SERVICE_ACCOUNT.
+func (Test) BuildProxy() error {
+	if os.Getenv("BUILD_PROXY_TEST_NAMESPACE") == "" || os.Getenv("BUILD_PROXY_TEST_SERVICE_ACCOUNT") == "" {
+		return fmt.Errorf("set BUILD_PROXY_TEST_NAMESPACE and BUILD_PROXY_TEST_SERVICE_ACCOUNT for the target cluster")
+	}
+	return sh.RunV("go", "test", "-count=1", "-timeout=40m", "-v", "./tests/buildproxy/", "-ginkgo.v")
+}
+
 // Test:UnitExporter runs unit tests for the per-site prometheus exporter
 func (Test) UnitExporter() error {
 	fmt.Println("🧪 Running per-site exporter unit tests")
