@@ -127,6 +127,13 @@
       ]
     },
     {
+      "description": "Pin Fedora image to 43. Fedora 44+ ships Helm 4; fedora:46 is Rawhide. Digest updates of :43 still apply. Revisit before Fedora 43 EOL (2026-12-09).",
+      "matchPackageNames": [
+        "registry.fedoraproject.org/fedora"
+      ],
+      "allowedVersions": "/^43/"
+    },
+    {
       "description": "Group container base image updates",
       "groupName": "container-images",
       "matchUpdateTypes": [
