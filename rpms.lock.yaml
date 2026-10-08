@@ -123,13 +123,13 @@ arches:
     name: httpd-filesystem
     evr: 2.4.63-13.el10_2.6
     sourcerpm: httpd-2.4.63-13.el10_2.6.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-211.61.1.el10_2.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-211.63.1.el10_2.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 3750837
-    checksum: sha256:7c4887707861c49cb6152694184f2291ce63e38d7a6b448302dbc980b9d1328b
+    size: 3765153
+    checksum: sha256:02104134ee4ca5df4b06febe423dbb28357a565b60e2a5f097267346b73745b6
     name: kernel-headers
-    evr: 6.12.0-211.61.1.el10_2
-    sourcerpm: kernel-6.12.0-211.61.1.el10_2.src.rpm
+    evr: 6.12.0-211.63.1.el10_2
+    sourcerpm: kernel-6.12.0-211.63.1.el10_2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/l/libecap-1.0.1-19.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 29616
@@ -207,13 +207,13 @@ arches:
     name: perl-Class-Struct
     evr: 0.68-515.el10_2
     sourcerpm: perl-5.40.2-515.el10_2.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-DBI-1.643-26.el10_2.6.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-DBI-1.643-26.el10_2.7.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 736322
-    checksum: sha256:0bffdb1c15392f86e4890c511f652b526bf764e9f9c5d1d5017598c307496dbd
+    size: 737065
+    checksum: sha256:863a0fbdb0f8dbf67c55c68f26dc7e622a36d5726f953b2dc0f74181deab2fc9
     name: perl-DBI
-    evr: 1.643-26.el10_2.6
-    sourcerpm: perl-DBI-1.643-26.el10_2.6.src.rpm
+    evr: 1.643-26.el10_2.7
+    sourcerpm: perl-DBI-1.643-26.el10_2.7.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/p/perl-Data-Dumper-2.189-512.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 61309
