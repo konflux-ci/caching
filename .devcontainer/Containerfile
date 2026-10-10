@@ -1,5 +1,5 @@
 # Pinned to Fedora 43 — Fedora 44 ships Helm 4 which requires chart changes
-FROM registry.fedoraproject.org/fedora:43@sha256:17ec53e139b4f9baa29cc91f469c120b86aa15959fcfca73b76182e58d5ff89d
+FROM registry.fedoraproject.org/fedora:43@sha256:012a9df5c3ee0e6ec8027ca5d1d546d449acfd9cf73ddf11c896c4cda1039310
 
 # DNF tuning from official Podman Containerfile for build robustness
 RUN echo -e "\\n\\n# Added during image build" >> /etc/dnf/dnf.conf && \
