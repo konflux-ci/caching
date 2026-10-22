@@ -1,11 +1,9 @@
 ---
-# RPM input file for both Containerfile and test.Containerfile
-# Used by Cachi2 to prefetch RPMs for hermetic builds
-# Includes packages for both main squid image and test image
-# Using generic package names - MintMaker will track latest versions automatically
-# The lockfile ensures reproducible builds while staying up-to-date
+# RPM input for Containerfile (squid + go-builder stages on ubi-minimal).
+# test.Containerfile uses ubi10/go-toolset and installs no extra RPMs, so it
+# does not need entries here. Shared lock must stay resolved against ubi-minimal
+# or MintMaker would drop go-toolset/squid as "already in base".
 packages:
-  # Main squid image packages
   - ca-certificates
   - curl
   - gcc
@@ -14,18 +12,13 @@ packages:
   - gzip
   - squid
   - tar
-  # Test image specific packages
-  - procps-ng
-  - shadow-utils
-  - which
 contentOrigin:
   repofiles:
     - ./ubi-10.repo
 arches:
   - x86_64
 context:
-  # Use test.Containerfile (single-stage) to avoid ambiguity with multi-stage Containerfile
-  # This ensures MintMaker correctly identifies the base image and excludes packages
-  # already present in the base image
-  containerfile: test.Containerfile
-
+  # Multi-stage Containerfile: first FROM is ubi-minimal (same digest as --image).
+  # Do not point this at test.Containerfile (go-toolset) — that excludes packages
+  # the squid image still needs.
+  containerfile: Containerfile
