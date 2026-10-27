@@ -1,6 +1,6 @@
 module github.com/konflux-ci/caching
 
-go 1.26.7
+go 1.27.2
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
@@ -8,7 +8,7 @@ require (
 	github.com/go-delve/delve v1.27.2
 	github.com/google/go-containerregistry v0.22.1
 	github.com/intra-sh/icap v0.1.1
-	github.com/jkroepke/access-log-exporter v0.4.4
+	github.com/jkroepke/access-log-exporter v1.0.0
 	github.com/konflux-ci/coverport/instrumentation/go v0.0.0-20261009063148-e4b4dacb404f
 	github.com/magefile/mage v1.17.2
 	github.com/onsi/ginkgo/v2 v2.33.1
@@ -29,9 +29,9 @@ require (
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
-	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
+	github.com/Azure/go-ansiterm v0.0.0-20261013165250-51075c6ea6bc // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/KimMachineGun/automemlimit v0.7.5 // indirect
+	github.com/KimMachineGun/automemlimit v1.0.0 // indirect
 	github.com/MakeNowJust/heredoc v1.0.0 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
@@ -102,7 +102,7 @@ require (
 	github.com/jmoiron/sqlx v1.4.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/klauspost/compress v1.20.1 // indirect
+	github.com/klauspost/compress v1.20.3 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
