@@ -30,6 +30,6 @@ dependencies:
     repository: https://charts.jetstack.io
     condition: installCertManagerComponents
   - name: trust-manager
-    version: v0.25.0
+    version: v0.26.0
     repository: https://charts.jetstack.io
     condition: installCertManagerComponents
