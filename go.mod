@@ -4,7 +4,7 @@ go 1.26.7
 
 require (
 	github.com/boynux/squid-exporter v1.13.0
-	github.com/cert-manager/cert-manager v1.21.2
+	github.com/cert-manager/cert-manager v1.21.3
 	github.com/go-delve/delve v1.27.2
 	github.com/google/go-containerregistry v0.22.1
 	github.com/intra-sh/icap v0.1.1
