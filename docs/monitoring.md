@@ -7,6 +7,13 @@ This chart includes comprehensive Prometheus monitoring capabilities through:
 
 Both exporters are bundled into the single Squid container image.
 
+The standard exporter connects to Squid's cache manager over localhost, which is
+the only source allowed by the chart's cache-manager access rules. The chart does
+not configure `cachemgr_passwd`, so exporter authentication is not needed.
+The unused `squidExporter.squidLogin` and `squidExporter.squidPassword` options have
+been removed from the chart. These keys are no longer accepted by the schema,
+including when their values are empty; remove them from any existing values files.
+
 ## Metrics Overview
 
 The monitoring system provides detailed metrics about Squid's operational status:
