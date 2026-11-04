@@ -13,10 +13,8 @@ description: A Helm chart for deploying caching infrastructure (Squid forward pr
 # pipeline. Library charts do not define any templates and therefore cannot be deployed.
 type: application
 
-# This is the chart version. This version number should be incremented each time you make changes
-# to the chart and its templates, including the app version.
-# Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.2.0
+# The Tekton task that builds the chart overwrites this value, so no point in updating it.
+version: 0.0.1
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to

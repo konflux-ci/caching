@@ -399,6 +399,11 @@ type SquidValues struct {
 	Name      string `json:"name,omitempty"`
 }
 
+// IcapServerValues holds ICAP sidecar configuration.
+type IcapServerValues struct {
+	Resources json.RawMessage `json:"resources,omitempty"`
+}
+
 // HelmValues holds chart values shared by the squid and nginx test helpers.
 type HelmValues struct {
 	Squid              *SquidValues              `json:"squid,omitempty"`
@@ -408,6 +413,8 @@ type HelmValues struct {
 	Environment        string                    `json:"environment,omitempty"`
 	ReplicaCount       int                       `json:"replicaCount,omitempty"`
 	TLSOutgoingOptions *TLSOutgoingOptionsValues `json:"tlsOutgoingOptions,omitempty"`
+	Resources          json.RawMessage           `json:"resources,omitempty"`
+	IcapServer         *IcapServerValues         `json:"icapServer,omitempty"`
 	Affinity           json.RawMessage           `json:"affinity,omitempty"`
 	Volumes            []corev1.Volume           `json:"volumes,omitempty"`
 	VolumeMounts       []corev1.VolumeMount      `json:"volumeMounts,omitempty"`
