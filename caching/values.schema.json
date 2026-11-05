@@ -147,14 +147,6 @@
           "pattern": "^/.*",
           "description": "Path for metrics endpoint"
         },
-        "squidLogin": {
-          "type": "string",
-          "description": "Optional squid authentication login"
-        },
-        "squidPassword": {
-          "type": "string",
-          "description": "Optional squid authentication password"
-        },
         "extractServiceTimes": {
           "type": "string",
           "enum": ["true", "false"],

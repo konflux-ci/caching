@@ -146,9 +146,6 @@ squidExporter:
   port: 9301
   # Metrics path for Prometheus scraping
   metricsPath: "/metrics"
-  # Optional authentication (leave empty if not needed)
-  squidLogin: ""
-  squidPassword: ""
   # Extract service times (increases metric detail)
   extractServiceTimes: "true"
   # Custom labels to add to metrics

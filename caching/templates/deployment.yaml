@@ -143,14 +143,6 @@ spec:
               value: "{{ .Values.squidExporter.metricsPath }}"
             - name: SQUID_EXTRACTSERVICETIMES
               value: "{{ .Values.squidExporter.extractServiceTimes }}"
-            {{- if .Values.squidExporter.squidLogin }}
-            - name: SQUID_LOGIN
-              value: "{{ .Values.squidExporter.squidLogin }}"
-            {{- end }}
-            {{- if .Values.squidExporter.squidPassword }}
-            - name: SQUID_PASSWORD
-              value: "{{ .Values.squidExporter.squidPassword }}"
-            {{- end }}
           args:
             - exporter
             - -squid-hostname
@@ -161,14 +153,6 @@ spec:
             - ":{{ .Values.squidExporter.port }}"
             - -metrics-path
             - "{{ .Values.squidExporter.metricsPath }}"
-            {{- if .Values.squidExporter.squidLogin }}
-            - -squid-login
-            - "{{ .Values.squidExporter.squidLogin }}"
-            {{- end }}
-            {{- if .Values.squidExporter.squidPassword }}
-            - -squid-password
-            - "{{ .Values.squidExporter.squidPassword }}"
-            {{- end }}
             {{- range $key, $value := .Values.squidExporter.customLabels }}
             - -label
             - "{{ $key }}={{ $value }}"
