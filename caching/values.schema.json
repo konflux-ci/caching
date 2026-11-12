@@ -192,6 +192,15 @@
           "type": "string",
           "pattern": "^/.*",
           "description": "HTTP path for per-site exporter metrics"
+        },
+        "allowedHostnames": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^,\\s/*]+$"
+          },
+          "description": "Exact hostnames to label individually (case-insensitive, ignores a trailing dot). All other hosts use 'other'; empty aggregates all hosts. No URLs, ports, regexes, or wildcard matching."
         }
       },
       "required": ["enabled", "port", "metricsPath"],

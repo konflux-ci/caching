@@ -100,15 +100,37 @@ var (
 )
 
 type Exporter struct {
-	mutex     sync.RWMutex
-	parseFunc func(string)
+	mutex            sync.RWMutex
+	parseFunc        func(string)
+	allowedHostnames map[string]struct{}
 }
 
-func NewExporter() *Exporter {
-	e := &Exporter{}
+const otherHostname = "other"
+
+// NewExporter bounds hostname labels to the configured hosts plus "other".
+// An empty allow-list aggregates all hosts under "other".
+func NewExporter(allowedHostnames ...string) *Exporter {
+	e := &Exporter{allowedHostnames: make(map[string]struct{}, len(allowedHostnames))}
+	for _, hostname := range allowedHostnames {
+		if hostname = normalizeHostname(hostname); hostname != "" {
+			e.allowedHostnames[hostname] = struct{}{}
+		}
+	}
 	// Default parsing function
 	e.parseFunc = e.parseLogLine
 	return e
+}
+
+func normalizeHostname(hostname string) string {
+	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(hostname)), ".")
+}
+
+func (e *Exporter) hostnameLabel(hostname string) string {
+	hostname = normalizeHostname(hostname)
+	if _, allowed := e.allowedHostnames[hostname]; allowed {
+		return hostname
+	}
+	return otherHostname
 }
 
 // getCounterValue reads the current value of a labeled Counter from a CounterVec
@@ -168,6 +190,7 @@ func (e *Exporter) parseLogLine(line string) {
 		log.Printf("Missing hostname in URL %q", urlStr)
 		return
 	}
+	hostname = e.hostnameLabel(hostname)
 
 	// Parse bytes
 	bytes, err := strconv.ParseInt(bytesStr, 10, 64)
@@ -301,6 +324,10 @@ func main() {
 	squidHealthTimeout := flag.Duration("squid.health-timeout",
 		getEnvDurationDefault("SQUID_HEALTH_TIMEOUT", 500*time.Millisecond),
 		"Timeout for Squid health dial (e.g., 500ms). (Env: SQUID_HEALTH_TIMEOUT)")
+	allowedHostnames := flag.String("metrics.allowed-hostnames",
+		getEnvDefault("METRICS_ALLOWED_HOSTNAMES", ""),
+		"Comma-separated exact hostnames to label individually; all others use 'other'. "+
+			"Empty aggregates all hosts. (Env: METRICS_ALLOWED_HOSTNAMES)")
 
 	flag.Parse()
 
@@ -308,7 +335,7 @@ func main() {
 	log.Printf("Listening on %s", *listenAddress)
 	log.Printf("Reading logs from stdin (use shell redirection for files)")
 
-	exporter := NewExporter()
+	exporter := NewExporter(strings.Split(*allowedHostnames, ",")...)
 
 	// Start reading from stdin in background
 	go exporter.readFromStdin()
