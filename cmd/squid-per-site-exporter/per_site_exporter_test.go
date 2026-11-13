@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -16,6 +18,34 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
 )
+
+var _ = Describe("hostname allow-list configuration", func() {
+	DescribeTable("applies safe defaults and flag precedence over the environment",
+		func(env string, args []string, expectedLabels []string) {
+			GinkgoT().Setenv("METRICS_ALLOWED_HOSTNAMES", env)
+			flags := flag.NewFlagSet("per-site-exporter", flag.ContinueOnError)
+			allowedHostnames := registerAllowedHostnamesFlag(flags)
+			Expect(flags.Parse(args)).To(Succeed())
+			exporter := NewExporter(strings.Split(*allowedHostnames, ",")...)
+
+			labels := []string{
+				exporter.hostnameLabel("quay.io"),
+				exporter.hostnameLabel("registry.example.com"),
+				exporter.hostnameLabel("unlisted.attacker.test"),
+			}
+			Expect(labels).To(Equal(expectedLabels))
+		},
+		Entry("empty configuration aggregates all hosts", "", []string(nil), []string{"other", "other", "other"}),
+		Entry("normalizes hosts from the environment", " Quay.IO.,registry.example.com ", []string(nil),
+			[]string{"quay.io", "registry.example.com", "other"}),
+		Entry("accepts a flag without an environment value", "", []string{"-metrics.allowed-hostnames=quay.io"},
+			[]string{"quay.io", "other", "other"}),
+		Entry("flag replaces the environment list", "quay.io", []string{"-metrics.allowed-hostnames=registry.example.com"},
+			[]string{"other", "registry.example.com", "other"}),
+		Entry("empty flag overrides a populated environment list", "quay.io", []string{"-metrics.allowed-hostnames="},
+			[]string{"other", "other", "other"}),
+	)
+})
 
 var _ = Describe("parseLogLine", func() {
 	BeforeEach(func() {

@@ -37,6 +37,13 @@ func getEnvDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
+func registerAllowedHostnamesFlag(flags *flag.FlagSet) *string {
+	return flags.String("metrics.allowed-hostnames",
+		getEnvDefault("METRICS_ALLOWED_HOSTNAMES", ""),
+		"Comma-separated exact hostnames to label individually; all others use 'other'. "+
+			"Empty aggregates all hosts. (Env: METRICS_ALLOWED_HOSTNAMES)")
+}
+
 // getEnvDurationDefault returns the duration from env or the provided default
 func getEnvDurationDefault(key string, defaultValue time.Duration) time.Duration {
 	if value := os.Getenv(key); value != "" {
@@ -324,10 +331,7 @@ func main() {
 	squidHealthTimeout := flag.Duration("squid.health-timeout",
 		getEnvDurationDefault("SQUID_HEALTH_TIMEOUT", 500*time.Millisecond),
 		"Timeout for Squid health dial (e.g., 500ms). (Env: SQUID_HEALTH_TIMEOUT)")
-	allowedHostnames := flag.String("metrics.allowed-hostnames",
-		getEnvDefault("METRICS_ALLOWED_HOSTNAMES", ""),
-		"Comma-separated exact hostnames to label individually; all others use 'other'. "+
-			"Empty aggregates all hosts. (Env: METRICS_ALLOWED_HOSTNAMES)")
+	allowedHostnames := registerAllowedHostnamesFlag(flag.CommandLine)
 
 	flag.Parse()
 
