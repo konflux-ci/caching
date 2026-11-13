@@ -102,6 +102,8 @@ spec:
             - /etc/squid/certs/tls.crt
             - -web.tls-key-file
             - /etc/squid/certs/tls.key
+            - -metrics.allowed-hostnames
+            - {{ join "," .Values.perSiteExporter.allowedHostnames | quote }}
           {{- end }}
         - name: icap-server
           securityContext:

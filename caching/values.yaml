@@ -199,6 +199,10 @@ perSiteExporter:
   enabled: true
   port: 9302
   metricsPath: "/metrics"
+  # Exact hostnames to track individually (case-insensitive, ignores a trailing dot).
+  # All other hosts use hostname="other". Empty aggregates all hosts into "other".
+  # URLs, ports, regexes, and wildcard/subdomain matching are not supported.
+  allowedHostnames: []
 
 # This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:

@@ -2,22 +2,64 @@ package main
 
 import (
 	"bytes"
+	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	dto "github.com/prometheus/client_model/go"
 )
 
+var _ = Describe("hostname allow-list configuration", func() {
+	DescribeTable("applies safe defaults and flag precedence over the environment",
+		func(env string, args []string, expectedLabels []string) {
+			GinkgoT().Setenv("METRICS_ALLOWED_HOSTNAMES", env)
+			flags := flag.NewFlagSet("per-site-exporter", flag.ContinueOnError)
+			allowedHostnames := registerAllowedHostnamesFlag(flags)
+			Expect(flags.Parse(args)).To(Succeed())
+			exporter := NewExporter(strings.Split(*allowedHostnames, ",")...)
+
+			labels := []string{
+				exporter.hostnameLabel("quay.io"),
+				exporter.hostnameLabel("registry.example.com"),
+				exporter.hostnameLabel("unlisted.attacker.test"),
+			}
+			Expect(labels).To(Equal(expectedLabels))
+		},
+		Entry("empty configuration aggregates all hosts", "", []string(nil), []string{"other", "other", "other"}),
+		Entry("normalizes hosts from the environment", " Quay.IO.,registry.example.com ", []string(nil),
+			[]string{"quay.io", "registry.example.com", "other"}),
+		Entry("accepts a flag without an environment value", "", []string{"-metrics.allowed-hostnames=quay.io"},
+			[]string{"quay.io", "other", "other"}),
+		Entry("flag replaces the environment list", "quay.io", []string{"-metrics.allowed-hostnames=registry.example.com"},
+			[]string{"other", "registry.example.com", "other"}),
+		Entry("empty flag overrides a populated environment list", "quay.io", []string{"-metrics.allowed-hostnames="},
+			[]string{"other", "other", "other"}),
+	)
+})
+
 var _ = Describe("parseLogLine", func() {
+	BeforeEach(func() {
+		squidHitRatio.Reset()
+		squidHitTotal.Reset()
+		squidMissTotal.Reset()
+		squidRequestsTotal.Reset()
+		squidBytesTotal.Reset()
+		squidResponseTime.Reset()
+	})
+
 	It("parses realistic squid access.log lines and classifies hits/misses", func() {
-		exporter := NewExporter()
+		exporter := NewExporter(
+			"example.com", "assets.cdn.com", "notfound.example.com", "post.example.com", "patch.example.com")
 
 		lines := []string{
 			// HIT for example.com
@@ -102,7 +144,102 @@ var _ = Describe("parseLogLine", func() {
 		log.SetOutput(old)
 		Expect(buf.String()).To(ContainSubstring("Malformed access log entry"))
 	})
+
+	It("normalizes configured hosts and URLs while matching only exact hosts", func() {
+		exporter := NewExporter(" EXAMPLE.COM. ", "example.com", "", " ")
+		hosts := []string{
+			"EXAMPLE.COM.:8080", "Example.Com", "example.com",
+			"sub.example.com", "example.com.attacker.test", "other",
+		}
+		for _, host := range hosts {
+			exporter.parseLogLine("1732700000 100 10.0.0.1 TCP_HIT/200 10 GET http://" + host + "/ - DIRECT/- text/plain")
+		}
+
+		for _, family := range gatherSiteMetrics() {
+			Expect(family.GetMetric()).To(HaveLen(2), family.GetName())
+			hostnames := make([]string, 0, len(family.GetMetric()))
+			for _, metric := range family.GetMetric() {
+				Expect(metric.GetLabel()).To(HaveLen(1))
+				hostnames = append(hostnames, metric.GetLabel()[0].GetValue())
+			}
+			Expect(hostnames).To(ConsistOf("example.com", "other"), family.GetName())
+		}
+		for _, host := range []string{"example.com", "other"} {
+			requests, err := getCounterValue(squidRequestsTotal, host)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(requests).To(Equal(3.0))
+		}
+	})
+
+	DescribeTable("bounds all metric families when requests use thousands of distinct hosts",
+		func(allowedHostnames []string, expectedHostnames []string) {
+			exporter := NewExporter(allowedHostnames...)
+			if len(allowedHostnames) > 0 {
+				exporter.parseLogLine("1732700000 100 10.0.0.1 TCP_HIT/200 10 GET http://example.com/ - DIRECT/- text/plain")
+			}
+			const requests = 5000
+			for i := range requests {
+				status := "TCP_MISS/200"
+				if i%2 == 0 {
+					status = "TCP_HIT/200"
+				}
+				exporter.parseLogLine(fmt.Sprintf(
+					"1732700000 100 10.0.0.1 %s 10 GET http://host-%d.attacker.test/ - DIRECT/- text/plain", status, i))
+			}
+
+			for _, family := range gatherSiteMetrics() {
+				hostnames := make([]string, 0, len(family.GetMetric()))
+				for _, metric := range family.GetMetric() {
+					Expect(metric.GetLabel()).To(HaveLen(1))
+					hostname := metric.GetLabel()[0].GetValue()
+					hostnames = append(hostnames, hostname)
+					if hostname == "other" {
+						expectOtherMetric(family.GetName(), metric, requests)
+					}
+				}
+				Expect(hostnames).To(ConsistOf(expectedHostnames), family.GetName())
+			}
+		},
+		Entry("with an empty allow-list", []string(nil), []string{"other"}),
+		Entry("with an explicit allow-list", []string{"example.com"}, []string{"example.com", "other"}),
+	)
 })
+
+// Gather without calling WithLabelValues, which would create missing series.
+func gatherSiteMetrics() []*dto.MetricFamily {
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(
+		squidHitRatio, squidHitTotal, squidMissTotal, squidRequestsTotal, squidBytesTotal, squidResponseTime)
+	families, err := registry.Gather()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(families).To(HaveLen(6))
+	return families
+}
+
+func expectOtherMetric(name string, metric *dto.Metric, requests uint64) {
+	switch name {
+	case "squid_site_requests_total":
+		Expect(metric.GetCounter().GetValue()).To(Equal(float64(requests)))
+	case "squid_site_hits_total", "squid_site_misses_total":
+		Expect(metric.GetCounter().GetValue()).To(Equal(float64(requests) / 2))
+	case "squid_site_bytes_total":
+		Expect(metric.GetCounter().GetValue()).To(Equal(float64(requests) * 10))
+	case "squid_site_hit_ratio":
+		Expect(metric.GetGauge().GetValue()).To(Equal(0.5))
+	case "squid_site_response_time_seconds":
+		Expect(metric.GetHistogram().GetSampleCount()).To(Equal(requests))
+		Expect(metric.GetHistogram().GetSampleSum()).To(BeNumerically("~", float64(requests)*0.1, 0.000001))
+		for _, bucket := range metric.GetHistogram().GetBucket() {
+			if bucket.GetUpperBound() < 0.1 {
+				Expect(bucket.GetCumulativeCount()).To(BeZero())
+			} else {
+				Expect(bucket.GetCumulativeCount()).To(Equal(requests))
+			}
+		}
+	default:
+		Fail("Unexpected per-site metric family: " + name)
+	}
+}
 
 var _ = Describe("metrics handler", func() {
 	It("returns a valid Prometheus content-type from the handler", func() {

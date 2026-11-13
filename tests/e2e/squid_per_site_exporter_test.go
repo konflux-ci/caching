@@ -218,7 +218,8 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 		})
 
 		It("should track per-site request metrics when traffic flows through proxy", func() {
-			testHostname := strings.Split(strings.TrimPrefix(testServer.URL, "http://"), ":")[0]
+			// The default empty hostname allow-list aggregates traffic into "other".
+			testHostname := "other"
 			testURL := testServer.URL + "?" + generateCacheBuster("per-site-metrics-test")
 
 			// Get baseline aggregated metrics from all pods
@@ -251,7 +252,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 		})
 
 		It("should expose bandwidth metrics per site", func() {
-			testHostname := strings.Split(strings.TrimPrefix(testServer.URL, "http://"), ":")[0]
+			testHostname := "other"
 			testURL := testServer.URL + "?" + generateCacheBuster("per-site-bandwidth-test")
 
 			// Step 1: Get metrics from all pods before the request
