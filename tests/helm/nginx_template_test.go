@@ -429,6 +429,12 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 				"Should deny zero-padded IPv6 loopback such as [::0001]")
 			Expect(configMap).To(ContainSubstring(`\[::ffff:127(?:\.\d+){3}\]`),
 				"Should deny IPv4-mapped loopback")
+			Expect(configMap).To(ContainSubstring(`)?0\.0\.0\.0(:\d+)?`),
+				"Should deny IPv4 unspecified address")
+			Expect(configMap).To(ContainSubstring(`\[::0*\](:\d+)?`),
+				"Should deny IPv6 unspecified address")
+			Expect(configMap).To(ContainSubstring(`\[::ffff:0\.0\.0\.0\]`),
+				"Should deny IPv4-mapped unspecified address")
 
 			upstreamAllow := `"~*^https?://([^/?#]*@)?nginx-test-backend\.caching\.svc\.cluster\.local\.?(:\d+)?([/?#]|$)" 0;`
 			clusterDeny := `"~*^https?://([^/?#]*@)?[^/?#:]+\.cluster\.local\.?(:\d+)?([/?#]|$)" 1;`
