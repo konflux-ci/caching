@@ -111,6 +111,25 @@ sequenceDiagram
 - **Stale serving.** `proxy_cache_use_stale` serves cached content when S3 is temporarily
   unavailable.
 
+## Security: local redirect rejection
+
+`@handle_redirect` follows the upstream `Location` header and caches the result. Before
+fetching, nginx classifies the Location string with a `map` (`$redirect_denied`) and
+returns `502` for local/internal targets:
+
+- Non-absolute `http://` / `https://` URLs (relative paths, `//host`, other schemes)
+- Loopback (including common IPv6 spellings such as `[0:0:0:0:0:0:0:1]` / `[::0001]`),
+  unspecified (`0.0.0.0` / `[::]`), link-local (including cloud metadata), RFC1918, and
+  CGNAT literals
+- IPv4-mapped IPv6 forms of those ranges (e.g. `[::ffff:127.0.0.1]`, `[::ffff:0.0.0.0]`)
+- Kubernetes Service DNS (`.svc`, `.svc.<clusterDomain>`), except the configured
+  `nginx.upstream.url` host (needed so redirects back to the upstream itself still work)
+- IPv6 link-local and unique-local literals
+
+Public CDN / object-storage redirects remain allowed. This is string matching only; a
+hostname that *resolves* to a private IP is not detected, and exotic IPv6 compressions
+beyond the listed loopback forms may still slip through.
+
 ## Cache Configuration
 
 | Setting | Chart Default | Production | Description |
