@@ -3,11 +3,14 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -46,6 +49,21 @@ func getEnvDurationDefault(key string, defaultValue time.Duration) time.Duration
 	}
 	return defaultValue
 }
+
+// registerAllowedHostnamesFlag registers the flag with its environment fallback.
+func registerAllowedHostnamesFlag(flags *flag.FlagSet) *string {
+	return flags.String("metrics.allowed-hostnames",
+		getEnvDefault("METRICS_ALLOWED_HOSTNAMES", ""),
+		"Comma-separated exact hostnames to label individually; all others use 'other'. "+
+			"Empty aggregates all hosts. Ports and the reserved name 'other' are rejected. "+
+			"(Env: METRICS_ALLOWED_HOSTNAMES)")
+}
+
+const otherHostname = "other"
+
+// Keep this DNS label pattern in sync with permitted hostnames in caching/values.schema.json.
+var allowedHostnamePattern = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?` +
+	`(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.?$`)
 
 var (
 	// Prometheus metrics
@@ -100,15 +118,52 @@ var (
 )
 
 type Exporter struct {
-	mutex     sync.RWMutex
-	parseFunc func(string)
+	mutex            sync.RWMutex
+	parseFunc        func(string)
+	allowedHostnames map[string]struct{}
 }
 
-func NewExporter() *Exporter {
-	e := &Exporter{}
+// NewExporter bounds hostname labels to the configured hosts plus "other".
+// An empty allow-list aggregates all hosts under "other".
+func NewExporter(allowedHostnames ...string) (*Exporter, error) {
+	e := &Exporter{allowedHostnames: make(map[string]struct{}, len(allowedHostnames))}
+	for _, entry := range allowedHostnames {
+		host := strings.TrimSpace(entry)
+		if host == "" {
+			continue
+		}
+		if !allowedHostnamePattern.MatchString(host) && net.ParseIP(host) == nil {
+			return nil, fmt.Errorf("invalid allowed hostname %q: use an exact hostname or unbracketed IP without a port", entry)
+		}
+		hostname := normalizeHostname(host)
+		if hostname == otherHostname {
+			return nil, fmt.Errorf("allowed hostname %q is reserved for the catch-all metric label", entry)
+		}
+		e.allowedHostnames[hostname] = struct{}{}
+	}
 	// Default parsing function
 	e.parseFunc = e.parseLogLine
-	return e
+	return e, nil
+}
+
+// normalizeHostname gives DNS names and equivalent IPv6 spellings stable labels.
+func normalizeHostname(hostname string) string {
+	hostname = strings.TrimSuffix(strings.ToLower(strings.TrimSpace(hostname)), ".")
+	if strings.ContainsRune(hostname, ':') {
+		if addr, err := netip.ParseAddr(hostname); err == nil && addr.Zone() == "" {
+			return addr.String()
+		}
+	}
+	return hostname
+}
+
+// hostnameLabel returns the normalized label for a configured host or the catch-all label.
+func (e *Exporter) hostnameLabel(hostname string) string {
+	hostname = normalizeHostname(hostname)
+	if _, allowed := e.allowedHostnames[hostname]; allowed {
+		return hostname
+	}
+	return otherHostname
 }
 
 // getCounterValue reads the current value of a labeled Counter from a CounterVec
@@ -168,6 +223,7 @@ func (e *Exporter) parseLogLine(line string) {
 		log.Printf("Missing hostname in URL %q", urlStr)
 		return
 	}
+	hostname = e.hostnameLabel(hostname)
 
 	// Parse bytes
 	bytes, err := strconv.ParseInt(bytesStr, 10, 64)
@@ -301,6 +357,7 @@ func main() {
 	squidHealthTimeout := flag.Duration("squid.health-timeout",
 		getEnvDurationDefault("SQUID_HEALTH_TIMEOUT", 500*time.Millisecond),
 		"Timeout for Squid health dial (e.g., 500ms). (Env: SQUID_HEALTH_TIMEOUT)")
+	allowedHostnames := registerAllowedHostnamesFlag(flag.CommandLine)
 
 	flag.Parse()
 
@@ -308,7 +365,10 @@ func main() {
 	log.Printf("Listening on %s", *listenAddress)
 	log.Printf("Reading logs from stdin (use shell redirection for files)")
 
-	exporter := NewExporter()
+	exporter, err := NewExporter(strings.Split(*allowedHostnames, ",")...)
+	if err != nil {
+		log.Fatalf("Invalid metrics.allowed-hostnames configuration: %v", err)
+	}
 
 	// Start reading from stdin in background
 	go exporter.readFromStdin()

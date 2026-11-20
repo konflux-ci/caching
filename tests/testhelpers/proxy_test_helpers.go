@@ -408,6 +408,7 @@ type IcapServerValues struct {
 type HelmValues struct {
 	Squid              *SquidValues              `json:"squid,omitempty"`
 	SquidExporter      *SquidExporterValues      `json:"squidExporter,omitempty"`
+	PerSiteExporter    *PerSiteExporterValues    `json:"perSiteExporter,omitempty"`
 	SelfsignedBundle   *SelfsignedBundleValues   `json:"selfsigned-bundle,omitempty"`
 	Cache              *CacheValues              `json:"cache,omitempty"`
 	Environment        string                    `json:"environment,omitempty"`
@@ -443,6 +444,12 @@ type TestValues struct {
 // SquidExporterValues holds squid-exporter configuration
 type SquidExporterValues struct {
 	Enabled *bool `json:"enabled,omitempty"`
+}
+
+// PerSiteExporterValues holds per-site exporter configuration.
+type PerSiteExporterValues struct {
+	Enabled          *bool    `json:"enabled,omitempty"`
+	AllowedHostnames []string `json:"allowedHostnames,omitempty"`
 }
 
 // PrometheusValues holds Prometheus monitoring configuration

@@ -170,6 +170,7 @@ helm install caching ./caching --set squid.enabled=true --set nginx.enabled=true
 | `selfsigned-bundle.additionalSources` | `[]` | Additional trust-manager CA sources; Secret sources must exist in the configured trust namespace |
 | `selfsigned-certificate.enabled` | `true` | Create certificate resources |
 | `squidExporter.enabled` | `true` | Enable Prometheus metrics |
+| `perSiteExporter.allowedHostnames` | `[]` | Exact hosts to track individually; all others use `hostname="other"`. See [monitoring](docs/monitoring.md). |
 | `squid.enabled` | `true` | Deploy the Squid forward proxy |
 | `nginx.enabled` | `false` | Deploy NGINX reverse proxy |
 | `nginx.upstream.url` | `""` | Upstream URL; empty uses the chart test backend when `test.enabled=true` |
