@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -100,20 +101,70 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 		)
 
 		BeforeEach(func() {
-			podIP, err := getPodIP()
-			Expect(err).NotTo(HaveOccurred(), "Failed to get pod IP")
-
-			testServer, err = testhelpers.NewCachingTestServer("Per-site metrics endpoint test", podIP, 0)
-			Expect(err).NotTo(HaveOccurred(), "Failed to create test server")
-
-			client, err = testhelpers.NewSquidCachingClient(serviceName, testhelpers.SquidNamespace)
-			Expect(err).NotTo(HaveOccurred(), "Failed to create caching client")
+			// Honor TEST_SERVER_PORT: mirrord does not forward port-zero listeners.
+			testServer = setupHTTPTestServer("Per-site metrics endpoint test")
+			client = setupHTTPTestClient()
 		})
 
-		AfterEach(func() {
-			if testServer != nil {
-				testServer.Close()
+		It("should retain individual metrics for a configured hostname", Serial, func() {
+			requestURL, err := url.Parse(testServer.URL)
+			Expect(err).NotTo(HaveOccurred())
+			hostname := requestURL.Hostname()
+			Expect(hostname).NotTo(BeEmpty())
+
+			DeferCleanup(func() {
+				Expect(testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.HelmValues{
+					ReplicaCount: int(suiteReplicaCount),
+				})).To(Succeed(), "Failed to restore the default hostname allow-list")
+			})
+			By("Deploying the exporter with the test server's hostname in its allow-list")
+			Expect(testhelpers.ConfigureSquidWithHelm(ctx, clientset, testhelpers.HelmValues{
+				ReplicaCount: int(suiteReplicaCount),
+				PerSiteExporter: &testhelpers.PerSiteExporterValues{
+					AllowedHostnames: []string{hostname},
+				},
+			})).To(Succeed())
+
+			requestThroughProxy := func() error {
+				requestURL := testServer.URL + "?" + generateCacheBuster("allowed-host-metrics")
+				resp, body, err := testhelpers.MakeCachingRequest(client, requestURL)
+				if err != nil {
+					return fmt.Errorf("request through the updated proxy: %w", err)
+				}
+				defer resp.Body.Close()
+				if resp.StatusCode != http.StatusOK {
+					return fmt.Errorf("proxy returned %s for %s: %.2048s", resp.Status, requestURL, body)
+				}
+				return nil
 			}
+
+			// Pod readiness checks the Squid listener, not the path to the backend.
+			By("Waiting for the updated proxy to reach the test backend")
+			Eventually(requestThroughProxy, timeout, interval).Should(Succeed())
+
+			metricsClient := newHTTPSClient(10 * time.Second)
+			DeferCleanup(metricsClient.CloseIdleConnections)
+			baseline, err := testhelpers.GetAggregatedMetrics(ctx, clientset, metricsClient,
+				testhelpers.SquidNamespace, suiteReplicaCount, "squid_site_requests_total", hostname)
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Sending requests to the configured hostname with the server's port in the URL")
+			for i := 0; i < 3; i++ {
+				Eventually(requestThroughProxy, timeout, interval).Should(Succeed(),
+					"Request %d should reach the backend through the updated proxy", i+1)
+			}
+
+			By("Scraping metrics from the deployed exporter under the configured hostname")
+			Eventually(func(g Gomega) {
+				requests, err := testhelpers.GetAggregatedMetrics(ctx, clientset, metricsClient,
+					testhelpers.SquidNamespace, suiteReplicaCount, "squid_site_requests_total", hostname)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(requests - baseline).To(BeNumerically(">=", 3))
+				bytes, err := testhelpers.GetAggregatedMetrics(ctx, clientset, metricsClient,
+					testhelpers.SquidNamespace, suiteReplicaCount, "squid_site_bytes_total", hostname)
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(bytes).To(BeNumerically(">", 0))
+			}, timeout, interval).Should(Succeed())
 		})
 
 		It("should return valid per-site metrics from the exporter endpoint", func() {
@@ -124,6 +175,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 				resp, _, err := testhelpers.MakeCachingRequest(client, testURL+fmt.Sprintf("&req=%d", i))
 				Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Request %d should succeed", i))
 				resp.Body.Close()
+				Expect(resp.StatusCode).To(Equal(http.StatusOK), "Request %d should reach the backend", i)
 				time.Sleep(100 * time.Millisecond)
 			}
 
@@ -196,29 +248,19 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 		)
 
 		BeforeEach(func() {
-			podIP, err := getPodIP()
-			Expect(err).NotTo(HaveOccurred(), "Failed to get pod IP")
-
-			var err2 error
-			testServer, err2 = testhelpers.NewCachingTestServer("Per-site exporter test", podIP, 0)
-			Expect(err2).NotTo(HaveOccurred(), "Failed to create test server")
-
-			client, err2 = testhelpers.NewSquidCachingClient(serviceName, testhelpers.SquidNamespace)
-			Expect(err2).NotTo(HaveOccurred(), "Failed to create caching client")
+			testServer = setupHTTPTestServer("Per-site exporter test")
+			client = setupHTTPTestClient()
 
 			metricsClient = newHTTPSClient(10 * time.Second)
+			DeferCleanup(metricsClient.CloseIdleConnections)
+			var err error
 			statefulSet, err = clientset.AppsV1().StatefulSets(testhelpers.SquidNamespace).Get(ctx, deploymentName, metav1.GetOptions{})
 			Expect(err).NotTo(HaveOccurred(), "Failed to get squid statefulset")
 		})
 
-		AfterEach(func() {
-			if testServer != nil {
-				testServer.Close()
-			}
-		})
-
 		It("should track per-site request metrics when traffic flows through proxy", func() {
-			testHostname := strings.Split(strings.TrimPrefix(testServer.URL, "http://"), ":")[0]
+			// The default empty hostname allow-list aggregates traffic into "other".
+			testHostname := "other"
 			testURL := testServer.URL + "?" + generateCacheBuster("per-site-metrics-test")
 
 			// Get baseline aggregated metrics from all pods
@@ -235,6 +277,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 				fmt.Printf("DEBUG: Request %d handled by pod: %s\n", i, viaHeader)
 
 				resp.Body.Close()
+				Expect(resp.StatusCode).To(Equal(http.StatusOK), "Request %d should reach the backend", i)
 			}
 			time.Sleep(5 * time.Second)
 
@@ -251,7 +294,7 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 		})
 
 		It("should expose bandwidth metrics per site", func() {
-			testHostname := strings.Split(strings.TrimPrefix(testServer.URL, "http://"), ":")[0]
+			testHostname := "other"
 			testURL := testServer.URL + "?" + generateCacheBuster("per-site-bandwidth-test")
 
 			// Step 1: Get metrics from all pods before the request
@@ -263,6 +306,8 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			By("Making HTTP request through the proxy")
 			resp, body, err := testhelpers.MakeCachingRequest(client, testURL)
 			Expect(err).NotTo(HaveOccurred(), "Request should succeed")
+			resp.Body.Close()
+			Expect(resp.StatusCode).To(Equal(http.StatusOK), "Request should reach the backend")
 			Expect(len(body)).To(BeNumerically(">", 0), "Should receive response body")
 
 			// Step 3: Extract pod name from Via header
@@ -271,8 +316,6 @@ var _ = Describe("Squid Per-Site Exporter Integration", func() {
 			Expect(podName).NotTo(BeEmpty(), "Via header should contain pod name")
 			fmt.Printf("DEBUG: Request was processed by pod: %s\n", podName)
 			fmt.Printf("DEBUG: Via header: %s\n", viaHeader)
-
-			resp.Body.Close()
 
 			time.Sleep(5 * time.Second)
 

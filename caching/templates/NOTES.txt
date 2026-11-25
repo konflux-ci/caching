@@ -5,6 +5,13 @@
 
 Deployed to the '{{ $squidNamespace }}' namespace.
 
+{{- if and .Release.IsUpgrade .Values.perSiteExporter.enabled (not .Values.perSiteExporter.allowedHostnames) }}
+
+Per-site metrics now group all hosts under hostname="other" by default.
+Set perSiteExporter.allowedHostnames in your Helm values to preserve the
+individual hosts used by dashboards and alerts.
+{{- end }}
+
 To connect from other pods within the Kubernetes cluster:
 - From inside the '{{ $squidNamespace }}' namespace:
   http://{{ .Values.squid.name }}:{{ .Values.service.port }}

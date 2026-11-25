@@ -192,6 +192,23 @@
           "type": "string",
           "pattern": "^/.*",
           "description": "HTTP path for per-site exporter metrics"
+        },
+        "allowedHostnames": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "anyOf": [
+              { "pattern": "^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\\.?$" },
+              {
+                "$comment": "Require at least two colons and IP-literal characters even when format is annotation-only.",
+                "pattern": "^[0-9A-Fa-f]*:[0-9A-Fa-f:]*:[0-9A-Fa-f:.]*$",
+                "format": "ipv6"
+              }
+            ],
+            "not": { "pattern": "^[oO][tT][hH][eE][rR]\\.?$" }
+          },
+          "description": "Exact hostnames or unbracketed IP addresses to label individually (case-insensitive, ignores a trailing dot). All other hosts use 'other'; empty aggregates all hosts. The name 'other' is reserved. No URLs, ports, regexes, or wildcard matching."
         }
       },
       "required": ["enabled", "port", "metricsPath"],

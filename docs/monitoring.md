@@ -53,7 +53,24 @@ perSiteExporter:
   enabled: true
   port: 9302
   metricsPath: "/metrics"
+  allowedHostnames:
+    - registry.example.com
+    - quay.io
 ```
+
+By default, `perSiteExporter.allowedHostnames: []` groups all hosts under
+`hostname="other"`. Configure the hosts needed by per-host dashboards and alerts
+when upgrading; unlisted hosts remain in `other`.
+
+Use exact hostnames or IP addresses without schemes or ports (bare IPv6 is supported).
+Matching ignores case and a trailing DNS dot. Regexes, wildcards, subdomain matching,
+and the reserved name `other` are not supported.
+For example, allowing `quay.io` does not include `cdn.quay.io`; list each hostname
+explicitly to give it a separate metric label.
+
+This list only controls metric labels; `cache.allowList` separately controls caching
+using URL regexes. For standalone use, set `-metrics.allowed-hostnames=host1,host2`
+or `METRICS_ALLOWED_HOSTNAMES`; the flag takes precedence.
 
 ## Prometheus Integration
 
