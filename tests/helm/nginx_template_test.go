@@ -397,6 +397,100 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 			Expect(configMap).To(ContainSubstring(`proxy_cache_key "$scheme$host$request_uri"`), "Should cache on original request URI")
 		})
 
+		It("should deny local redirect targets when allowList has entries", func() {
+			output, err := renderNginxTemplate(testhelpers.HelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://nginx-test-backend.caching.svc.cluster.local:9090",
+					},
+					Cache: &testhelpers.NginxCacheValues{
+						AllowList: []string{`^/content/`},
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			Expect(configMap).To(ContainSubstring("map $upstream_http_location $redirect_denied"),
+				"Should render redirect deny map")
+			Expect(configMap).To(ContainSubstring("if ($redirect_denied)"),
+				"Should guard @handle_redirect with redirect_denied")
+			Expect(configMap).To(ContainSubstring("return 502"),
+				"Should return 502 for denied redirect targets")
+			Expect(configMap).To(ContainSubstring(`169\.254`),
+				"Should deny link-local / metadata addresses")
+			Expect(configMap).To(ContainSubstring(`127(?:\.\d+){3}`),
+				"Should deny loopback addresses")
+			Expect(configMap).To(ContainSubstring(`\[0:0:0:0:0:0:0:1\]`),
+				"Should deny expanded IPv6 loopback")
+			Expect(configMap).To(ContainSubstring(`\[::0{0,3}1\]`),
+				"Should deny zero-padded IPv6 loopback such as [::0001]")
+			Expect(configMap).To(ContainSubstring(`\[::ffff:127(?:\.\d+){3}\]`),
+				"Should deny IPv4-mapped loopback")
+			Expect(configMap).To(ContainSubstring(`)?0\.0\.0\.0(:\d+)?`),
+				"Should deny IPv4 unspecified address")
+			Expect(configMap).To(ContainSubstring(`\[::0*\](:\d+)?`),
+				"Should deny IPv6 unspecified address")
+			Expect(configMap).To(ContainSubstring(`\[::ffff:0\.0\.0\.0\]`),
+				"Should deny IPv4-mapped unspecified address")
+
+			upstreamAllow := `"~*^https?://([^/?#]*@)?nginx-test-backend\.caching\.svc\.cluster\.local\.?(:\d+)?([/?#]|$)" 0;`
+			clusterDeny := `"~*^https?://([^/?#]*@)?[^/?#:]+\.cluster\.local\.?(:\d+)?([/?#]|$)" 1;`
+			Expect(configMap).To(ContainSubstring(upstreamAllow),
+				"Should allow redirects to the configured upstream host")
+			Expect(configMap).To(ContainSubstring(clusterDeny),
+				"Should deny other cluster.local redirect targets")
+			Expect(strings.Index(configMap, upstreamAllow)).To(BeNumerically("<", strings.Index(configMap, clusterDeny)),
+				"Upstream allow must appear before cluster.local deny (first match wins)")
+		})
+
+		It("should deny service DNS using configured clusterDomain", func() {
+			output, err := renderNginxTemplate(testhelpers.HelmValues{
+				ClusterDomain: "example.internal",
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://nginx-test-backend.caching.svc.example.internal:9090",
+					},
+					Cache: &testhelpers.NginxCacheValues{
+						AllowList: []string{`^/content/`},
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			Expect(configMap).To(ContainSubstring(`\.svc(?:\.example\.internal)?\.?`),
+				"Should deny .svc and .svc.<clusterDomain>")
+			Expect(configMap).To(ContainSubstring(`[^/?#:]+\.example\.internal\.?`),
+				"Should deny *.<clusterDomain> redirect targets")
+			Expect(configMap).NotTo(ContainSubstring(`\.cluster\.local\.?(:\d+)?([/?#]|$)\" 1;`),
+				"Should not hardcode cluster.local deny when clusterDomain is set")
+		})
+
+		It("should bracket IPv6 upstream hosts in the redirect allow exception", func() {
+			output, err := renderNginxTemplate(testhelpers.HelmValues{
+				Nginx: &testhelpers.NginxValues{
+					Enabled: true,
+					Upstream: &testhelpers.NginxUpstreamValues{
+						URL: "http://[fd00::1]:8080",
+					},
+					Cache: &testhelpers.NginxCacheValues{
+						AllowList: []string{`^/content/`},
+					},
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := extractNginxConfigMapSection(output)
+
+			Expect(configMap).To(ContainSubstring(`"~*^https?://([^/?#]*@)?\[fd00::1\](:\d+)?([/?#]|$)" 0;`),
+				"IPv6 upstream allow regex must use bracketed literal, not a broken colon split")
+		})
+
 		It("should NOT render @handle_redirect when allowList is empty", func() {
 			output, err := renderNginxTemplate(testhelpers.HelmValues{
 				Nginx: &testhelpers.NginxValues{
@@ -415,6 +509,7 @@ var _ = Describe("Helm Template Nginx Configuration", func() {
 
 			Expect(configMap).NotTo(ContainSubstring("@handle_redirect"), "Should not render @handle_redirect without allowList")
 			Expect(configMap).NotTo(ContainSubstring("proxy_intercept_errors"), "Should not have redirect interception without allowList")
+			Expect(configMap).NotTo(ContainSubstring("$redirect_denied"), "Should not render redirect deny map without allowList")
 		})
 
 		It("should add redirect interception to allowList locations", func() {

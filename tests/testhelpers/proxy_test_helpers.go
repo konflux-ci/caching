@@ -410,6 +410,7 @@ type HelmValues struct {
 	SquidExporter      *SquidExporterValues      `json:"squidExporter,omitempty"`
 	SelfsignedBundle   *SelfsignedBundleValues   `json:"selfsigned-bundle,omitempty"`
 	Cache              *CacheValues              `json:"cache,omitempty"`
+	ClusterDomain      string                    `json:"clusterDomain,omitempty"`
 	Environment        string                    `json:"environment,omitempty"`
 	ReplicaCount       int                       `json:"replicaCount,omitempty"`
 	TLSOutgoingOptions *TLSOutgoingOptionsValues `json:"tlsOutgoingOptions,omitempty"`

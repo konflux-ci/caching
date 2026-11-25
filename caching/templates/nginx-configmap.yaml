@@ -80,7 +80,84 @@ data:
         # to send a response. Applies to all proxy_pass locations, including
         # the named redirect handler where large artifacts are fetched and cached.
         proxy_read_timeout {{ .Values.nginx.upstream.readTimeout }};
-        
+
+        {{- /* Parse once for upstream Host header and redirect-target allow exception. */}}
+        {{- $backendFQDN := include "caching.fqdn" (dict "name" "nginx-test-backend" "namespace" (include "caching.nginx.namespace" .) "ctx" .) }}
+        {{- $upstreamURL := .Values.nginx.upstream.url | default (printf "http://%s:9090" $backendFQDN) }}
+        {{- $upstreamParsed := urlParse $upstreamURL }}
+        {{- /* Prefer urlParse hostname (safe for IPv6); fall back to host without :port. */}}
+        {{- $upstreamHostname := index $upstreamParsed "hostname" | default ($upstreamParsed.host | splitList ":" | first) }}
+        {{- /* Location URLs bracket IPv6 literals; mirror that in the allow regex. */}}
+        {{- $upstreamHostRegex := $upstreamHostname | replace "." "\\." }}
+        {{- if contains ":" $upstreamHostname }}
+        {{- $upstreamHostRegex = printf "\\[%s\\]" $upstreamHostRegex }}
+        {{- end }}
+        {{- $clusterDomainRegex := (include "caching.clusterDomain" .) | replace "." "\\." }}
+
+        {{- if .Values.nginx.cache.allowList }}
+        # Reject local/internal redirect targets before @handle_redirect fetches them
+        # (KFLUXVNGD-1240 / FIND-005). String match only — does not catch hostnames
+        # that resolve to private IPs. First matching regex wins.
+        map $upstream_http_location $redirect_denied {
+            default 0;
+
+            # Regexes with { } must be quoted (nginx config language).
+            # Relative paths, protocol-relative URLs, and non-http(s) schemes
+            "~*^(?!https?://)" 1;
+
+            # Configured upstream host stays allowed (e2e redirects here; production
+            # artifact redirects go to S3/CDN and do not need this exception).
+            # Optional trailing DNS dot applies to hostnames only (not IPv6 literals).
+            {{- if contains ":" $upstreamHostname }}
+            "~*^https?://([^/?#]*@)?{{ $upstreamHostRegex }}(:\d+)?([/?#]|$)" 0;
+            {{- else }}
+            "~*^https?://([^/?#]*@)?{{ $upstreamHostRegex }}\.?(:\d+)?([/?#]|$)" 0;
+            {{- end }}
+
+            # Loopback (IPv4, hostname, and common IPv6 spellings)
+            "~*^https?://([^/?#]*@)?127(?:\.\d+){3}(:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?localhost\.?(:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[::1\](:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[0:0:0:0:0:0:0:1\](:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[::0{0,3}1\](:\d+)?([/?#]|$)" 1;
+
+            # Unspecified addresses (Linux routes 0.0.0.0 to loopback / local listeners)
+            "~*^https?://([^/?#]*@)?0\.0\.0\.0(:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[::0*\](:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[0:0:0:0:0:0:0:0\](:\d+)?([/?#]|$)" 1;
+
+            # Link-local / cloud metadata
+            "~*^https?://([^/?#]*@)?169\.254(?:\.\d+){2}(:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?metadata\.google\.internal\.?(:\d+)?([/?#]|$)" 1;
+
+            # RFC1918
+            "~*^https?://([^/?#]*@)?10(?:\.\d+){3}(:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?192\.168(?:\.\d+){2}(:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d+){2}(:\d+)?([/?#]|$)" 1;
+
+            # CGNAT (aligned with Squid localnet ACLs)
+            "~*^https?://([^/?#]*@)?100\.(?:6[4-9]|[7-9]\d|1[0-1]\d|12[0-7])(?:\.\d+){2}(:\d+)?([/?#]|$)" 1;
+
+            # IPv4-mapped IPv6 (:ffff:) forms of the IPv4 denials above
+            "~*^https?://([^/?#]*@)?\[::ffff:127(?:\.\d+){3}\](:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[::ffff:0\.0\.0\.0\](:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[::ffff:169\.254(?:\.\d+){2}\](:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[::ffff:10(?:\.\d+){3}\](:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[::ffff:192\.168(?:\.\d+){2}\](:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[::ffff:172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d+){2}\](:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[::ffff:100\.(?:6[4-9]|[7-9]\d|1[0-1]\d|12[0-7])(?:\.\d+){2}\](:\d+)?([/?#]|$)" 1;
+
+            # Kubernetes Service DNS (other than the configured upstream above).
+            # Uses chart clusterDomain; optional trailing DNS dot for absolute names.
+            "~*^https?://([^/?#]*@)?[^/?#:]+\.svc(?:\.{{ $clusterDomainRegex }})?\.?(:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?[^/?#:]+\.{{ $clusterDomainRegex }}\.?(:\d+)?([/?#]|$)" 1;
+
+            # IPv6 link-local (fe80::/10) and unique local (fc00::/7)
+            "~*^https?://([^/?#]*@)?\[fe[89ab][0-9a-fA-F]:[^\]]*\](:\d+)?([/?#]|$)" 1;
+            "~*^https?://([^/?#]*@)?\[f[cd][0-9a-fA-F]{2}:[^\]]*\](:\d+)?([/?#]|$)" 1;
+        }
+        {{- end }}
+
         # Metrics endpoint for access-log-exporter to scrape basic NGINX stats.
         # Provides connection and request counts for the nginx_up metric.
         server {
@@ -124,9 +201,6 @@ data:
             # DNS via the resolver directive. A static proxy_pass URL is only
             # resolved once at config load; using a variable enables re-resolution
             # based on the resolver's valid interval.
-            {{- $backendFQDN := include "caching.fqdn" (dict "name" "nginx-test-backend" "namespace" (include "caching.nginx.namespace" .) "ctx" .) }}
-            {{- $upstreamURL := .Values.nginx.upstream.url | default (printf "http://%s:9090" $backendFQDN) }}
-            {{- $upstreamParsed := urlParse $upstreamURL }}
             set $upstream_url "{{ $upstreamURL }}";
             set $upstream_host "{{ $upstreamParsed.host }}";
 
@@ -214,6 +288,12 @@ data:
             location @handle_redirect {
                 # Capture the redirect target URL from the upstream's Location header
                 set $redirect_url $upstream_http_location;
+
+                # Refuse local/internal targets (see map $redirect_denied above)
+                if ($redirect_denied) {
+                    return 502;
+                }
+
                 proxy_pass $redirect_url;
 
                 # Enable SNI for HTTPS redirect targets (e.g. S3 presigned URLs)

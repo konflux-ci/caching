@@ -110,4 +110,65 @@ var _ = Describe("Nginx Redirect Interception Tests", Label("nginx"), Ordered, S
 		Expect(resp3.StatusCode).To(Equal(http.StatusForbidden),
 			"Banned request should return 403, not cached 200")
 	})
+
+	DescribeTable("should reject local or internal redirect targets",
+		func(target string) {
+			reqURL := testhelpers.GetNginxURL() + "/redirect?url=" + url.QueryEscape(target) +
+				"&" + generateCacheBuster("deny-"+target)
+
+			resp, err := client.Get(reqURL)
+			Expect(err).NotTo(HaveOccurred())
+			defer resp.Body.Close()
+
+			Expect(resp.StatusCode).To(Equal(http.StatusBadGateway),
+				"Local/internal redirect target %q should be rejected with 502", target)
+		},
+		Entry("loopback", "http://127.0.0.1/"),
+		Entry("localhost", "http://localhost/"),
+		Entry("cloud metadata", "http://169.254.169.254/latest/meta-data/"),
+		Entry("other cluster service", "http://other-service.svc.cluster.local/"),
+		Entry("absolute cluster service DNS name", "http://other-service.svc.cluster.local./"),
+		Entry("relative location", "/relative"),
+		Entry("protocol-relative location", "//127.0.0.1/"),
+		Entry("expanded IPv6 loopback", "http://[0:0:0:0:0:0:0:1]/"),
+		Entry("zero-padded IPv6 loopback", "http://[::0001]/"),
+		Entry("IPv4-mapped loopback", "http://[::ffff:127.0.0.1]/"),
+		Entry("IPv4 unspecified", "http://0.0.0.0/"),
+		Entry("IPv6 unspecified", "http://[::]/"),
+	)
+
+	// stub_status on :8081 is reachable from inside the nginx pod. If the map
+	// allowed these Locations, @handle_redirect would fetch stub_status and
+	// return 200 with an "Active connections" body. Denial must yield 502
+	// without that body — proving the local listener got no hit.
+	assertStubStatusNotFetched := func(target, cacheBuster string) {
+		reqURL := testhelpers.GetNginxURL() + "/redirect?url=" + url.QueryEscape(target) +
+			"&" + generateCacheBuster(cacheBuster)
+
+		resp, err := client.Get(reqURL)
+		Expect(err).NotTo(HaveOccurred())
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(resp.StatusCode).To(Equal(http.StatusBadGateway),
+			"Denied redirect to stub_status via %q must be rejected", target)
+		Expect(string(body)).NotTo(ContainSubstring("Active connections"),
+			"stub_status must not have been fetched/cached via %q", target)
+	}
+
+	It("should not fetch IPv4-mapped loopback via reachable stub_status", func() {
+		assertStubStatusNotFetched(
+			"http://[::ffff:127.0.0.1]:8081/stub_status",
+			"deny-mapped-stub-status",
+		)
+	})
+
+	It("should not fetch IPv4 unspecified via reachable stub_status", func() {
+		assertStubStatusNotFetched(
+			"http://0.0.0.0:8081/stub_status",
+			"deny-unspecified-stub-status",
+		)
+	})
 })
