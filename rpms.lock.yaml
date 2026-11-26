@@ -81,41 +81,41 @@ arches:
     name: glibc-devel
     evr: 2.39-147.el10_3
     sourcerpm: glibc-2.39-147.el10_3.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/go-toolset-1.27.3-1.el10_3.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/go-toolset-1.27.4-3.el10_3.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 13201
-    checksum: sha256:10ba6f7f364771c54d184263bb44c4c211d7797c6a4598a0ca7b83fd0038d337
+    size: 13457
+    checksum: sha256:36084b6b3f603204cec5c38be23a9b281542f57d51e9d9b193e8c4bb7d633fb5
     name: go-toolset
-    evr: 1.27.3-1.el10_3
-    sourcerpm: golang-1.27.3-1.el10_3.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-1.27.3-1.el10_3.x86_64.rpm
+    evr: 1.27.4-3.el10_3
+    sourcerpm: golang-1.27.4-3.el10_3.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-1.27.4-3.el10_3.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 1511109
-    checksum: sha256:1324a059b32fe6d28aac219a4eceb595416c2b5c1ac62876295d39d794ae61dd
+    size: 1511479
+    checksum: sha256:8609d2f8383cd891e398ef2fb965baba6f1b8593fe15f5e3f8ee1f5458b0be35
     name: golang
-    evr: 1.27.3-1.el10_3
-    sourcerpm: golang-1.27.3-1.el10_3.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-bin-1.27.3-1.el10_3.x86_64.rpm
+    evr: 1.27.4-3.el10_3
+    sourcerpm: golang-1.27.4-3.el10_3.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-bin-1.27.4-3.el10_3.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 53126542
-    checksum: sha256:308a0fbba6bce25e1f9a87614a5d455cb5e386d350b1b920d54d1066ef2c735e
+    size: 53180654
+    checksum: sha256:a7737f8c59779ed91ac4c673156eb6070b06862d3c4089e52592834eef60f739
     name: golang-bin
-    evr: 1.27.3-1.el10_3
-    sourcerpm: golang-1.27.3-1.el10_3.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-race-1.27.3-1.el10_3.x86_64.rpm
+    evr: 1.27.4-3.el10_3
+    sourcerpm: golang-1.27.4-3.el10_3.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-race-1.27.4-3.el10_3.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 1741860
-    checksum: sha256:db14aa3b0ce0b20691355e89d89a3e8899d946515d697cba6bcb247297e24a5e
+    size: 639121
+    checksum: sha256:7d6719375d087bd2415b51a0203e8bfc332790e0e5ddf4b600239ef4dffe4dc1
     name: golang-race
-    evr: 1.27.3-1.el10_3
-    sourcerpm: golang-1.27.3-1.el10_3.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-src-1.27.3-1.el10_3.noarch.rpm
+    evr: 1.27.4-3.el10_3
+    sourcerpm: golang-1.27.4-3.el10_3.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/g/golang-src-1.27.4-3.el10_3.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 13724919
-    checksum: sha256:5fea72016d906a4c9c06ff8266d228269f849156d8c7eb94048063288d2d50c4
+    size: 13738442
+    checksum: sha256:1001a4b5d746256b9e632c4293c85b3b962ede0694961ad2f87b1ec9397264ca
     name: golang-src
-    evr: 1.27.3-1.el10_3
-    sourcerpm: golang-1.27.3-1.el10_3.src.rpm
+    evr: 1.27.4-3.el10_3
+    sourcerpm: golang-1.27.4-3.el10_3.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/h/httpd-filesystem-2.4.63-13.el10_2.8.noarch.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 21691
@@ -123,13 +123,13 @@ arches:
     name: httpd-filesystem
     evr: 2.4.63-13.el10_2.8
     sourcerpm: httpd-2.4.63-13.el10_2.8.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-264.16.1.el10_3.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/k/kernel-headers-6.12.0-264.21.1.el10_3.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
-    size: 3572305
-    checksum: sha256:7d9ee5afa52dcb18dd68df611999b5b85e9636db6601776ead8b326a46aae3f7
+    size: 3595061
+    checksum: sha256:b789e7f3e47f5b4b42bbddaea27e76af2e12e21af66b2564cffa587a6c55cc07
     name: kernel-headers
-    evr: 6.12.0-264.16.1.el10_3
-    sourcerpm: kernel-6.12.0-264.16.1.el10_3.src.rpm
+    evr: 6.12.0-264.21.1.el10_3
+    sourcerpm: kernel-6.12.0-264.21.1.el10_3.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/appstream/os/Packages/l/libecap-1.0.1-19.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-appstream-rpms
     size: 29616
@@ -823,13 +823,13 @@ arches:
     name: elfutils-libs
     evr: 0.195-1.el10
     sourcerpm: elfutils-0.195-1.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/e/expat-2.7.3-2.el10_3.4.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/e/expat-2.7.3-2.el10_3.8.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 131158
-    checksum: sha256:1ec28f4e4bb1cced06f78c45385567e77e98b52dcaa1848b3eef873c1fe2d487
+    size: 134235
+    checksum: sha256:6986a1d442981bb2ab7c17478dc5ecfba71ec3f484799e7e27f316c07a03b1ec
     name: expat
-    evr: 2.7.3-2.el10_3.4
-    sourcerpm: expat-2.7.3-2.el10_3.4.src.rpm
+    evr: 2.7.3-2.el10_3.8
+    sourcerpm: expat-2.7.3-2.el10_3.8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/f/file-libs-5.45-12.el10.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 787866
@@ -1089,20 +1089,20 @@ arches:
     name: openldap
     evr: 2.6.13-1.el10
     sourcerpm: openldap-2.6.13-1.el10.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/o/openssh-9.9p1-33.el10_3.x86_64.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/o/openssh-9.9p1-34.el10_3.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 370105
-    checksum: sha256:535ef56d52e86f629329d4ffcfbd977ec7ed85934e3ae46f2da09b658acf5f2f
+    size: 370254
+    checksum: sha256:561299b103268e19458efa2a16a442535730a14357d8e0f2e876f7074b7d6ca2
     name: openssh
-    evr: 9.9p1-33.el10_3
-    sourcerpm: openssh-9.9p1-33.el10_3.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/o/openssh-clients-9.9p1-33.el10_3.x86_64.rpm
+    evr: 9.9p1-34.el10_3
+    sourcerpm: openssh-9.9p1-34.el10_3.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/o/openssh-clients-9.9p1-34.el10_3.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
-    size: 794708
-    checksum: sha256:ecd0bc786a56cc9a669c1e719d562dfe978f93e8d518f0ad418ab1a7274e7db1
+    size: 795565
+    checksum: sha256:3e19ff76b843ce464efc7eb68b9e170787bbb20051399a2d487d2368978f0868
     name: openssh-clients
-    evr: 9.9p1-33.el10_3
-    sourcerpm: openssh-9.9p1-33.el10_3.src.rpm
+    evr: 9.9p1-34.el10_3
+    sourcerpm: openssh-9.9p1-34.el10_3.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi10/10/x86_64/baseos/os/Packages/o/openssl-libs-3.5.9-1.el10_3.x86_64.rpm
     repoid: ubi-10-for-x86_64-baseos-rpms
     size: 2379104
